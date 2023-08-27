@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ macos-latest, ubuntu-20.04, windows-latest, ubuntu-latest ]
+        platform: [ ubuntu-20.04, ubuntu-latest ]
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -32,6 +32,7 @@ jobs:
         prefix-key: rust-${{ matrix.platform }}
     - name: Build
       run: cargo build --verbose
+
   clippy:
     name: "Cargo clippy"
     runs-on: "ubuntu-latest"
