@@ -3,6 +3,7 @@ name = "window_switcher"
 description = "A CLI app that allows switching between windows (of same class) in Hyprland"
 version = "0.1.1"
 edition = "2021"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
