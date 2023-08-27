@@ -36,6 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     clients.sort_by(|a, b|
         if a.workspace.id != b.workspace.id {
             a.workspace.id.cmp(&b.workspace.id)
+        } else if a.at.1 != b.at.1 {
+            a.at.1.cmp(&b.at.1)
         } else {
             a.at.0.cmp(&b.at.0)
         }
