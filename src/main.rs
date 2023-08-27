@@ -33,13 +33,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|c| c.workspace.id != -1)
         .collect::<Vec<_>>();
 
-    clients.sort_by(|a, b| {
-        return if a.workspace.id != b.workspace.id {
+    clients.sort_by(|a, b|
+        if a.workspace.id != b.workspace.id {
             a.workspace.id.cmp(&b.workspace.id)
         } else {
             a.at.0.cmp(&b.at.0)
         };
-    });
+    );
 
     let win = Client::get_active()?.expect("No active window?");
     if cli.same_class {
@@ -61,8 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let next_client = clients.iter()
         .cycle()
-        .skip(current_window_index)
-        .next()
+        .nth(current_window_index)
         .expect("No next window?");
 
 
