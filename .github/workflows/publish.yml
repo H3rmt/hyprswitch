@@ -39,4 +39,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           RUSTTARGET: x86_64-unknown-linux-musl
+          EXTRA_FILES: "README.md LICENSE"
           ARCHIVE_TYPES: tar.gz tar.xz tar.zst
