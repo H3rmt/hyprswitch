@@ -8,19 +8,16 @@ name: Publish
 
 jobs:
   publish:
-    name: Publish
+    name: publish
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Load Rust Cache
+        uses: Swatinem/rust-cache@v2
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
+          prefix-key: rust-publish
       - run: cargo publish --token ${CRATES_TOKEN}
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
@@ -29,7 +26,13 @@ jobs:
     name: release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Load Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rust-release
       - name: Compile and release
         uses: rust-build/rust-build.action@v1.4.3
         env:
