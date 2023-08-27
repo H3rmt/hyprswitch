@@ -3,7 +3,7 @@ name: Rust
 on:
   push:
     branches: 
-      -master
+      - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -32,3 +32,15 @@ jobs:
         prefix-key: rust-${{ matrix.platform }}
     - name: Build
       run: cargo build --verbose
+  clippy:
+    name: "Cargo clippy"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v3
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - run: "rustup component add clippy"
+      - uses: "actions-rs/cargo@v1"
+        with:
+          command: "clippy"
+          args: "-- -D warnings"
