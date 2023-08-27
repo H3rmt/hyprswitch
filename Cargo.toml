@@ -1,6 +1,6 @@
 [package]
 name = "window_switcher"
-description = "A small CLI app that allows switching between windows of same type in Hyprland"
+description = "A CLI app that allows switching between windows (of same class) in Hyprland"
 version = "0.1.1"
 edition = "2021"
 
