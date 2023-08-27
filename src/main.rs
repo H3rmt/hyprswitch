@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             a.workspace.id.cmp(&b.workspace.id)
         } else {
             a.at.0.cmp(&b.at.0)
-        };
+        }
     );
 
     let win = Client::get_active()?.expect("No active window?");
