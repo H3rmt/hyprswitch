@@ -1,0 +1,34 @@
+name: Rust
+
+on:
+  push:
+    branches: 
+      -master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ macos-latest, ubuntu-20.04, windows-latest, ubuntu-latest ]
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: install Rust stable
+      uses: dtolnay/rust-toolchain@stable
+    - name: Load Rust Cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: src-tauri
+        prefix-key: rust-${{ matrix.platform }}
+    - name: Build
+      run: cargo build --verbose
