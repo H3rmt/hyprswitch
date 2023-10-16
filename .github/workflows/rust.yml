@@ -45,6 +45,6 @@ jobs:
       - name: Load Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: rust-build-${{ matrix.platform }}
+          prefix-key: rust-build-ubuntu-latest
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
