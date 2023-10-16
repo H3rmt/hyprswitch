@@ -109,7 +109,7 @@ where
         for client in clients {
             workspaces
                 .entry(client.ws())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(client);
         }
         workspaces.into_values().collect()

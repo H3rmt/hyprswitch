@@ -12,6 +12,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  RUSTFLAGS: "-Dwarnings"
 
 jobs:
   build:
@@ -44,9 +45,6 @@ jobs:
       - name: Load Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: rust-clippy
-      - run: "rustup component add clippy"
-      - uses: "actions-rs/cargo@v1"
-        with:
-          command: "clippy"
-          args: "-- -D warnings"
+          prefix-key: rust-build-${{ matrix.platform }}
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features
