@@ -83,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(current_window_index)
         .expect("No next window?");
 
-    // removal of 0x prefix (hyprland adds it on dispatch)
+    // removal of 0x prefix (hyprland-rs adds it on dispatch)
     let address = Address::new(
         next_client
             .address
@@ -167,15 +167,13 @@ where
     let mut index: Option<usize> = None;
     for (i, v) in ve.iter().enumerate() {
         // println!("compare {left:?} with {v:?}");
-        if left <= v.x() && top <= v.y() && v.y() <= bottom {
-            if current_x.is_none() || current_y.is_none() || v.x() < current_x.unwrap() || v.y() < current_y.unwrap() {
-                current_x = Some(v.x());
-                current_y = Some(v.y());
-                index = Some(i);
-            }
+        if left <= v.x() && top <= v.y() && v.y() <= bottom && (current_x.is_none() || current_y.is_none() || v.x() < current_x.unwrap() || v.y() < current_y.unwrap()) {
+            current_x = Some(v.x());
+            current_y = Some(v.y());
+            index = Some(i);
         }
     }
-    return index;
+    index
 }
 
 trait SortableClient {
@@ -261,7 +259,7 @@ mod tests {
             MockClient(2, 6, 2, 4, 0, "6".to_string()),
             MockClient(7, 8, 2, 2, 0, "7".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4", "5", "6", "7"];
+        let ve2 = ["1", "2", "3", "4", "5", "6", "7"];
 
         let ve = sort(ve, false);
 
@@ -290,7 +288,7 @@ mod tests {
             MockClient(1, 5, 1, 2, 0, "3".to_string()),
             MockClient(3, 5, 1, 2, 0, "4".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4"];
+        let ve2 = ["1", "2", "3", "4"];
 
         let ve = sort(ve, false);
 
@@ -318,7 +316,7 @@ mod tests {
             MockClient(1, 5, 2, 2, 0, "3".to_string()),
             MockClient(4, 5, 1, 2, 0, "4".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4"];
+        let ve2 = ["1", "2", "3", "4"];
 
         let ve = sort(ve, false);
 
@@ -346,7 +344,7 @@ mod tests {
             MockClient(1, 5, 3, 2, 0, "3".to_string()),
             MockClient(5, 5, 1, 2, 0, "4".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4"];
+        let ve2 = ["1", "2", "3", "4"];
 
         let ve = sort(ve, false);
 
@@ -374,7 +372,7 @@ mod tests {
             MockClient(3, 4, 1, 3, 0, "3".to_string()),
             MockClient(1, 5, 1, 2, 0, "4".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4"];
+        let ve2 = ["1", "2", "3", "4"];
 
         let ve = sort(ve, false);
 
@@ -404,7 +402,7 @@ mod tests {
             MockClient(3, 4, 1, 4, 0, "3".to_string()),
             MockClient(1, 6, 1, 2, 0, "4".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4"];
+        let ve2 = ["1", "2", "3", "4"];
 
         let ve = sort(ve, false);
 
@@ -432,7 +430,7 @@ mod tests {
             MockClient(4, 1, 2, 4, 0, "3".to_string()),
             MockClient(1, 5, 2, 2, 0, "4".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4"];
+        let ve2 = ["1", "2", "3", "4"];
 
         let ve = sort(ve, false);
 
@@ -466,7 +464,7 @@ mod tests {
             MockClient(10, 4, 2, 3, 1, "5".to_string()),
             MockClient(7, 5, 2, 2, 1, "8".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4", "5", "6", "7", "8"];
+        let ve2 = ["1", "2", "3", "4", "5", "6", "7", "8"];
 
         let ve = sort(ve, true);
 
@@ -501,7 +499,7 @@ mod tests {
             MockClient(7, 4, 1, 3, 1, "7".to_string()),
             MockClient(5, 5, 1, 2, 1, "8".to_string()),
         ];
-        let ve2 = vec!["1", "2", "3", "4", "5", "6", "7", "8"];
+        let ve2 = ["1", "2", "3", "4", "5", "6", "7", "8"];
 
 
         let ve = sort(ve, false);

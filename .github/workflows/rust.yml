@@ -30,7 +30,9 @@ jobs:
       with:
         prefix-key: rust-build-${{ matrix.platform }}
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --release
+    - name: Test
+      run: cargo test --release
 
   clippy:
     name: "Cargo clippy"
