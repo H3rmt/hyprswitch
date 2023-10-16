@@ -1,10 +1,12 @@
+mod test;
+
 use clap::Parser;
-use hyprland::data::{Client, Clients};
+use hyprland::data::{Client, Clients, Workspaces, Monitors, Workspace};
 use hyprland::dispatch::DispatchType::FocusWindow;
 use hyprland::dispatch::*;
 use hyprland::prelude::*;
-use hyprland::shared::Address;
-use std::collections::{BTreeMap, VecDeque};
+use hyprland::shared::{Address, WorkspaceId};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fmt::Debug;
 
 #[derive(Parser, Debug)]
@@ -18,13 +20,18 @@ struct Args {
     #[arg(long)]
     reverse: bool,
 
+    /// Cycles through window on current workspace
+    /// TODO
+    #[arg(long)]
+    stay_workspace: bool,
+
     /// Ignore workspaces and sort like one big workspace
     #[arg(long)]
     ignore_workspaces: bool,
 
-    /// Cycles through window on current workspace
+    /// Switches to vertical workspaces for --ignore-workspaces
     #[arg(long)]
-    stay_workspace: bool,
+    vertical_workspaces: bool,
 }
 
 ///
@@ -34,10 +41,16 @@ struct Args {
 ///     * `window_switcher --same-class`
 /// * Switch backwards
 ///     * `window_switcher --reverse`
-/// * Ignore workspaces and sort like one big workspace
-///     * `window_switcher --ignore-workspaces`
+///
+/// ## Special
+///
 /// * Cycles through window on current workspace
 ///     * `window_switcher --stay-workspace`
+///
+/// * Ignore workspaces and sort like one big workspace
+///     * `window_switcher --ignore-workspaces`
+/// * Switches to vertical workspaces for --ignore-workspaces
+///     * `window_switcher --vertical-workspaces`
 ///
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Args::parse();
@@ -46,7 +59,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|c| c.workspace.id != -1)
         .collect::<Vec<_>>();
 
-    clients = sort(clients, cli.ignore_workspaces);
+    let mut workspace_data: Option<BTreeMap<WorkspaceId, (u16, u16, u16)>> = None;
+    let mut workspace_monitor_count: HashMap<String, u16> = HashMap::new();
+    // calculate width and height for each workspace
+    if cli.ignore_workspaces {
+        workspace_data = Some(BTreeMap::new());
+
+        let monitors = Monitors::get()?;
+        let mut workspaces = Workspaces::get()?
+            .filter(|w| w.id != -1)
+            .collect::<Vec<Workspace>>();
+        workspaces.sort_by(|a, b| a.id.cmp(&b.id));
+        workspaces
+            .into_iter()
+            .for_each(|w| {
+                let m = monitors.iter().find(|m| m.name == w.monitor).unwrap_or_else(|| panic!("Monitor {w:?} not found"));
+                let i = workspace_monitor_count.get(&w.monitor).unwrap_or(&0) + 1;
+                workspace_monitor_count.insert(w.monitor.clone(), i);
+                workspace_data.as_mut().unwrap().insert(w.id, (m.width, m.height, i));
+            });
+    }
+
+    clients = sort(clients, workspace_data.map(|w| IgnoreWorkspaces::new(w, cli.vertical_workspaces)));
 
     let binding = Client::get_active()?;
     let active = binding
@@ -98,12 +132,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn sort<SC>(clients: Vec<SC>, ignore_workspace: bool) -> Vec<SC>
-where
-    SC: SortableClient + Debug,
+struct IgnoreWorkspaces {
+    /// workspace id -> (width, height) of monitor, workspace index on monitor
+    workspaces_info: BTreeMap<WorkspaceId, (u16, u16, u16)>,
+    /// vertical workspaces instead of horizontal
+    vertical_workspaces: bool,
+}
+
+impl IgnoreWorkspaces {
+    fn new(workspaces_info: BTreeMap<WorkspaceId, (u16, u16, u16)>, vertical_workspaces: bool) -> Self {
+        Self {
+            workspaces_info,
+            vertical_workspaces,
+        }
+    }
+}
+
+/// Sorts windows with complex sorting
+///
+/// * `clients` - Vector of clients to sort
+/// * `ignore_workspace` - don't group by workspace before sorting (requires more processing of client cords with *IgnoreWorkspaces*)
+fn sort<SC>(clients: Vec<SC>, ignore_workspace: Option<IgnoreWorkspaces>) -> Vec<SC>
+    where
+        SC: SortableClient + Debug,
 {
-    let workspaces: Vec<Vec<SC>> = if ignore_workspace {
-        vec![clients]
+    let workspaces: Vec<Vec<SC>> = if let Some(ignore_workspace) = ignore_workspace {
+        vec![clients.into_iter().map(|mut c| {
+            let (width, height, index) = ignore_workspace.workspaces_info.get(&c.ws()).unwrap_or_else(|| panic!("Workspace {:?} not found", c.ws()));
+            if ignore_workspace.vertical_workspaces {
+                c.set_y(c.y() + (*index * *height) as i16); // move y cord by workspace offset (monitor height * workspace id)
+            } else {
+                c.set_x(c.x() + (*index * *width) as i16);  // move y cord by workspace offset (monitor width * workspace id)
+            }
+            c
+        }).collect()] // one workspace with every client
     } else {
         let mut workspaces: BTreeMap<i32, Vec<SC>> = BTreeMap::new();
         for client in clients {
@@ -115,10 +177,11 @@ where
         workspaces.into_values().collect()
     };
 
+    println!("workspaces: {workspaces:?}");
+
     let mut sorted_clients: Vec<SC> = vec![];
     for mut ws_clients in workspaces {
         // guaranteed to be sorted by y first, x second
-        println!("b: {ws_clients:?}");
         ws_clients.sort_by(|a, b| {
             if a.y() != b.y() {
                 a.y().cmp(&b.y())
@@ -126,7 +189,6 @@ where
                 a.x().cmp(&b.x())
             }
         });
-        println!("s: {ws_clients:?}");
 
         let mut clients_queue: VecDeque<SC> = VecDeque::from(ws_clients);
 
@@ -135,38 +197,32 @@ where
             let top = first.y();
             let mut left = first.x();
             let mut bottom = first.y() + first.h();
-            // println!("first: {first:?}, top: {top}, left: {left}, bottom: {bottom}");
             sorted_clients.push(first);
 
             loop {
                 let Some(index) = get_next_index(left, top, bottom, &clients_queue) else {
-                    // println!("No next window found");
                     break;
                 };
 
                 let next = clients_queue.remove(index).unwrap();
                 left = next.x();
                 bottom = bottom.max(next.y() + next.h());
-                // println!("next: {next:?}, top: {top}, left: {left}, bottom: {bottom}");
                 sorted_clients.push(next);
             }
         }
     }
-
-    // println!("{sorted_clients:?}");
     sorted_clients
 }
 
 /// find index of window most top left 
 fn get_next_index<SC>(left: i16, top: i16, bottom: i16, ve: &VecDeque<SC>) -> Option<usize>
-where
-    SC: SortableClient + Debug,
+    where
+        SC: SortableClient + Debug,
 {
     let mut current_x: Option<i16> = None;
     let mut current_y: Option<i16> = None;
     let mut index: Option<usize> = None;
     for (i, v) in ve.iter().enumerate() {
-        // println!("compare {left:?} with {v:?}");
         if left <= v.x() && top <= v.y() && v.y() <= bottom && (current_x.is_none() || current_y.is_none() || v.x() < current_x.unwrap() || v.y() < current_y.unwrap()) {
             current_x = Some(v.x());
             current_y = Some(v.y());
@@ -186,7 +242,10 @@ trait SortableClient {
     /// height
     fn h(&self) -> i16;
     /// workspace
-    fn ws(&self) -> i32;
+    fn ws(&self) -> WorkspaceId;
+
+    fn set_x(&mut self, x: i16);
+    fn set_y(&mut self, y: i16);
 }
 
 impl SortableClient for Client {
@@ -202,313 +261,13 @@ impl SortableClient for Client {
     fn h(&self) -> i16 {
         self.size.1
     }
-    fn ws(&self) -> i32 {
+    fn ws(&self) -> WorkspaceId {
         self.workspace.id
     }
-}
-
-#[derive(Debug)]
-struct MockClient(i16, i16, i16, i16, i32, String);
-impl SortableClient for MockClient {
-    fn x(&self) -> i16 {
-        self.0
+    fn set_x(&mut self, x: i16) {
+        self.at.0 = x;
     }
-    fn y(&self) -> i16 {
-        self.1
-    }
-    fn w(&self) -> i16 {
-        self.2
-    }
-    fn h(&self) -> i16 {
-        self.3
-    }
-    fn ws(&self) -> i32 {
-        self.4
+    fn set_y(&mut self, y: i16) {
+        self.at.1 = y;
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::{sort, MockClient};
-
-    ///
-    ///       1       3    5   6     8   10  11  12    
-    ///    +----------------------------------------+
-    /// 1  |  +-------+                      +---+  |
-    /// 2  |  |   1   |              +---+   | 5 |  |
-    /// 3  |  |       |    +---+     | 3 |   |   |  |
-    /// 4  |  +-------+    | 2 |     +---+   |   |  |
-    /// 5  |               +---+     +---+   |   |  |
-    /// 6  |                         | 4 |   |   |  |
-    /// 7  |    +-------+            +---+   +---+  |
-    /// 8  |    |   6   |         +----+            |
-    /// 9  |    |       |         | 7  |            |
-    /// 10 |    +-------+         +----+            |
-    ///    +----------------------------------------+
-    ///         2       4         7    9
-    ///
-    #[test]
-    fn test_big() {
-        // x, y, w, h, number
-        let ve = vec![
-            MockClient(1, 1, 2, 3, 0, "1".to_string()),
-            MockClient(5, 3, 1, 2, 0, "2".to_string()),
-            MockClient(8, 2, 2, 2, 0, "3".to_string()),
-            MockClient(8, 5, 2, 2, 0, "4".to_string()),
-            MockClient(11, 1, 1, 6, 0, "5".to_string()),
-            MockClient(2, 6, 2, 4, 0, "6".to_string()),
-            MockClient(7, 8, 2, 2, 0, "7".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4", "5", "6", "7"];
-
-        let ve = sort(ve, false);
-
-        println!("{ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-
-    ///    1      2  3      4
-    /// 1  +------+  +------+
-    /// 2  |  1   |  |  2   |
-    /// 3  |      |  |      |
-    /// 4  +------+  +------+
-    /// 5  +------+  +------+
-    /// 6  |  3   |  |  4   |
-    /// 7  +------+  +------+
-    ///    1      2  3      4
-    ///
-    #[test]
-    fn test_simple_1() {
-        let ve = vec![
-            MockClient(1, 1, 1, 3, 0, "1".to_string()),
-            MockClient(3, 1, 1, 3, 0, "2".to_string()),
-            MockClient(1, 5, 1, 2, 0, "3".to_string()),
-            MockClient(3, 5, 1, 2, 0, "4".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4"];
-
-        let ve = sort(ve, false);
-
-        println!("ve: {ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-
-    ///    1      2  3      5
-    /// 1  +------+  +------+
-    /// 2  |  1   |  |  2   |
-    /// 3  |      |  |      |
-    /// 4  +------+  +------+
-    /// 5  +---------+  +---+
-    /// 6  |    3    |  | 4 |
-    /// 7  +---------+  +---+
-    ///    1         3  4   5
-    #[test]
-    fn test_x_difference_1() {
-        let ve = vec![
-            MockClient(1, 1, 1, 3, 0, "1".to_string()),
-            MockClient(3, 1, 2, 3, 0, "2".to_string()),
-            MockClient(1, 5, 2, 2, 0, "3".to_string()),
-            MockClient(4, 5, 1, 2, 0, "4".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4"];
-
-        let ve = sort(ve, false);
-
-        println!("ve: {ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-
-    ///    1     2  3       6
-    /// 1  +-----+  +-------+
-    /// 2  |  1  |  |   2   |
-    /// 3  |     |  |       |
-    /// 4  +-----+  +-------+
-    /// 5  +---------+  +---+
-    /// 6  |    3    |  | 4 |
-    /// 7  +---------+  +---+
-    ///    1         4  5   6
-    #[test]
-    fn test_x_difference_2() {
-        let ve = vec![
-            MockClient(1, 1, 1, 3, 0, "1".to_string()),
-            MockClient(3, 1, 3, 3, 0, "2".to_string()),
-            MockClient(1, 5, 3, 2, 0, "3".to_string()),
-            MockClient(5, 5, 1, 2, 0, "4".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4"];
-
-        let ve = sort(ve, false);
-
-        println!("ve: {ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-
-    ///    1      2  3      4
-    /// 1  +------+  +------+
-    /// 2  |  1   |  |  2   |
-    /// 3  |      |  +------+
-    /// 4  +------+  +------+
-    /// 5  +------+  |  3   |
-    /// 6  |  4   |  |      |
-    /// 7  +------+  +------+
-    ///    1      2  3      4
-    #[test]
-    fn test_y_difference_1() {
-        let ve = vec![
-            MockClient(1, 1, 1, 3, 0, "1".to_string()),
-            MockClient(3, 1, 1, 2, 0, "2".to_string()),
-            MockClient(3, 4, 1, 3, 0, "3".to_string()),
-            MockClient(1, 5, 1, 2, 0, "4".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4"];
-
-        let ve = sort(ve, false);
-
-        println!("ve: {ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-
-
-    ///    1      2  3      4
-    /// 1  +------+  +------+
-    /// 2  |  1   |  |  2   |
-    /// 3  |      |  +------+
-    /// 4  |      |  +------+
-    /// 5  +------+  |      |
-    /// 6  +------+  |  3   |
-    /// 7  |  4   |  |      |
-    /// 8  +------+  +------+
-    ///    1      2  3      4
-    #[test]
-    fn test_y_difference_2() {
-        let ve = vec![
-            MockClient(1, 1, 1, 4, 0, "1".to_string()),
-            MockClient(3, 1, 1, 2, 0, "2".to_string()),
-            MockClient(3, 4, 1, 4, 0, "3".to_string()),
-            MockClient(1, 6, 1, 2, 0, "4".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4"];
-
-        let ve = sort(ve, false);
-
-        println!("ve: {ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-
-    ///    1   2  4  5  6
-    /// 1  +----+ +-----+  
-    /// 2  | 1  | |  3  |  
-    /// 3  |   +-----+  |  
-    /// 4  +---|  2  |  |  
-    /// 5  +---|     |--+  
-    /// 6  | 4 +-----+     
-    /// 7  +----+          
-    ///    1    3    5  6
-    #[test]
-    fn test_hover() {
-        let ve = vec![
-            MockClient(1, 1, 2, 3, 0, "1".to_string()),
-            MockClient(2, 3, 3, 3, 0, "2".to_string()),
-            MockClient(4, 1, 2, 4, 0, "3".to_string()),
-            MockClient(1, 5, 2, 2, 0, "4".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4"];
-
-        let ve = sort(ve, false);
-
-        println!("ve: {ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-
-    ///    1      2  3      4   5      6  7      8
-    /// 1  +------+  +------+ | +------+  +------+ 
-    /// 2  |  1   |  |  2   |   |  3   |  |  4   |
-    /// 3  |      |  |      | | |      |  +------+
-    /// 4  +------+  +------+   +------+  +------+
-    /// 5  +------+  +------+ | +------+  |  5   |
-    /// 6  |  6   |  |  7   |   |  8   |  |      |
-    /// 7  +------+  +------+ | +------+  +------+
-    ///
-    ///
-    #[test]
-    fn test_ignore_workspace_true() {
-        let ve = vec![
-            MockClient(1, 1, 2, 3, 0, "1".to_string()),
-            MockClient(4, 1, 2, 3, 0, "2".to_string()),
-            MockClient(1, 5, 2, 2, 0, "6".to_string()),
-            MockClient(4, 5, 2, 2, 0, "7".to_string()),
-
-            MockClient(7, 1, 2, 3, 1, "3".to_string()),
-            MockClient(10, 1, 2, 2, 1, "4".to_string()),
-            MockClient(10, 4, 2, 3, 1, "5".to_string()),
-            MockClient(7, 5, 2, 2, 1, "8".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4", "5", "6", "7", "8"];
-
-        let ve = sort(ve, true);
-
-        println!("ve: {ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-
-
-    ///    1      2  3      4   5      6  7      8
-    /// 1  +------+  +------+ | +------+  +------+ 
-    /// 2  |  1   |  |  2   | | |  5   |  |  6   |
-    /// 3  |      |  |      | | |      |  +------+
-    /// 4  +------+  +------+ | +------+  +------+
-    /// 5  +------+  +------+ | +------+  |  7   |
-    /// 6  |  3   |  |  4   | | |  8   |  |      |
-    /// 7  +------+  +------+ | +------+  +------+
-    ///
-    ///
-    #[test]
-    fn test_ignore_workspace_false() {
-        let ve = vec![
-            MockClient(1, 1, 1, 3, 0, "1".to_string()),
-            MockClient(3, 1, 1, 3, 0, "2".to_string()),
-            MockClient(1, 5, 1, 2, 0, "3".to_string()),
-            MockClient(3, 5, 1, 2, 0, "4".to_string()),
-
-            MockClient(5, 1, 1, 3, 1, "5".to_string()),
-            MockClient(7, 1, 1, 2, 1, "6".to_string()),
-            MockClient(7, 4, 1, 3, 1, "7".to_string()),
-            MockClient(5, 5, 1, 2, 1, "8".to_string()),
-        ];
-        let ve2 = ["1", "2", "3", "4", "5", "6", "7", "8"];
-
-
-        let ve = sort(ve, false);
-
-        println!("ve: {ve:?}");
-        assert_eq!(
-            ve.iter().map(|v| v.5.to_string()).collect::<String>(),
-            ve2.iter().map(|a| a.to_string()).collect::<String>()
-        );
-    }
-}
-
