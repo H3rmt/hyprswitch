@@ -1,7 +1,7 @@
 mod test;
 
 use clap::Parser;
-use hyprland::data::{Client, Clients, Workspaces, Monitors, Workspace};
+use hyprland::data::{Client, Clients, Monitors, Workspace, Workspaces};
 use hyprland::dispatch::DispatchType::FocusWindow;
 use hyprland::dispatch::*;
 use hyprland::prelude::*;
@@ -70,17 +70,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .filter(|w| w.id != -1)
             .collect::<Vec<Workspace>>();
         workspaces.sort_by(|a, b| a.id.cmp(&b.id));
-        workspaces
-            .into_iter()
-            .for_each(|w| {
-                let m = monitors.iter().find(|m| m.name == w.monitor).unwrap_or_else(|| panic!("Monitor {w:?} not found"));
-                let i = workspace_monitor_count.get(&w.monitor).unwrap_or(&0) + 1;
-                workspace_monitor_count.insert(w.monitor.clone(), i);
-                workspace_data.as_mut().unwrap().insert(w.id, (m.width, m.height, i));
-            });
+        workspaces.into_iter().for_each(|w| {
+            let m = monitors
+                .iter()
+                .find(|m| m.name == w.monitor)
+                .unwrap_or_else(|| panic!("Monitor {w:?} not found"));
+            let i = workspace_monitor_count.get(&w.monitor).unwrap_or(&0) + 1;
+            workspace_monitor_count.insert(w.monitor.clone(), i);
+            workspace_data
+                .as_mut()
+                .unwrap()
+                .insert(w.id, (m.width, m.height, i));
+        });
     }
-
-    clients = sort(clients, workspace_data.map(|w| IgnoreWorkspaces::new(w, cli.vertical_workspaces)));
 
     let binding = Client::get_active()?;
     let active = binding
@@ -88,6 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(clients.get(0).expect("no active window and no windows"));
     let active_address = active.address.to_string();
     let active_class = active.class.clone();
+    let active_workspace_id = active.workspace.id.clone();
 
     if cli.same_class {
         clients = clients
@@ -95,6 +98,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .filter(|c| c.class == active_class)
             .collect::<Vec<_>>();
     }
+
+    if cli.stay_workspace {
+        clients = clients
+            .into_iter()
+            .filter(|c| c.workspace.id == active_workspace_id)
+            .collect::<Vec<_>>();
+    }
+
+    clients = sort(
+        clients,
+        workspace_data.map(|w| IgnoreWorkspaces::new(w, cli.vertical_workspaces)),
+    );
 
     let mut current_window_index = clients
         .iter()
@@ -140,7 +155,10 @@ struct IgnoreWorkspaces {
 }
 
 impl IgnoreWorkspaces {
-    fn new(workspaces_info: BTreeMap<WorkspaceId, (u16, u16, u16)>, vertical_workspaces: bool) -> Self {
+    fn new(
+        workspaces_info: BTreeMap<WorkspaceId, (u16, u16, u16)>,
+        vertical_workspaces: bool,
+    ) -> Self {
         Self {
             workspaces_info,
             vertical_workspaces,
@@ -153,26 +171,29 @@ impl IgnoreWorkspaces {
 /// * `clients` - Vector of clients to sort
 /// * `ignore_workspace` - don't group by workspace before sorting (requires more processing of client cords with *IgnoreWorkspaces*)
 fn sort<SC>(clients: Vec<SC>, ignore_workspace: Option<IgnoreWorkspaces>) -> Vec<SC>
-    where
-        SC: SortableClient + Debug,
+where
+    SC: SortableClient + Debug,
 {
     let workspaces: Vec<Vec<SC>> = if let Some(ignore_workspace) = ignore_workspace {
-        vec![clients.into_iter().map(|mut c| {
-            let (width, height, index) = ignore_workspace.workspaces_info.get(&c.ws()).unwrap_or_else(|| panic!("Workspace {:?} not found", c.ws()));
-            if ignore_workspace.vertical_workspaces {
-                c.set_y(c.y() + (*index * *height) as i16); // move y cord by workspace offset (monitor height * workspace id)
-            } else {
-                c.set_x(c.x() + (*index * *width) as i16);  // move y cord by workspace offset (monitor width * workspace id)
-            }
-            c
-        }).collect()] // one workspace with every client
+        vec![clients
+            .into_iter()
+            .map(|mut c| {
+                let (width, height, index) = ignore_workspace
+                    .workspaces_info
+                    .get(&c.ws())
+                    .unwrap_or_else(|| panic!("Workspace {:?} not found", c.ws()));
+                if ignore_workspace.vertical_workspaces {
+                    c.set_y(c.y() + (*index * *height) as i16); // move y cord by workspace offset (monitor height * workspace id)
+                } else {
+                    c.set_x(c.x() + (*index * *width) as i16); // move y cord by workspace offset (monitor width * workspace id)
+                }
+                c
+            })
+            .collect()] // one workspace with every client
     } else {
         let mut workspaces: BTreeMap<i32, Vec<SC>> = BTreeMap::new();
         for client in clients {
-            workspaces
-                .entry(client.ws())
-                .or_default()
-                .push(client);
+            workspaces.entry(client.ws()).or_default().push(client);
         }
         workspaces.into_values().collect()
     };
@@ -214,16 +235,23 @@ fn sort<SC>(clients: Vec<SC>, ignore_workspace: Option<IgnoreWorkspaces>) -> Vec
     sorted_clients
 }
 
-/// find index of window most top left 
+/// find index of window most top left
 fn get_next_index<SC>(left: i16, top: i16, bottom: i16, ve: &VecDeque<SC>) -> Option<usize>
-    where
-        SC: SortableClient + Debug,
+where
+    SC: SortableClient + Debug,
 {
     let mut current_x: Option<i16> = None;
     let mut current_y: Option<i16> = None;
     let mut index: Option<usize> = None;
     for (i, v) in ve.iter().enumerate() {
-        if left <= v.x() && top <= v.y() && v.y() <= bottom && (current_x.is_none() || current_y.is_none() || v.x() < current_x.unwrap() || v.y() < current_y.unwrap()) {
+        if left <= v.x()
+            && top <= v.y()
+            && v.y() <= bottom
+            && (current_x.is_none()
+                || current_y.is_none()
+                || v.x() < current_x.unwrap()
+                || v.y() < current_y.unwrap())
+        {
             current_x = Some(v.x());
             current_y = Some(v.y());
             index = Some(i);
