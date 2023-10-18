@@ -1,38 +1,11 @@
-use hyprland::shared::WorkspaceId;
 use crate::SortableClient;
-
-#[derive(Debug)]
-struct MockClient(i16, i16, i16, i16, WorkspaceId, String);
-
-impl SortableClient for MockClient {
-    fn x(&self) -> i16 {
-        self.0
-    }
-    fn y(&self) -> i16 {
-        self.1
-    }
-    fn w(&self) -> i16 {
-        self.2
-    }
-    fn h(&self) -> i16 {
-        self.3
-    }
-    fn ws(&self) -> WorkspaceId {
-        self.4
-    }
-    fn set_x(&mut self, x: i16) {
-        self.0 = x;
-    }
-    fn set_y(&mut self, y: i16) {
-        self.1 = y;
-    }
-}
+use hyprland::shared::WorkspaceId;
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-    use crate::{IgnoreWorkspaces, sort};
     use crate::test::MockClient;
+    use crate::{sort, IgnoreWorkspaces};
+    use std::collections::BTreeMap;
 
     /// ```
     ///       1       3    5   6     8   10  11  12
@@ -313,7 +286,6 @@ mod tests {
             MockClient(3, 1, 1, 3, 0, "2".to_string()),
             MockClient(1, 5, 1, 2, 0, "3".to_string()),
             MockClient(3, 5, 1, 2, 0, "4".to_string()),
-
             MockClient(1, 1, 1, 3, 1, "5".to_string()),
             MockClient(3, 1, 1, 2, 1, "6".to_string()),
             MockClient(3, 4, 1, 3, 1, "7".to_string()),
@@ -429,3 +401,29 @@ mod tests {
     }
 }
 
+#[derive(Debug)]
+struct MockClient(i16, i16, i16, i16, WorkspaceId, String);
+
+impl SortableClient for MockClient {
+    fn x(&self) -> i16 {
+        self.0
+    }
+    fn y(&self) -> i16 {
+        self.1
+    }
+    fn w(&self) -> i16 {
+        self.2
+    }
+    fn h(&self) -> i16 {
+        self.3
+    }
+    fn ws(&self) -> WorkspaceId {
+        self.4
+    }
+    fn set_x(&mut self, x: i16) {
+        self.0 = x;
+    }
+    fn set_y(&mut self, y: i16) {
+        self.1 = y;
+    }
+}
