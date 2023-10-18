@@ -38,7 +38,7 @@ bind = ALT SHIFT, TAB, exec, $HOME/.cargo/bin/window_switcher --reverse
 # switches to next window in workspace
 bind = SUPER, TAB, exec, $HOME/.cargo/bin/window_switcher --stay-workspace
 
-# switches to next window in workspace
+# switches to next window in workspace in reverse order
 bind = SUPER, TAB, exec, $HOME/.cargo/bin/window_switcher --stay-workspace --reverse
 
 
