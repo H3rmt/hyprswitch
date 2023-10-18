@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(clients.get(0).expect("no active window and no windows"));
     let active_address = active.address.to_string();
     let active_class = active.class.clone();
-    let active_workspace_id = active.workspace.id.clone();
+    let active_workspace_id = active.workspace.id;
 
     if cli.same_class {
         clients = clients
