@@ -1,4 +1,5 @@
 mod test;
+mod svg;
 
 use clap::Parser;
 use hyprland::data::{Client, Clients, Monitors, Workspace, Workspaces};
@@ -59,29 +60,57 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|c| c.workspace.id != -1)
         .collect::<Vec<_>>();
 
-    let mut workspace_data: Option<BTreeMap<WorkspaceId, (u16, u16, u16)>> = None;
-    let mut workspace_monitor_count: HashMap<String, u16> = HashMap::new();
+    // map workspace to x and y offset
+    let mut workspace_data: Option<BTreeMap<WorkspaceId, (u16, u16)>> = None;
     // calculate width and height for each workspace
     if cli.ignore_workspaces {
-        workspace_data = Some(BTreeMap::new());
+        // id -> (width, height, workspaces_on_monitor)
+        let mut monitor_data: HashMap<String, (u16, u16, u16)> = HashMap::new();
 
         let monitors = Monitors::get()?;
-        let mut workspaces = Workspaces::get()?
-            .filter(|w| w.id != -1)
-            .collect::<Vec<Workspace>>();
-        workspaces.sort_by(|a, b| a.id.cmp(&b.id));
-        workspaces.into_iter().for_each(|w| {
-            let m = monitors
+
+        // get all workspaces sorted by Id
+        let workspaces = {
+            let mut workspaces = Workspaces::get()?
+                .filter(|w| w.id != -1)
+                .collect::<Vec<Workspace>>();
+            workspaces.sort_by(|a, b| a.id.cmp(&b.id));
+            workspaces
+        };
+
+        // workspaces_on_monitor_count contains count of workspaces on each monitor
+        workspaces.iter().for_each(|w| {
+            let monitor = monitors
                 .iter()
                 .find(|m| m.name == w.monitor)
                 .unwrap_or_else(|| panic!("Monitor {w:?} not found"));
-            let i = workspace_monitor_count.get(&w.monitor).unwrap_or(&0) + 1;
-            workspace_monitor_count.insert(w.monitor.clone(), i);
-            workspace_data
-                .as_mut()
-                .unwrap()
-                .insert(w.id, (m.width, m.height, i));
+
+            let workspaces_on_monitor = monitor_data.get(&w.monitor).unwrap_or(&(0, 0, 0)).2;
+            monitor_data.insert(
+                w.monitor.clone(),
+                (monitor.width, monitor.height, workspaces_on_monitor + 1),
+            );
         });
+
+        // id -> (width of all workspaces on monitor combined,
+        //          height of all workspaces on monitor combined)
+        let mut monitor_data_2: HashMap<String, (u16, u16)> = monitor_data
+            .iter()
+            .map(|(k, v)| (k.clone(), (v.0 * v.2, v.1)))
+            .collect();
+
+        workspace_data = Some(BTreeMap::from_iter(workspaces.iter().map(|ws| {
+            // width, height, workspaces_on_monitor
+            let monitor = monitor_data
+                .get(&ws.monitor)
+                .unwrap_or_else(|| panic!("Monitor of workspace {:?} not found", ws.id));
+            if cli.vertical_workspaces {
+                (ws.id, (monitor.0, monitor.1 * monitor.2)) 
+                // TODO add offset from prev monitor
+            } else {
+                (ws.id, (monitor.0, monitor.1 * monitor.2))
+            }
+        })));
     }
 
     let binding = Client::get_active()?;
@@ -106,10 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<Vec<_>>();
     }
 
-    clients = sort(
-        clients,
-        workspace_data.map(|w| IgnoreWorkspaces::new(w, cli.vertical_workspaces)),
-    );
+    clients = sort(clients, workspace_data);
 
     let mut current_window_index = clients
         .iter()
@@ -147,30 +173,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-struct IgnoreWorkspaces {
-    /// workspace id -> (width, height) of monitor, workspace index on monitor
-    workspaces_info: BTreeMap<WorkspaceId, (u16, u16, u16)>,
-    /// vertical workspaces instead of horizontal
-    vertical_workspaces: bool,
-}
-
-impl IgnoreWorkspaces {
-    fn new(
-        workspaces_info: BTreeMap<WorkspaceId, (u16, u16, u16)>,
-        vertical_workspaces: bool,
-    ) -> Self {
-        Self {
-            workspaces_info,
-            vertical_workspaces,
-        }
-    }
-}
-
 /// Sorts windows with complex sorting
 ///
 /// * `clients` - Vector of clients to sort
 /// * `ignore_workspace` - don't group by workspace before sorting (requires more processing of client cords with *IgnoreWorkspaces*)
-fn sort<SC>(clients: Vec<SC>, ignore_workspace: Option<IgnoreWorkspaces>) -> Vec<SC>
+fn sort<SC>(
+    clients: Vec<SC>,
+    ignore_workspace: Option<BTreeMap<WorkspaceId, (u16, u16)>>,
+) -> Vec<SC>
 where
     SC: SortableClient + Debug,
 {
@@ -178,15 +188,14 @@ where
         vec![clients
             .into_iter()
             .map(|mut c| {
-                let (width, height, index) = ignore_workspace
-                    .workspaces_info
+                let (x, y) = ignore_workspace
                     .get(&c.ws())
                     .unwrap_or_else(|| panic!("Workspace {:?} not found", c.ws()));
-                if ignore_workspace.vertical_workspaces {
-                    c.set_y(c.y() + (*index * *height) as i16); // move y cord by workspace offset (monitor height * workspace id)
-                } else {
-                    c.set_x(c.x() + (*index * *width) as i16); // move y cord by workspace offset (monitor width * workspace id)
-                }
+
+                // print!("c: {:?} -> ", c);
+                c.set_x(c.x() + *x as i16); // move x cord by workspace offset
+                c.set_y(c.y() + *y as i16); // move y cord by workspace offset
+                                            // println!("{:?}", c);
                 c
             })
             .collect()] // one workspace with every client
@@ -198,7 +207,7 @@ where
         workspaces.into_values().collect()
     };
 
-    println!("workspaces: {workspaces:?}");
+    // println!("workspaces: {:?}", workspaces);
 
     let mut sorted_clients: Vec<SC> = vec![];
     for mut ws_clients in workspaces {
@@ -213,30 +222,102 @@ where
 
         let mut clients_queue: VecDeque<SC> = VecDeque::from(ws_clients);
 
-        while !clients_queue.is_empty() {
-            let first = clients_queue.pop_front().expect("No first window found");
-            let top = first.y();
-            let mut left = first.x();
-            let mut bottom = first.y() + first.h();
-            sorted_clients.push(first);
+        let mut first = clients_queue.pop_front();
+        while let Some(current) = first {
+            // println!("starting new Line: current: {:?}", current);
+            // find start of next line (y > first.y()) but most on top
+
+            let rest = clients_queue
+                .iter()
+                .enumerate()
+                .filter(|c| c.1.y() >= current.y() + current.h())
+                .collect::<Vec<_>>();
+
+            let next = rest
+                .iter()
+                .filter(|c| {
+                    for c2 in rest.iter() {
+                        // println!("check {:?} has_window_on_left against {:?}", c.1, c2.1);
+                        if c2.1.x() < c.1.x()
+                            && c2.1.y() + c2.1.h() > c.1.y()
+                            && c2.1.y() < c.1.y() + c.1.h()
+                        {
+                            return false;
+                        }
+                    }
+                    // println!("--- {:?} no window left", c.1);
+                    true
+                })
+                .min_by(|a, b| a.1.y().cmp(&b.1.y()))
+                .map(|c| c.0);
+
+            let next_first = next.and_then(|next| clients_queue.remove(next));
+            // println!("next_first: {:?}", next_first);
+            let next_line_y: i16 = next_first
+                .as_ref()
+                .map(|c| c.y())
+                .unwrap_or_else(|| current.y() + current.h());
+
+            let top = current.y();
+            let mut left = current.x();
+            let mut bottom = current.y() + current.h();
+
+            sorted_clients.push(current);
 
             loop {
-                let Some(index) = get_next_index(left, top, bottom, &clients_queue) else {
+                let Some(index) = get_next_index(left, top, bottom, next_line_y, &clients_queue)
+                else {
                     break;
                 };
 
-                let next = clients_queue.remove(index).unwrap();
+                let next: SC = clients_queue
+                    .remove(index)
+                    .expect("Expected element not found?");
+                // println!("next: {:?}", next);
                 left = next.x();
                 bottom = bottom.max(next.y() + next.h());
                 sorted_clients.push(next);
             }
+            first = next_first;
         }
     }
     sorted_clients
 }
 
-/// find index of window most top left
-fn get_next_index<SC>(left: i16, top: i16, bottom: i16, ve: &VecDeque<SC>) -> Option<usize>
+/// find index of window right of current window thats closest to current window and higher up
+/// ```
+/// cur = current window (allready removed from VecDeque)
+/// ne1 = next index (1) (returned from this function)
+/// ne2 = next index (2) (returned if `get_next_index` called again)
+/// no1 = not returned, as lower that `bottom`, even after `ne2` is added and `no1` is higher that `bottom`, as it is right of `left` (left is now `ne2.x`)
+/// no2 = not returned, as higher that `bottom`, but also lower that top_next (top of next line `no1`)
+/// no3 = must be added later before `br`, after `ne2`
+///
+///         left ∨
+///           +-----------------------------
+///           |  |
+///  top>     |- +---+ ---- +---+ ----------
+///           |  |cur|      |ne1|
+///           |  |   |      +---+
+///           |  |   |      +---+
+/// bottom>   |  +---+      |ne2|
+/// top_next> | +---+ ----- |   | ----------
+///           | |no1|       |   |   +---+
+///           | |   |       +---+   |no2|
+///           | +---+               +---+
+///           |  | +---+
+///           |  | |no3|     +---+
+///           |  | +---+     |no4|
+///           |  |           +---+
+///           |  |
+/// ```
+fn get_next_index<SC>(
+    left: i16,
+    top: i16,
+    bottom: i16,
+    top_next: i16,
+    ve: &VecDeque<SC>,
+) -> Option<usize>
 where
     SC: SortableClient + Debug,
 {
@@ -244,9 +325,15 @@ where
     let mut current_y: Option<i16> = None;
     let mut index: Option<usize> = None;
     for (i, v) in ve.iter().enumerate() {
+        // println!(
+        //     "{:?} checking against (left, top, bottom, top_next) {:?}",
+        //     v,
+        //     (left, top, bottom, top_next)
+        // );
         if left <= v.x()
             && top <= v.y()
             && v.y() <= bottom
+            && v.y() < top_next
             && (current_x.is_none()
                 || current_y.is_none()
                 || v.x() < current_x.unwrap()
@@ -260,7 +347,7 @@ where
     index
 }
 
-trait SortableClient {
+pub trait SortableClient {
     /// X
     fn x(&self) -> i16;
     /// Y
@@ -274,6 +361,8 @@ trait SortableClient {
 
     fn set_x(&mut self, x: i16);
     fn set_y(&mut self, y: i16);
+
+    fn iden(&self) -> String;
 }
 
 impl SortableClient for Client {
@@ -297,5 +386,8 @@ impl SortableClient for Client {
     }
     fn set_y(&mut self, y: i16) {
         self.at.1 = y;
+    }
+    fn iden(&self) -> String {
+        self.address.to_string()
     }
 }

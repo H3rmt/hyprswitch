@@ -1,8 +1,8 @@
 # WindowSwitcher
 
-A small rust CLI tool to switch windows in hyperland.
+A small rust CLI tool to switch between windows in hyperland.
 
-Can switch through all windows or windows of same class(= application) in regular or reverse order.
+It can switch through all windows or only windows of same class(= application) in regular or reverse order.
 
 
 # Installation
@@ -12,6 +12,7 @@ cargo install window_switcher
 
 # Usage
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
+
 Here are some samples:
 
 - simple config

@@ -13,5 +13,7 @@ categories = ["hyprland", "hyprland-plugin"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.4.0", features = ["derive"] }
-hyprland = "0.3.9"
+clap = { version = "^4.4.0", features = ["derive"] }
+hyprland = "^0.3.12"
+random_color = "0.6.1"
+svg = "0.14.0"
