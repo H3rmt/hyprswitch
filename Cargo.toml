@@ -14,4 +14,4 @@ categories = ["hyprland", "hyprland-plugin"]
 
 [dependencies]
 clap = { version = "4.4.0", features = ["derive"] }
-hyprland = "0.3.9"
+hyprland = "=0.3.11"
