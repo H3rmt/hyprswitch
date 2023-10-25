@@ -1,10 +1,14 @@
+name: Publish
+
 on:
   push:
     tags:
       - '*'
   workflow_dispatch:
 
-name: Publish
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
 
 jobs:
   publish:
