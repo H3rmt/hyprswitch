@@ -20,6 +20,7 @@ jobs:
       matrix:
         platform: [ ubuntu-20.04, ubuntu-latest ]
     runs-on: ${{ matrix.platform }}
+    name: build ${{ matrix.target }}
 
     steps:
     - uses: actions/checkout@v3
