@@ -158,17 +158,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(current_window_index)
         .expect("No next window?");
 
-    // removal of 0x prefix (hyprland-rs adds it on dispatch)
-    let address = Address::new(
-        next_client
-            .address
-            .to_string()
-            .strip_prefix("0x")
-            .expect("0x could not be stripped")
-            .to_string(),
-    );
-
-    Dispatch::call(FocusWindow(WindowIdentifier::Address(address)))?;
+    Dispatch::call(FocusWindow(WindowIdentifier::Address(next_client.address.clone())))?;
 
     Ok(())
 }
