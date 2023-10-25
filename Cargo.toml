@@ -1,14 +1,14 @@
 [package]
 name = "window_switcher"
 description = "A CLI app that allows switching between windows (of same class) in Hyprland"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 license = "MIT"
 readme = "README.md"
 documentation = "https://docs.rs/crate/window_switcher"
 repository = "https://github.com/H3rmt/WindowSwitcher/"
 keywords = ["hyprland", "hyprland"]
-categories = ["hyprland", "hyprland-plugin"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
