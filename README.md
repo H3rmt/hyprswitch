@@ -58,7 +58,7 @@ The script accepts 5 parameters:.
 - `--vertical-workspaces` will treat workspaces as vertical aligned (used with `--ignore-workspace`)
 
 # Sorting of windows
-See [tests](/src/test.rs) more details in how windows get sorted
+See [tests](/tests/clients.rs) more details in how windows get sorted
 
 ```
    1      2  3      4

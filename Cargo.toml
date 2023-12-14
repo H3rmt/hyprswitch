@@ -45,4 +45,6 @@ hyprland = "=0.3.11"
 #hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "bc61818e5a9a41b4bef174b37124325365008294" }
 
 random_color = "0.6.1"
+softbuffer = { version = "0.4.0", features = ["wayland", "wayland-dlopen"], default-features = false }
 svg = "0.14.0"
+winit = { version = "0.29.4", features = ["wayland", "rwh_06"], default-features = false }

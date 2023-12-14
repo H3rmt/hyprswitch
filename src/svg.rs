@@ -1,17 +1,26 @@
 use random_color::RandomColor;
-use svg::node::element::{Group, Rectangle, Text, SVG};
+use svg::node::element::{Group, Rectangle, SVG, Text};
 
-use crate::SortableClient;
-
-pub fn create_svg(rectangles: Vec<(i16, i16, i16, i16, String)>, filename: &str) {
+pub fn create_svg(rectangles: Vec<(usize, u16, u16, u16, u16, String)>, filename: String, x: u16, y: u16, width: u16, height: u16, stroke_width: u16) {
     let mut svg = SVG::new()
         .set("width", "100%")
         .set("height", "100%")
-        .set("viewBox", "0 0 100 100");
+        .set("viewBox", format!("{} {} {} {}", x, y, width, height));
 
-    for (x, y, width, height, iden) in rectangles {
-        let color = RandomColor::new().to_hsl_string();
+    // draw line around the edge of the svg
+    // svg = svg.add(
+    //     Rectangle::new()
+    //         .set("x", 0)
+    //         .set("y", 0)
+    //         .set("width", width)
+    //         .set("height", height)
+    //         .set("stroke", "red")
+    //         .set("stroke-width", stroke_width)
+    //         .set("fill", "none"),
+    // );
 
+    for (i, x, y, width, height, iden) in rectangles {
+        let color = RandomColor::new().to_hsl_array();
         let group = Group::new()
             .add(
                 Rectangle::new()
@@ -19,34 +28,21 @@ pub fn create_svg(rectangles: Vec<(i16, i16, i16, i16, String)>, filename: &str)
                     .set("y", y)
                     .set("width", width)
                     .set("height", height)
-                    .set("stroke", color)
-                    .set("stroke-width", "1"),
+                    .set("stroke", format!("hsl({},{}%,{}%)", color[0], color[1], color[2]))
+                    .set("stroke-width", stroke_width)
+                    .set("fill", "none"),
             )
             .add(
                 Text::new()
-                    .set("x", x + width / 3)
-                    .set("y", y + height / 2 + 1)
-                    .set("font-size", "3")
+                    .set("x", (x + width / 2) as i16 - ((iden.len() as u16 * (stroke_width * 4)) / 2) as i16)
+                    .set("y", (y + height / 2) as i16 + (((((stroke_width) as f32 * color[0] as f32) / 90.0) as i16) - stroke_width as i16))
+                    .set("font-size", stroke_width * 4)
                     .set("fill", "white")
-                    .add(svg::node::Text::new(iden)),
+                    .add(svg::node::Text::new(format!("{i} - {iden}"))),
             );
 
         svg = svg.add(group);
     }
 
-    // save to file
     svg::save(filename, &svg).unwrap();
-}
-
-pub fn create_svg_from_client<SC>(rectangles: &[SC], filename: &str)
-where
-    SC: SortableClient,
-{
-    create_svg(
-        rectangles
-            .iter()
-            .map(|v| (v.x() * 2, v.y() * 2, v.w() * 2, v.h() * 2, v.iden()))
-            .collect::<Vec<(i16, i16, i16, i16, String)>>(),
-        filename,
-    );
 }
