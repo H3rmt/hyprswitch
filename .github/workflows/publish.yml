@@ -1,10 +1,12 @@
-on:
-  push:
-    tags:
-      - '*'
-  workflow_dispatch:
-
 name: Publish
+
+on:
+  release:
+    types: [created]
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
 
 jobs:
   publish:
@@ -34,7 +36,7 @@ jobs:
         with:
           prefix-key: rust-release
       - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.3
+        uses: rust-build/rust-build.action@v1.4.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
