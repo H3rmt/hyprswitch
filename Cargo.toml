@@ -13,7 +13,9 @@ keywords = ["hyprland", "hyprland"]
 
 [dependencies]
 clap = { version = "^4.4.7", features = ["derive"] }
-hyprland = "=0.3.11"
+#hyprland = "=0.3.11"
+hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "00505b0c1510fa2c5f33fa11bac016b5621713e7" }
+
 #hyprland = "=0.3.12"
 #hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", branch = "master" }
 

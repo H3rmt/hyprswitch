@@ -1,5 +1,5 @@
-mod test;
 mod svg;
+mod test;
 
 use clap::Parser;
 use hyprland::data::{Client, Clients, Monitors, Workspace, Workspaces};
@@ -33,6 +33,10 @@ struct Args {
     /// Switches to vertical workspaces for --ignore-workspaces
     #[arg(long)]
     vertical_workspaces: bool,
+
+    /// Sort windows by recently visted
+    #[arg(long)]
+    sort_recent: bool,
 }
 
 ///
@@ -105,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .get(&ws.monitor)
                 .unwrap_or_else(|| panic!("Monitor of workspace {:?} not found", ws.id));
             if cli.vertical_workspaces {
-                (ws.id, (monitor.0, monitor.1 * monitor.2)) 
+                (ws.id, (monitor.0, monitor.1 * monitor.2))
                 // TODO add offset from prev monitor
             } else {
                 (ws.id, (monitor.0, monitor.1 * monitor.2))
@@ -135,7 +139,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<Vec<_>>();
     }
 
-    clients = sort(clients, workspace_data);
+    if cli.sort_recent {
+        clients.sort_by(|a, b| a.focus_history_id.cmp(&b.focus_history_id));
+    } else {
+        clients = sort(clients, workspace_data);
+    }
 
     let mut current_window_index = clients
         .iter()
@@ -158,7 +166,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(current_window_index)
         .expect("No next window?");
 
-    Dispatch::call(FocusWindow(WindowIdentifier::Address(next_client.address.clone())))?;
+    Dispatch::call(FocusWindow(WindowIdentifier::Address(
+        next_client.address.clone(),
+    )))?;
 
     Ok(())
 }
