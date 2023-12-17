@@ -71,9 +71,7 @@ pub mod common {
     ) where
         SC: SortableClient,
     {
-        let len = monitor_data.len();
-
-        if len == 1 {
+        if  monitor_data.len() == 1 {
             // dont create folder for 1 svg
             let mut a = filename.split('/').collect::<Vec<&str>>();
             a.pop();
@@ -85,17 +83,17 @@ pub mod common {
                 .expect("unable to create test-svgs directory and subdirectories");
         }
 
-        for (iden, monitor) in monitor_data {
+        for (iden, monitor) in &monitor_data {
             let cl: Vec<(usize, u16, u16, u16, u16, String)> = clients
                 .iter()
                 .enumerate()
-                .filter(|c| c.1.m() == iden)
+                .filter(|c| c.1.m() == *iden)
                 .map(|(i, c)| (i, c.x() * 10, c.y() * 10, c.w() * 10, c.h() * 10, c.identifier()))
                 .collect();
 
             // println!("monitor {}: {:?}", iden, cl);
 
-            let iden = if len == 1 {
+            let iden = if  monitor_data.len() == 1 {
                 "".to_string()
             } else {
                 "/".to_string() + &*iden.to_string()

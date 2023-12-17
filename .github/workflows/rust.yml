@@ -32,7 +32,7 @@ jobs:
     - name: Build
       run: cargo build --verbose --release
     - name: Test
-      run: cargo test --release
+      run: cargo test
 
   clippy:
     name: "Cargo clippy"

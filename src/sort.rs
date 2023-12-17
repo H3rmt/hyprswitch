@@ -207,7 +207,7 @@ pub trait SortableClient {
     /// workspace
     fn ws(&self) -> WorkspaceId;
     /// workspace-Identifier (if ignore-monitors to map 2 workspaces on different monitors together)
-    fn wsi(&self, monitor_count: i64) -> i32;
+    fn wsi(&self, monitor_index: i64) -> i32;
     /// monitor
     fn m(&self) -> i64;
     fn set_x(&mut self, x: u16);
@@ -236,8 +236,8 @@ impl SortableClient for Client {
     fn ws(&self) -> WorkspaceId {
         self.workspace.id
     }
-    fn wsi(&self, monitor_count: i64) -> i32 {
-        self.workspace.id - (MONITOR_WORKSPACE_INDEX_OFFSET * monitor_count as i32)
+    fn wsi(&self, monitor_index: i64) -> i32 {
+        self.workspace.id - (MONITOR_WORKSPACE_INDEX_OFFSET * monitor_index as i32)
     }
     fn m(&self) -> i64 { self.monitor }
     fn set_x(&mut self, x: u16) {
