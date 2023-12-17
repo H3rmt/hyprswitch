@@ -8,9 +8,9 @@ use crate::{MonitorData, WorkspaceData};
 
 /// Sorts clients with complex sorting
 ///
-/// * `clients` - Vector of clients to sort
-/// * `ignore_workspaces` - Dont split clients into workspaces (treat all clients on monitor as one workspace)
-/// * `ignore_monitors` - Dont split clients into monitors (treat all clients as one monitor)
+/// * 'clients' - Vector of clients to sort
+/// * 'ignore_workspaces' - Dont split clients into workspaces (treat all clients on monitor as one workspace)
+/// * 'ignore_monitors' - Dont split clients into monitors (treat all clients as one monitor)
 pub fn sort_clients<SC>(
     clients: Vec<SC>,
     ignore_workspaces: bool,
@@ -132,14 +132,15 @@ pub fn sort_clients<SC>(
 }
 
 /// find index of window right of current window that is closest to current window and higher up
-/// ```
-/// cur = current window (already removed from VecDeque)
-/// ne1 = next index (1) (returned from this function)
-/// ne2 = next index (2) (returned if `get_next_index` called again)
-/// no1 = not returned, as lower that `bottom`, even after `ne2` is added and `no1` is higher that `bottom`, as it is right of `left` (left is now `ne2.x`)
-/// no2 = not returned, as higher that `bottom`, but also lower that top_next (top of next line `no1`)
-/// no3 = must be added later before `br`, after `ne2`
 ///
+/// - cur = current window (already removed from VecDeque)
+/// - ne1 = next index (1) (returned from this function)
+/// - ne2 = next index (2) (returned if [`get_next_index`] called again)
+/// - no1 = not returned, as lower that `bottom`, even after `ne2` is added and `no1` is higher that `bottom`, as it is right of `left` (left is now `ne2.x`)
+/// - no2 = not returned, as higher that `bottom`, but also lower that top_next (top of next line `no1`)
+/// - no3 = must be added later before `br`, after `ne2`
+///
+/// ```ignore
 ///         left ∨
 ///           +-----------------------------
 ///           |  |
@@ -252,9 +253,9 @@ impl SortableClient for Client {
 }
 
 /// updates clients with workspace and monitor data
-/// * `clients` - Vector of clients to update
-/// * `workspace_data` - HashMap of workspace data
-/// * `monitor_data` - HashMap of monitor data
+/// * 'clients' - Vector of clients to update
+/// * 'workspace_data' - HashMap of workspace data
+/// * 'monitor_data' - HashMap of monitor data
 ///
 /// removes offset by monitor, adds offset by workspace (client on monitor 1 and workspace 2 will be moved left by monitor 1 offset and right by workspace 2 offset (workspace width * 2))
 pub fn update_clients<SC>(clients: Vec<SC>, workspace_data: &HashMap<WorkspaceId, WorkspaceData>, monitor_data: Option<&HashMap<i64, MonitorData>>) -> Vec<SC>
