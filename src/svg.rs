@@ -19,7 +19,7 @@ pub fn create_svg(rectangles: Vec<(usize, u16, u16, u16, u16, String)>, filename
     //         .set("fill", "none"),
     // );
 
-    for (i, x, y, width, height, iden) in rectangles {
+    for (i, x, y, width, height, identifier) in rectangles {
         let color = RandomColor::new().to_hsl_array();
         let group = Group::new()
             .add(
@@ -34,11 +34,11 @@ pub fn create_svg(rectangles: Vec<(usize, u16, u16, u16, u16, String)>, filename
             )
             .add(
                 Text::new()
-                    .set("x", (x + width / 2) as i16 - ((iden.len() as u16 * (stroke_width * 4)) / 2) as i16)
+                    .set("x", (x + width / 2) as i16 - ((identifier.len() as u16 * (stroke_width * 4)) / 2) as i16)
                     .set("y", (y + height / 2) as i16 + (((((stroke_width) as f32 * color[0] as f32) / 90.0) as i16) - stroke_width as i16))
                     .set("font-size", stroke_width * 4)
                     .set("fill", "white")
-                    .add(svg::node::Text::new(format!("{i} - {iden}"))),
+                    .add(svg::node::Text::new(format!("{i}-{identifier}"))),
             );
 
         svg = svg.add(group);

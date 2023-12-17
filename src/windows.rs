@@ -1,5 +1,4 @@
-#![deny(clippy::all)]
-#![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 use std::collections::HashMap;
 use std::num::NonZeroU32;

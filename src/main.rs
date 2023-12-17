@@ -10,7 +10,7 @@ use hyprland::shared::WorkspaceId;
 
 use window_switcher::{MonitorData, WorkspaceData};
 
-use crate::sort::{sort_clients, SortableClient, update_monitors};
+use crate::sort::{sort_clients, SortableClient};
 use crate::svg::create_svg;
 
 pub mod svg;
@@ -122,11 +122,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("monitor_data: {:?}", monitor_data);
 
-    let monitor_data = update_monitors(monitor_data);
-
-    println!("updated monitor_data: {:?}", monitor_data);
-
-
     let workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::from_iter(
         monitor_data.iter().flat_map(|(iden, monitor)| {
             let mut x_offset = 0;
@@ -166,12 +161,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         c
     }).collect();
 
-    println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.iden())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
+    println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
 
     clients = sort_clients(clients, cli.ignore_workspaces, cli.ignore_monitors);
     // clients = sort(clients, Some(&workspace_data));
 
-    println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.iden())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
+    println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
 
 
     for (iden, monitor) in monitor_data {
@@ -179,7 +174,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .filter(|c| c.monitor == iden)
             .enumerate()
-            .map(|(i, c)| (i, c.x(), c.y(), c.w(), c.h(), c.iden()))
+            .map(|(i, c)| (i, c.x(), c.y(), c.w(), c.h(), c.identifier()))
             .collect();
 
         println!("monitor {}: {:?}", iden, cl);
