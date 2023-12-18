@@ -34,7 +34,7 @@ struct Args {
     #[arg(long)]
     vertical_workspaces: bool,
 
-    /// Sort windows by recently visted
+    /// Sort windows by recently visited
     #[arg(long)]
     sort_recent: bool,
 }

@@ -56,6 +56,7 @@ The script accepts 5 parameters:.
 - `--stay-workspace` will restrict cycling of windows to current workspace.
 - `--ignore-workspace` will treat all workspaces on monitor an one contiguous workspace.
 - `--vertical-workspaces` will treat workspaces as vertical aligned (used with `--ignore-workspace`)
+- `--sort-recent` will sort windows by recently visited instead of position
 
 # Sorting of windows
 See [tests](/src/test.rs) more details in how windows get sorted
