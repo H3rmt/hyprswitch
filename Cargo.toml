@@ -1,7 +1,7 @@
 [package]
 name = "window_switcher"
-description = "A CLI app that allows switching between windows (of same class) in Hyprland"
-version = "0.1.6"
+description = "A CLI that allows switching between windows in Hyprland"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 readme = "README.md"
@@ -10,40 +10,10 @@ repository = "https://github.com/H3rmt/WindowSwitcher/"
 keywords = ["hyprland", "hyprland"]
 categories = ["command-line-utilities"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 clap = { version = "^4.4.7", features = ["derive"] }
 hyprland = "=0.3.11"
-#hyprland = "=0.3.12"
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", branch = "master" }
-
-# current: Error: SerdeError(Error("data did not match any variant of untagged enum Aux", line: 0, column: 0))
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "a8ca325b9accfe03028d2526093a971b3f30731a" }
-
-# Error: SerdeError(Error("data did not match any variant of untagged enum Aux", line: 0, column: 0))
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "0c35ba168a11be61820da3ac7f4b9e499d232b33" }
-
-# working fine
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "597720809b1c92b25eb4eb71c04e673560ae673c" }
-
-# Error: SerdeError(Error("data did not match any variant of untagged enum Aux", line: 0, column: 0))
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "4580068e32a13a29ef03730158e7e8b7b30c14f1" }
-
-# working fine
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "fe7e4ee945ba905499b8216ced674f22447ce16a" }
-
-# Error: SerdeError(Error("invalid value: integer `-1`, expected u64", line: 12, column: 17))
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "e58d6e2798e41ca0e42c3e9455d65ddd1eba5153" }
-
-# working fine
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "aae818caaf35730ac6188a18a0157ee62bf636b8" }
-
-# Error: SerdeError(Error("invalid value: integer `-1`, expected u64", line: 12, column: 17))
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs",rev = "12afa388e5326c2f9cf7b44009a545d3f37c3779"}
-
-# working fine
-#hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", rev = "bc61818e5a9a41b4bef174b37124325365008294" }
-
 random_color = "0.6.1"
 svg = "0.14.0"
+softbuffer = { version = "0.4.0", features = ["wayland", "wayland-dlopen"], default-features = false }
+winit = { version = "0.29.4", features = ["wayland", "rwh_06"], default-features = false }
