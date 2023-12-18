@@ -10,7 +10,7 @@ use hyprland::shared::WorkspaceId;
 
 use window_switcher::{MonitorData, WorkspaceData};
 
-use crate::sort::{sort_clients, SortableClient};
+use crate::sort::{sort_clients, SortableClient, update_clients};
 use crate::svg::create_svg;
 
 pub mod svg;
@@ -20,34 +20,42 @@ pub mod sort;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Switch between windows of same class
+    /// Switch between windows of same class (type)
     #[arg(long)]
     same_class: bool,
 
-    /// Switch backwards
-    #[arg(long)]
+    /// Reverse the order of the windows
+    #[arg(long, short)]
     reverse: bool,
 
-    /// Cycles through window on current workspace
-    /// TODO
+    /// Restrict cycling of windows to current workspace
     #[arg(long)]
     stay_workspace: bool,
 
-    /// Ignore workspaces and sort like one big workspace
+    /// Ignore workspaces and sort like one big workspace for each monitor
     #[arg(long)]
     ignore_workspaces: bool,
 
-    /// Ignore monitors and sort like one big monitor
+    /// Ignore monitors and sort like one big monitor, workspaces must have offset of 10 for each monitor (read TODO link)
     #[arg(long)]
     ignore_monitors: bool,
 
-    /// Switches to vertical workspaces for --ignore-workspaces
+    /// Display workspaces vertically on monitors
     #[arg(long)]
     vertical_workspaces: bool,
 
-    /// Dont execute, just print
+    /// Output svg files for each monitor
+    /// TODO: add option to specify output directory
     #[arg(long)]
+    svg: bool,
+
+    /// Dont execute window switch, just print
+    #[arg(long, short)]
     dry_run: bool,
+
+    /// Enable verbose output
+    #[arg(long, short)]
+    verbose: bool,
 }
 
 ///
@@ -65,14 +73,14 @@ struct Args {
 ///
 /// * Ignore workspaces and sort like one big workspace
 ///     * `window_switcher --ignore-workspaces`
-/// * Switches to vertical workspaces for --ignore-workspaces
+/// * Ignore monitors and sort like one big monitor
+///     * `window_switcher --ignore-monitors`
+///
+/// * Display workspaces vertically on monitors
 ///     * `window_switcher --vertical-workspaces`
 ///
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Args::parse();
-
-    // test2();
-    // return Ok(());
 
     let mut clients = Clients::get()?
         .filter(|c| c.workspace.id != -1)
@@ -89,6 +97,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         workspaces
     };
 
+    // all monitors with their data, x and y are the offset of the monitor, width and height are the size of the monitor
+    // combined_width and combined_height are the combined size of all workspaces on the monitor and workspaces_on_monitor is the number of workspaces on the monitor
     let monitor_data = {
         let mut md: HashMap<i64, MonitorData> = HashMap::new();
 
@@ -96,102 +106,100 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let monitor = monitors
                 .iter()
                 .find(|m| m.name == ws.monitor)
-                .unwrap_or_else(|| panic!("Monitor {ws:?} not found"));
+                .unwrap_or_else(|| panic!("Monitor for Workspace {ws:?} not found"));
 
-            md.entry(monitor.id).and_modify(|entry| {
-                entry.workspaces_on_monitor += 1;
-                if cli.vertical_workspaces {
-                    entry.combined_height += entry.height;
-                } else {
-                    entry.combined_width += entry.width;
-                }
-            }).or_insert_with(|| {
-                MonitorData {
-                    x: monitor.x as u16,
-                    y: monitor.y as u16,
-                    width: (monitor.width as f32 / monitor.scale) as u16,
-                    height: (monitor.height as f32 / monitor.scale) as u16,
-                    combined_width: (monitor.width as f32 / monitor.scale) as u16,
-                    combined_height: (monitor.height as f32 / monitor.scale) as u16,
-                    workspaces_on_monitor: 1,
-                }
-            });
+            md.entry(monitor.id)
+                .and_modify(|entry| {
+                    entry.workspaces_on_monitor += 1;
+                    if cli.vertical_workspaces {
+                        entry.combined_height += entry.height;
+                    } else {
+                        entry.combined_width += entry.width;
+                    }
+                })
+                .or_insert_with(|| {
+                    MonitorData {
+                        x: monitor.x as u16,
+                        y: monitor.y as u16,
+                        width: (monitor.width as f32 / monitor.scale) as u16,
+                        height: (monitor.height as f32 / monitor.scale) as u16,
+                        combined_width: (monitor.width as f32 / monitor.scale) as u16,
+                        combined_height: (monitor.height as f32 / monitor.scale) as u16,
+                        workspaces_on_monitor: 1,
+                    }
+                });
         });
         md
     };
 
-    println!("monitor_data: {:?}", monitor_data);
+    // all workspaces with their data, x and y are the offset of the workspace
+    let workspace_data = {
+        let mut wd: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
 
-    let workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::from_iter(
-        monitor_data.iter().flat_map(|(iden, monitor)| {
+        monitor_data.iter().for_each(|(monitor_id, monitor_data)| {
             let mut x_offset = 0;
             let mut y_offset = 0;
 
-            return workspaces.iter()
-                .filter(|ws| ws.monitor == monitors.iter().find(|m| m.id == *iden).unwrap().name)
-                .map(move |workspace| {
+            workspaces.iter()
+                .filter(|ws| ws.monitor == monitors.iter().find(|m| m.id == *monitor_id).unwrap().name)
+                .for_each(|workspace| {
                     let (x, y) = if cli.vertical_workspaces {
-                        (monitor.x, y_offset)
+                        (monitor_data.x, y_offset)
                     } else {
-                        (x_offset, monitor.y)
+                        (x_offset, monitor_data.y)
                     };
 
-                    println!("workspace {:?} on monitor {} at ({}, {})", workspace.id, iden, x, y);
+                    println!("workspace {:?} on monitor {} at ({}, {})", workspace.id, monitor_id, x, y);
 
-                    x_offset += monitor.width;
-                    y_offset += monitor.height;
-                    (workspace.id, WorkspaceData { x, y })
+                    x_offset += monitor_data.width;
+                    y_offset += monitor_data.height;
+                    wd.insert(workspace.id, WorkspaceData { x, y });
                 });
-        })
-    );
+        });
+        wd
+    };
 
-    println!("workspace_data: {:?}", workspace_data);
-
-    clients = clients.into_iter().map(|mut c| {
-        let ws = workspace_data
-            .get(&c.ws())
-            .unwrap_or_else(|| panic!("Workspace {:?} not found", c.ws()));
-
-        let md = monitor_data
-            .get(&c.monitor)
-            .unwrap_or_else(|| panic!("Workspace {:?} not found", c.ws()));
-
-        c.set_x(c.x() + ws.x - md.x); // move x cord by workspace offset and remove monitor offset
-        c.set_y(c.y() + ws.y - md.y); // move y cord by workspace offset and remove monitor offset
-        c
-    }).collect();
-
-    println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
-
-    clients = sort_clients(clients, cli.ignore_workspaces, cli.ignore_monitors);
-    // clients = sort(clients, Some(&workspace_data));
-
-    println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
-
-
-    for (iden, monitor) in monitor_data {
-        let cl: Vec<(usize, u16, u16, u16, u16, String)> = clients
-            .iter()
-            .filter(|c| c.monitor == iden)
-            .enumerate()
-            .map(|(i, c)| (i, c.x(), c.y(), c.w(), c.h(), c.identifier()))
-            .collect();
-
-        println!("monitor {}: {:?}", iden, cl);
-
-        create_svg(cl,
-                   format!("{}.svg", iden),
-                   monitor.x,
-                   monitor.y,
-                   monitor.combined_width,
-                   monitor.combined_height,
-                   35,
-        );
+    if cli.verbose {
+        println!("monitor_data: {:?}", monitor_data);
+        println!("workspace_data: {:?}", workspace_data);
     }
 
-    // -----------------------------------------------------------------------------------------
-    // ------------------------------ Filter windows -------------------------------------------
-    // -----------------------------------------------------------------------------------------
+    if cli.ignore_monitors {
+        clients = update_clients(clients, &workspace_data, None);
+    } else {
+        clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    }
+
+    if cli.verbose {
+        println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
+    }
+    clients = sort_clients(clients, cli.ignore_workspaces, cli.ignore_monitors);
+
+    if cli.verbose {
+        println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
+    }
+
+    if cli.svg {
+        for (iden, monitor) in monitor_data {
+            let cl: Vec<(usize, u16, u16, u16, u16, String)> = clients
+                .iter()
+                .filter(|c| c.monitor == iden)
+                .enumerate()
+                .map(|(i, c)| (i, c.x(), c.y(), c.w(), c.h(), c.identifier()))
+                .collect();
+
+            println!("monitor {}: {:?}", iden, cl);
+
+            create_svg(cl,
+                       format!("{}.svg", iden),
+                       monitor.x,
+                       monitor.y,
+                       monitor.combined_width,
+                       monitor.combined_height,
+                       35,
+            );
+        }
+    }
 
     let binding = Client::get_active()?;
     let active = binding
@@ -236,10 +244,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(current_window_index)
         .expect("No next window?");
 
-    println!("next_client: {:?}", next_client);
+    if cli.verbose {
+        println!("next_client: {:?}", next_client);
+    }
 
     if !cli.dry_run {
         Dispatch::call(FocusWindow(WindowIdentifier::Address(next_client.address.clone())))?;
+    } else {
+        // print regardless of verbose
+        println!("next_client: {:?}", next_client);
     }
 
     Ok(())

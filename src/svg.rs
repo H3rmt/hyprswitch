@@ -44,5 +44,5 @@ pub fn create_svg(rectangles: Vec<(usize, u16, u16, u16, u16, String)>, filename
         svg = svg.add(group);
     }
 
-    svg::save(filename, &svg).unwrap();
+    svg::save(filename.clone(), &svg).unwrap_or_else(|_| panic!("unable to save svg {filename}"));
 }

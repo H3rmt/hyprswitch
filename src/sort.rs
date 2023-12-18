@@ -255,7 +255,7 @@ impl SortableClient for Client {
 /// updates clients with workspace and monitor data
 /// * 'clients' - Vector of clients to update
 /// * 'workspace_data' - HashMap of workspace data
-/// * 'monitor_data' - HashMap of monitor data
+/// * 'monitor_data' - HashMap of monitor data, None if ignore_monitors
 ///
 /// removes offset by monitor, adds offset by workspace (client on monitor 1 and workspace 2 will be moved left by monitor 1 offset and right by workspace 2 offset (workspace width * 2))
 pub fn update_clients<SC>(clients: Vec<SC>, workspace_data: &HashMap<WorkspaceId, WorkspaceData>, monitor_data: Option<&HashMap<i64, MonitorData>>) -> Vec<SC>

@@ -71,17 +71,17 @@ pub mod common {
     ) where
         SC: SortableClient,
     {
-        if  monitor_data.len() == 1 {
+        let mut a = filename.split('/').collect::<Vec<&str>>();
+        let mut n = "";
+        // remove tests dir
+        a.remove(0);
+        if monitor_data.len() == 1 {
             // dont create folder for 1 svg
-            let mut a = filename.split('/').collect::<Vec<&str>>();
-            a.pop();
-            let fln = a.join("/");
-            std::fs::create_dir_all(format!("test-svgs/{fln}"))
-                .expect("unable to create test-svgs directory and subdirectories");
-        } else {
-            std::fs::create_dir_all(format!("test-svgs/{filename}"))
-                .expect("unable to create test-svgs directory and subdirectories");
+            n = a.pop().expect("unable to pop filename");
         }
+        let filename = "test-svgs/".to_owned() + &*a.join("/");
+        std::fs::create_dir_all(filename.clone())
+            .expect("unable to create test-svgs directory and subdirectories");
 
         for (iden, monitor) in &monitor_data {
             let cl: Vec<(usize, u16, u16, u16, u16, String)> = clients
@@ -91,17 +91,16 @@ pub mod common {
                 .map(|(i, c)| (i, c.x() * 10, c.y() * 10, c.w() * 10, c.h() * 10, c.identifier()))
                 .collect();
 
-            // println!("monitor {}: {:?}", iden, cl);
-
-            let iden = if  monitor_data.len() == 1 {
-                "".to_string()
+            // add iden to filename if there are multiple monitors
+            let iden = if monitor_data.len() != 1 {
+                iden.to_string()
             } else {
-                "/".to_string() + &*iden.to_string()
+                n.to_owned()
             };
 
             create_svg(
                 cl,
-                format!("test-svgs/{filename}{iden}.svg"),
+                format!("{filename}/{iden}.svg"),
                 0,
                 0,
                 monitor.combined_width * 15,
