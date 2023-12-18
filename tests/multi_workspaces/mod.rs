@@ -3,10 +3,10 @@ use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
-use window_switcher::{MonitorData, WorkspaceData};
 use window_switcher::sort::{sort_clients, update_clients};
+use window_switcher::{MonitorData, WorkspaceData};
 
-use crate::common::{create_svg_from_client_tests, is_sorted, MockClient, function};
+use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
 
 /// ```
 ///                   Monitor 1

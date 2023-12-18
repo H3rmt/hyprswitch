@@ -1,17 +1,20 @@
-mod multi_workspace_multi_monitor_horizontal;
 mod many_windows;
-mod simple;
+mod multi_workspace_multi_monitor_horizontal;
 mod multi_workspaces;
+mod simple;
+mod svg;
 
 #[cfg(test)]
 pub mod common {
     use std::collections::HashMap;
+    use std::fmt::Debug;
 
     use hyprland::shared::WorkspaceId;
 
-    use window_switcher::sort::SortableClient;
-    use window_switcher::svg::create_svg;
+    use window_switcher::sort::{SortableClient, MONITOR_WORKSPACE_INDEX_OFFSET};
     use window_switcher::MonitorData;
+
+    use crate::svg::create_svg;
 
     #[derive(Debug)]
     pub struct MockClient(
@@ -41,7 +44,7 @@ pub mod common {
             self.4
         }
         fn wsi(&self, monitor_count: i64) -> WorkspaceId {
-            self.4 - (10 * monitor_count as i32)
+            self.4 - (MONITOR_WORKSPACE_INDEX_OFFSET * monitor_count as i32)
         }
         fn m(&self) -> i64 {
             self.5
@@ -57,19 +60,18 @@ pub mod common {
         }
     }
 
-    #[cfg(test)]
     pub fn is_sorted(data: &[MockClient]) -> bool {
-        data.windows(2)
-            .all(|w| w[0].identifier().parse::<u16>().unwrap() < w[1].identifier().parse::<u16>().unwrap())
+        data.windows(2).all(|w| {
+            w[0].identifier().parse::<u16>().unwrap() < w[1].identifier().parse::<u16>().unwrap()
+        })
     }
 
-    #[cfg(test)]
     pub fn create_svg_from_client_tests<SC>(
         clients: &[SC],
         filename: &str,
         monitor_data: HashMap<i64, MonitorData>,
     ) where
-        SC: SortableClient,
+        SC: SortableClient + Debug,
     {
         let mut a = filename.split('/').collect::<Vec<&str>>();
         let mut n = "";
@@ -111,29 +113,30 @@ pub mod common {
     }
     #[allow(unused_macros)]
     macro_rules! function {
-    () => {{
-        fn f() {}
-        fn type_name_of<T>(_: T) -> &'static str {
-            std::any::type_name::<T>()
-        }
-        let name = type_name_of(f);
-
-        let mut filename = file!().split("/").collect::<Vec<&str>>();
-        if let Some(last) = filename.last() {
-            if *last == "mod.rs" {
-                filename.pop();
+        () => {{
+            fn f() {}
+            fn type_name_of<T>(_: T) -> &'static str {
+                std::any::type_name::<T>()
             }
-        }
-        let filename = filename.join("/");
+            let name = type_name_of(f);
 
-        // Find and cut the rest of the path
-        &(filename + "/"
-            + match &name[..name.len() - 3].rfind(':') {
-                Some(pos) => &name[pos + 1..name.len() - 3],
-                None => &name[..name.len() - 3],
-            })
-    }};
-}
+            let mut filename = file!().split("/").collect::<Vec<&str>>();
+            if let Some(last) = filename.last() {
+                if *last == "mod.rs" {
+                    filename.pop();
+                }
+            }
+            let filename = filename.join("/");
+
+            // Find and cut the rest of the path
+            &(filename
+                + "/"
+                + match &name[..name.len() - 3].rfind(':') {
+                    Some(pos) => &name[pos + 1..name.len() - 3],
+                    None => &name[..name.len() - 3],
+                })
+        }};
+    }
 
     // used for tests
     #[allow(unused_imports)]

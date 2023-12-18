@@ -8,14 +8,8 @@ use hyprland::dispatch::DispatchType::FocusWindow;
 use hyprland::prelude::*;
 use hyprland::shared::WorkspaceId;
 
-use window_switcher::{MonitorData, WorkspaceData};
-
-use crate::sort::{sort_clients, SortableClient, update_clients};
-use crate::svg::create_svg;
-
-pub mod svg;
-mod windows;
-pub mod sort;
+use window_switcher::{MonitorData, MonitorId, WorkspaceData};
+use window_switcher::sort::{sort_clients, SortableClient, update_clients};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -43,11 +37,6 @@ struct Args {
     /// Display workspaces vertically on monitors
     #[arg(long)]
     vertical_workspaces: bool,
-
-    /// Output svg files for each monitor
-    /// TODO: add option to specify output directory
-    #[arg(long)]
-    svg: bool,
 
     /// Dont execute window switch, just print
     #[arg(long, short)]
@@ -100,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // all monitors with their data, x and y are the offset of the monitor, width and height are the size of the monitor
     // combined_width and combined_height are the combined size of all workspaces on the monitor and workspaces_on_monitor is the number of workspaces on the monitor
     let monitor_data = {
-        let mut md: HashMap<i64, MonitorData> = HashMap::new();
+        let mut md: HashMap<MonitorId, MonitorData> = HashMap::new();
 
         workspaces.iter().for_each(|ws| {
             let monitor = monitors
@@ -149,7 +138,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         (x_offset, monitor_data.y)
                     };
 
-                    println!("workspace {:?} on monitor {} at ({}, {})", workspace.id, monitor_id, x, y);
+                    if cli.verbose {
+                        println!("workspace {:?} on monitor {} at ({}, {})", workspace.id, monitor_id, x, y);
+                    }
 
                     x_offset += monitor_data.width;
                     y_offset += monitor_data.height;
@@ -171,34 +162,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if cli.verbose {
-        println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
+        println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, MonitorId, u16, u16, u16, u16, WorkspaceId, String)>>());
     }
     clients = sort_clients(clients, cli.ignore_workspaces, cli.ignore_monitors);
 
     if cli.verbose {
-        println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, i64, u16, u16, u16, u16, WorkspaceId, String)>>());
-    }
-
-    if cli.svg {
-        for (iden, monitor) in monitor_data {
-            let cl: Vec<(usize, u16, u16, u16, u16, String)> = clients
-                .iter()
-                .filter(|c| c.monitor == iden)
-                .enumerate()
-                .map(|(i, c)| (i, c.x(), c.y(), c.w(), c.h(), c.identifier()))
-                .collect();
-
-            println!("monitor {}: {:?}", iden, cl);
-
-            create_svg(cl,
-                       format!("{}.svg", iden),
-                       monitor.x,
-                       monitor.y,
-                       monitor.combined_width,
-                       monitor.combined_height,
-                       35,
-            );
-        }
+        println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, MonitorId, u16, u16, u16, u16, WorkspaceId, String)>>());
     }
 
     let binding = Client::get_active()?;
@@ -252,7 +221,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Dispatch::call(FocusWindow(WindowIdentifier::Address(next_client.address.clone())))?;
     } else {
         // print regardless of verbose
-        println!("next_client: {:?}", next_client);
+        println!("next_client: {}", next_client.title);
     }
 
     Ok(())

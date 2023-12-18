@@ -1,4 +1,3 @@
-pub mod svg;
 pub mod sort;
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -17,3 +16,5 @@ pub struct WorkspaceData {
     pub x: u16,
     pub y: u16,
 }
+
+pub type MonitorId = i64;

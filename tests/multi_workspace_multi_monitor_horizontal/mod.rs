@@ -3,10 +3,10 @@ use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
-use window_switcher::{MonitorData, WorkspaceData};
 use window_switcher::sort::{sort_clients, update_clients};
+use window_switcher::{MonitorData, WorkspaceData};
 
-use crate::common::{create_svg_from_client_tests, is_sorted, MockClient, function};
+use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
 
 /// ```
 ///                   Monitor 1                                   Monitor 2
@@ -27,17 +27,14 @@ fn default() {
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
         MockClient(1, 5, 1, 2, 0, 0, "3".to_string()),
         MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
-
         MockClient(1, 1, 1, 3, 1, 0, "5".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "6".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "7".to_string()),
         MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
-
         MockClient(5, 1, 1, 3, 10, 1, "9".to_string()),
         MockClient(7, 1, 2, 3, 10, 1, "10".to_string()),
         MockClient(5, 5, 2, 2, 10, 1, "11".to_string()),
         MockClient(8, 5, 1, 2, 10, 1, "12".to_string()),
-
         MockClient(5, 1, 1, 3, 11, 1, "13".to_string()),
         MockClient(7, 1, 2, 2, 11, 1, "14".to_string()),
         MockClient(7, 4, 2, 3, 11, 1, "15".to_string()),
@@ -65,7 +62,6 @@ fn default() {
     assert!(is_sorted(&clients));
 }
 
-
 /// ```
 ///                   Monitor 1                                   Monitor 2
 ///       Workspace 0           Workspace 1           Workspace 10         Workspace 11
@@ -85,17 +81,14 @@ fn ignore_workspaces() {
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
         MockClient(1, 5, 1, 2, 0, 0, "6".to_string()),
         MockClient(3, 5, 1, 2, 0, 0, "7".to_string()),
-
         MockClient(1, 1, 1, 3, 1, 0, "3".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "4".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "5".to_string()),
         MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
-
         MockClient(5, 1, 1, 3, 10, 1, "9".to_string()),
         MockClient(7, 1, 2, 3, 10, 1, "10".to_string()),
         MockClient(5, 5, 2, 2, 10, 1, "14".to_string()),
         MockClient(8, 5, 1, 2, 10, 1, "15".to_string()),
-
         MockClient(5, 1, 1, 3, 11, 1, "11".to_string()),
         MockClient(7, 1, 2, 2, 11, 1, "12".to_string()),
         MockClient(7, 4, 2, 3, 11, 1, "13".to_string()),
@@ -123,8 +116,6 @@ fn ignore_workspaces() {
     assert!(is_sorted(&clients));
 }
 
-
-
 /// ```
 ///                   Monitor 1                                   Monitor 2
 ///       Workspace 0           Workspace 1           Workspace 10          Workspace 11
@@ -144,17 +135,14 @@ fn ignore_monitor() {
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
         MockClient(1, 5, 1, 2, 0, 0, "5".to_string()),
         MockClient(3, 5, 1, 2, 0, 0, "6".to_string()),
-
         MockClient(1, 1, 1, 3, 1, 0, "9".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "10".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "11".to_string()),
         MockClient(1, 5, 1, 2, 1, 0, "15".to_string()),
-
         MockClient(5, 1, 1, 3, 10, 1, "3".to_string()),
         MockClient(7, 1, 2, 3, 10, 1, "4".to_string()),
         MockClient(5, 5, 2, 2, 10, 1, "7".to_string()),
         MockClient(8, 5, 1, 2, 10, 1, "8".to_string()),
-
         MockClient(5, 1, 1, 3, 11, 1, "12".to_string()),
         MockClient(7, 1, 2, 2, 11, 1, "13".to_string()),
         MockClient(7, 4, 2, 3, 11, 1, "14".to_string()),
@@ -182,7 +170,6 @@ fn ignore_monitor() {
     assert!(is_sorted(&clients));
 }
 
-
 /// ```
 ///                   Monitor 1                                   Monitor 2
 ///       Workspace 1           Workspace 2           Workspace 3           Workspace 4
@@ -203,17 +190,14 @@ fn ignore_monitor_ignore_workspace() {
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
         MockClient(1, 5, 1, 2, 0, 0, "11".to_string()),
         MockClient(3, 5, 1, 2, 0, 0, "12".to_string()),
-
         MockClient(1, 1, 1, 3, 1, 0, "3".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "4".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "5".to_string()),
         MockClient(1, 5, 1, 2, 1, 0, "13".to_string()),
-
         MockClient(5, 1, 1, 3, 10, 1, "6".to_string()),
         MockClient(7, 1, 2, 3, 10, 1, "7".to_string()),
         MockClient(5, 5, 2, 2, 10, 1, "14".to_string()),
         MockClient(8, 5, 1, 2, 10, 1, "15".to_string()),
-
         MockClient(5, 1, 1, 3, 11, 1, "8".to_string()),
         MockClient(7, 1, 2, 2, 11, 1, "9".to_string()),
         MockClient(7, 4, 2, 3, 11, 1, "10".to_string()),
@@ -272,37 +256,30 @@ fn default_more_monitor() {
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
         MockClient(1, 5, 1, 2, 0, 0, "3".to_string()),
         MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
-
         MockClient(1, 1, 1, 3, 1, 0, "5".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "6".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "7".to_string()),
         MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
-
         MockClient(5, 1, 1, 3, 2, 1, "9".to_string()),
         MockClient(7, 1, 2, 3, 2, 1, "10".to_string()),
         MockClient(5, 5, 2, 2, 2, 1, "11".to_string()),
         MockClient(8, 5, 1, 2, 2, 1, "12".to_string()),
-
         MockClient(5, 1, 1, 3, 3, 1, "13".to_string()),
         MockClient(7, 1, 2, 2, 3, 1, "14".to_string()),
         MockClient(7, 4, 2, 3, 3, 1, "15".to_string()),
         MockClient(5, 5, 1, 2, 3, 1, "16".to_string()),
-
         MockClient(1, 8, 1, 3, 4, 2, "17".to_string()),
         MockClient(3, 8, 1, 3, 4, 2, "18".to_string()),
         MockClient(1, 12, 1, 2, 4, 2, "19".to_string()),
         MockClient(3, 12, 1, 2, 4, 2, "20".to_string()),
-
         MockClient(1, 8, 1, 3, 5, 2, "21".to_string()),
         MockClient(3, 8, 1, 2, 5, 2, "22".to_string()),
         MockClient(3, 11, 1, 3, 5, 2, "23".to_string()),
         MockClient(1, 12, 1, 2, 5, 2, "24".to_string()),
-
         MockClient(5, 8, 1, 3, 6, 3, "25".to_string()),
         MockClient(7, 8, 2, 3, 6, 3, "26".to_string()),
         MockClient(5, 12, 2, 2, 6, 3, "27".to_string()),
         MockClient(8, 12, 1, 2, 6, 3, "28".to_string()),
-
         MockClient(5, 8, 1, 2, 7, 3, "29".to_string()),
         MockClient(7, 8, 2, 3, 7, 3, "30".to_string()),
         MockClient(5, 11, 1, 3, 7, 3, "31".to_string()),
@@ -334,7 +311,6 @@ fn default_more_monitor() {
 
     assert!(is_sorted(&clients));
 }
-
 
 /// ```
 ///                   Monitor 1                                   Monitor 2
@@ -368,37 +344,30 @@ fn ignore_workspaces_more_monitor() {
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
         MockClient(1, 5, 1, 2, 0, 0, "6".to_string()),
         MockClient(3, 5, 1, 2, 0, 0, "7".to_string()),
-
         MockClient(1, 1, 1, 3, 1, 0, "3".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "4".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "5".to_string()),
         MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
-
         MockClient(5, 1, 1, 3, 2, 1, "9".to_string()),
         MockClient(7, 1, 2, 3, 2, 1, "10".to_string()),
         MockClient(5, 5, 2, 2, 2, 1, "14".to_string()),
         MockClient(8, 5, 1, 2, 2, 1, "15".to_string()),
-
         MockClient(5, 1, 1, 3, 3, 1, "11".to_string()),
         MockClient(7, 1, 2, 2, 3, 1, "12".to_string()),
         MockClient(7, 4, 2, 3, 3, 1, "13".to_string()),
         MockClient(5, 5, 1, 2, 3, 1, "16".to_string()),
-
         MockClient(1, 8, 1, 3, 4, 2, "17".to_string()),
         MockClient(3, 8, 1, 3, 4, 2, "18".to_string()),
         MockClient(1, 12, 1, 2, 4, 2, "22".to_string()),
         MockClient(3, 12, 1, 2, 4, 2, "23".to_string()),
-
         MockClient(1, 8, 1, 3, 5, 2, "19".to_string()),
         MockClient(3, 8, 1, 2, 5, 2, "20".to_string()),
         MockClient(3, 11, 1, 3, 5, 2, "21".to_string()),
         MockClient(1, 12, 1, 2, 5, 2, "24".to_string()),
-
         MockClient(5, 8, 1, 3, 6, 3, "25".to_string()),
         MockClient(7, 8, 2, 3, 6, 3, "26".to_string()),
         MockClient(5, 12, 2, 2, 6, 3, "30".to_string()),
         MockClient(8, 12, 1, 2, 6, 3, "31".to_string()),
-
         MockClient(5, 8, 1, 2, 7, 3, "27".to_string()),
         MockClient(7, 8, 2, 3, 7, 3, "29".to_string()),
         MockClient(7, 12, 2, 2, 7, 3, "32".to_string()),
@@ -463,37 +432,30 @@ fn ignore_monitor_more_monitor() {
         MockClient(3, 1, 1, 3, 1, 0, "2".to_string()),
         MockClient(1, 5, 1, 2, 1, 0, "5".to_string()),
         MockClient(3, 5, 1, 2, 1, 0, "6".to_string()),
-
         MockClient(1, 1, 1, 3, 2, 0, "17".to_string()),
         MockClient(3, 1, 1, 2, 2, 0, "18".to_string()),
         MockClient(3, 4, 1, 3, 2, 0, "19".to_string()),
         MockClient(1, 5, 1, 2, 2, 0, "23".to_string()),
-
         MockClient(5, 1, 1, 3, 11, 1, "3".to_string()),
         MockClient(7, 1, 2, 3, 11, 1, "4".to_string()),
         MockClient(5, 5, 2, 2, 11, 1, "7".to_string()),
         MockClient(8, 5, 1, 2, 11, 1, "8".to_string()),
-
         MockClient(5, 1, 1, 3, 12, 1, "20".to_string()),
         MockClient(7, 1, 2, 2, 12, 1, "21".to_string()),
         MockClient(7, 4, 2, 3, 12, 1, "22".to_string()),
         MockClient(5, 5, 1, 2, 12, 1, "24".to_string()),
-
         MockClient(1, 8, 1, 3, 21, 2, "9".to_string()),
         MockClient(3, 8, 1, 3, 21, 2, "10".to_string()),
         MockClient(1, 12, 1, 2, 21, 2, "13".to_string()),
         MockClient(3, 12, 1, 2, 21, 2, "14".to_string()),
-
         MockClient(1, 8, 1, 3, 22, 2, "25".to_string()),
         MockClient(3, 8, 1, 2, 22, 2, "26".to_string()),
         MockClient(3, 11, 1, 3, 22, 2, "27".to_string()),
         MockClient(1, 12, 1, 2, 22, 2, "31".to_string()),
-
         MockClient(5, 8, 1, 3, 31, 3, "11".to_string()),
         MockClient(7, 8, 2, 3, 31, 3, "12".to_string()),
         MockClient(5, 12, 2, 2, 31, 3, "15".to_string()),
         MockClient(8, 12, 1, 2, 31, 3, "16".to_string()),
-
         MockClient(5, 8, 1, 2, 32, 3, "28".to_string()),
         MockClient(7, 8, 2, 3, 32, 3, "30".to_string()),
         MockClient(7, 12, 2, 2, 32, 3, "32".to_string()),
@@ -559,37 +521,30 @@ fn ignore_monitor_ignore_workspace_more_monitor() {
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
         MockClient(1, 5, 1, 2, 0, 0, "11".to_string()),
         MockClient(3, 5, 1, 2, 0, 0, "12".to_string()),
-
         MockClient(1, 1, 1, 3, 1, 0, "3".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "4".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "5".to_string()),
         MockClient(1, 5, 1, 2, 1, 0, "13".to_string()),
-
         MockClient(5, 1, 1, 3, 2, 1, "6".to_string()),
         MockClient(7, 1, 2, 3, 2, 1, "7".to_string()),
         MockClient(5, 5, 2, 2, 2, 1, "14".to_string()),
         MockClient(8, 5, 1, 2, 2, 1, "15".to_string()),
-
         MockClient(5, 1, 1, 3, 3, 1, "8".to_string()),
         MockClient(7, 1, 2, 2, 3, 1, "9".to_string()),
         MockClient(7, 4, 2, 3, 3, 1, "10".to_string()),
         MockClient(5, 5, 1, 2, 3, 1, "16".to_string()),
-
         MockClient(1, 8, 1, 3, 4, 2, "17".to_string()),
         MockClient(3, 8, 1, 3, 4, 2, "18".to_string()),
         MockClient(1, 12, 1, 2, 4, 2, "27".to_string()),
         MockClient(3, 12, 1, 2, 4, 2, "28".to_string()),
-
         MockClient(1, 8, 1, 3, 5, 2, "19".to_string()),
         MockClient(3, 8, 1, 2, 5, 2, "20".to_string()),
         MockClient(3, 11, 1, 3, 5, 2, "21".to_string()),
         MockClient(1, 12, 1, 2, 5, 2, "29".to_string()),
-
         MockClient(5, 8, 1, 3, 6, 3, "22".to_string()),
         MockClient(7, 8, 2, 3, 6, 3, "23".to_string()),
         MockClient(5, 12, 2, 2, 6, 3, "30".to_string()),
         MockClient(8, 12, 1, 2, 6, 3, "31".to_string()),
-
         MockClient(5, 8, 1, 3, 7, 3, "24".to_string()),
         MockClient(7, 8, 2, 2, 7, 3, "25".to_string()),
         MockClient(7, 11, 2, 3, 7, 3, "26".to_string()),

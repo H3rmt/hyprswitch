@@ -3,10 +3,10 @@ use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
-use window_switcher::{MonitorData, WorkspaceData};
 use window_switcher::sort::{sort_clients, update_clients};
+use window_switcher::{MonitorData, WorkspaceData};
 
-use crate::common::{create_svg_from_client_tests, is_sorted, MockClient, function};
+use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
 
 /// ```
 ///    1      2  3      4
@@ -103,7 +103,18 @@ fn simple_3() {
     ];
 
     let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 6, height: 7, combined_width: 6, combined_height: 7, workspaces_on_monitor: 1 });
+    monitor_data.insert(
+        0,
+        MonitorData {
+            x: 0,
+            y: 0,
+            width: 6,
+            height: 7,
+            combined_width: 6,
+            combined_height: 7,
+            workspaces_on_monitor: 1,
+        },
+    );
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });

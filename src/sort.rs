@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use hyprland::data::Client;
 use hyprland::shared::WorkspaceId;
 
-use crate::{MonitorData, WorkspaceData};
+use crate::{MonitorData, MonitorId, WorkspaceData};
 
 /// Sorts clients with complex sorting
 ///
@@ -28,7 +28,7 @@ pub fn sort_clients<SC>(
         }
         (true, false) => {
             // workspace -> clients
-            let mut monitors: BTreeMap<i64, Vec<SC>> = BTreeMap::new();
+            let mut monitors: BTreeMap<MonitorId, Vec<SC>> = BTreeMap::new();
             for client in clients {
                 monitors.entry(client.m()).or_default().push(client);
             }
@@ -44,7 +44,7 @@ pub fn sort_clients<SC>(
         }
         (false, false) => {
             // monitor -> workspace -> clients
-            let mut monitors: BTreeMap<i64, BTreeMap<WorkspaceId, Vec<SC>>> = BTreeMap::new();
+            let mut monitors: BTreeMap<MonitorId, BTreeMap<WorkspaceId, Vec<SC>>> = BTreeMap::new();
             for client in clients {
                 monitors.entry(client.m()).or_default().entry(client.ws()).or_default().push(client);
             }
@@ -52,7 +52,7 @@ pub fn sort_clients<SC>(
         }
     };
 
-    pretty_print(&monitors);
+    // pretty_print(&monitors);
 
     let mut sorted_clients: Vec<SC> = vec![];
 
@@ -126,7 +126,7 @@ pub fn sort_clients<SC>(
         }
     }
 
-    println!("sorted clients: {:?}", sorted_clients);
+    // println!("sorted clients: {:?}", sorted_clients);
 
     sorted_clients
 }
@@ -195,70 +195,13 @@ fn get_next_index<'a, SC>(
     index
 }
 
-
-pub trait SortableClient {
-    /// X
-    fn x(&self) -> u16;
-    /// Y
-    fn y(&self) -> u16;
-    /// width
-    fn w(&self) -> u16;
-    /// height
-    fn h(&self) -> u16;
-    /// workspace
-    fn ws(&self) -> WorkspaceId;
-    /// workspace-Identifier (if ignore-monitors to map 2 workspaces on different monitors together)
-    fn wsi(&self, monitor_index: i64) -> i32;
-    /// monitor
-    fn m(&self) -> i64;
-    fn set_x(&mut self, x: u16);
-    fn set_y(&mut self, y: u16);
-    fn identifier(&self) -> String;
-}
-
-/// allows for mapping 2 workspaces on different monitors together
-/// e.g. if you have 2 monitors with 2 workspaces each, you can map the 2 workspaces on the second monitor to the 2 workspaces on the first monitor
-/// MONITOR_WORKSPACE_INDEX_OFFSET gets multiplied by the number of monitors to get the workspace id of the second monitor, so 10 means 10 workspaces per monitor
-const MONITOR_WORKSPACE_INDEX_OFFSET: i32 = 10;
-
-impl SortableClient for Client {
-    fn x(&self) -> u16 {
-        self.at.0 as u16
-    }
-    fn y(&self) -> u16 {
-        self.at.1 as u16
-    }
-    fn w(&self) -> u16 {
-        self.size.0 as u16
-    }
-    fn h(&self) -> u16 {
-        self.size.1 as u16
-    }
-    fn ws(&self) -> WorkspaceId {
-        self.workspace.id
-    }
-    fn wsi(&self, monitor_index: i64) -> i32 {
-        self.workspace.id - (MONITOR_WORKSPACE_INDEX_OFFSET * monitor_index as i32)
-    }
-    fn m(&self) -> i64 { self.monitor }
-    fn set_x(&mut self, x: u16) {
-        self.at.0 = x as i16;
-    }
-    fn set_y(&mut self, y: u16) {
-        self.at.1 = y as i16;
-    }
-    fn identifier(&self) -> String {
-        self.title.to_string()
-    }
-}
-
 /// updates clients with workspace and monitor data
 /// * 'clients' - Vector of clients to update
 /// * 'workspace_data' - HashMap of workspace data
 /// * 'monitor_data' - HashMap of monitor data, None if ignore_monitors
 ///
 /// removes offset by monitor, adds offset by workspace (client on monitor 1 and workspace 2 will be moved left by monitor 1 offset and right by workspace 2 offset (workspace width * 2))
-pub fn update_clients<SC>(clients: Vec<SC>, workspace_data: &HashMap<WorkspaceId, WorkspaceData>, monitor_data: Option<&HashMap<i64, MonitorData>>) -> Vec<SC>
+pub fn update_clients<SC>(clients: Vec<SC>, workspace_data: &HashMap<WorkspaceId, WorkspaceData>, monitor_data: Option<&HashMap<MonitorId, MonitorData>>) -> Vec<SC>
     where
         SC: SortableClient + Debug,
 {
@@ -284,6 +227,63 @@ pub fn update_clients<SC>(clients: Vec<SC>, workspace_data: &HashMap<WorkspaceId
     }).collect()
 }
 
+pub trait SortableClient {
+    /// X
+    fn x(&self) -> u16;
+    /// Y
+    fn y(&self) -> u16;
+    /// width
+    fn w(&self) -> u16;
+    /// height
+    fn h(&self) -> u16;
+    /// workspace
+    fn ws(&self) -> WorkspaceId;
+    /// workspace-Identifier (if ignore-monitors to map 2 workspaces on different monitors together)
+    fn wsi(&self, monitor_index: MonitorId) -> i32;
+    /// monitor
+    fn m(&self) -> MonitorId;
+    fn set_x(&mut self, x: u16);
+    fn set_y(&mut self, y: u16);
+    fn identifier(&self) -> String;
+}
+
+/// allows for mapping 2 workspaces on different monitors together
+/// e.g. if you have 2 monitors with 2 workspaces each, you can map the 2 workspaces on the second monitor to the 2 workspaces on the first monitor
+/// MONITOR_WORKSPACE_INDEX_OFFSET gets multiplied by the number of monitors to get the workspace id of the second monitor, so 10 means 10 workspaces per monitor
+pub const MONITOR_WORKSPACE_INDEX_OFFSET: i32 = 10;
+
+impl SortableClient for Client {
+    fn x(&self) -> u16 {
+        self.at.0 as u16
+    }
+    fn y(&self) -> u16 {
+        self.at.1 as u16
+    }
+    fn w(&self) -> u16 {
+        self.size.0 as u16
+    }
+    fn h(&self) -> u16 {
+        self.size.1 as u16
+    }
+    fn ws(&self) -> WorkspaceId {
+        self.workspace.id
+    }
+    fn wsi(&self, monitor_index: MonitorId) -> i32 {
+        self.workspace.id - (MONITOR_WORKSPACE_INDEX_OFFSET * monitor_index as i32)
+    }
+    fn m(&self) -> MonitorId { self.monitor }
+    fn set_x(&mut self, x: u16) {
+        self.at.0 = x as i16;
+    }
+    fn set_y(&mut self, y: u16) {
+        self.at.1 = y as i16;
+    }
+    fn identifier(&self) -> String {
+        self.title.to_string()
+    }
+}
+
+#[allow(dead_code)]
 fn pretty_print<T: Debug>(nested_vector: &[Vec<Vec<T>>]) {
     for (i, inner_vector) in nested_vector.iter().enumerate() {
         println!("Vector {}:", i);
