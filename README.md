@@ -1,5 +1,9 @@
 # WindowSwitcher
 
+[![crates.io](https://img.shields.io/crates/v/window_switcher.svg)](https://crates.io/crates/window_switcher)
+[![Docs](https://docs.rs/built/badge.svg)](https://docs.rs/window_switcher)
+[![Tests](https://github.com/H3rmt/WindowSwitcher/actions/workflows/rust.yml/badge.svg)](https://github.com/H3rmt/WindowSwitcher/actions/workflows/rust.yml)
+
 A small rust CLI tool to switch between windows in hyperland.
 
 It can switch through all windows or only windows of same class(= application) in regular or reverse order.
