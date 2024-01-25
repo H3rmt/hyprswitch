@@ -1,92 +1,86 @@
-#![allow(dead_code)]
-
-use std::collections::HashMap;
-use std::num::NonZeroU32;
+use std::cell::Cell;
+use std::path::Path;
 use std::rc::Rc;
+use gtk4::{Application, ApplicationWindow, Button, Box, Orientation, glib, gdk_pixbuf, Image, IconSize};
+use gtk4::prelude::*;
+use gtk4_layer_shell::{Layer, LayerShell};
 
-use winit::dpi::LogicalSize;
-use winit::event::{Event, WindowEvent};
-use winit::event_loop::EventLoop;
-use winit::window::{WindowBuilder, WindowLevel};
+// https://github.com/wmww/gtk-layer-shell/blob/master/examples/simple-example.c
+fn activate(app: &Application) {
+    let gtk_box = Box::builder()
+        .orientation(Orientation::Horizontal)
+        .build();
 
-const WIDTH: u32 = 320;
-const HEIGHT: u32 = 240;
+    let img = Image::builder()
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .pixel_size(50)
+        .build();
 
-pub fn test2() {
-    let event_loop = EventLoop::new().unwrap();
+    // Load and scale the image in one line
+    let pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale(Path::new("/usr/share/icons/Dracula/scalable/apps/vivaldi.svg"), -1, 400, true).unwrap();
+    img.set_from_pixbuf(Some(&pixbuf));
 
-    let mut windows = HashMap::new();
-    for _ in 0..2 {
-        let window = Rc::new(WindowBuilder::new()
-            .with_title("Hello Pixels")
-            .with_transparent(true)
-            .with_decorations(false)
-            .with_window_level(WindowLevel::AlwaysOnTop)
-            .with_inner_size(LogicalSize::new(WIDTH, HEIGHT))
-            // .with_position(PhysicalPosition::new(0, 0))
-            .with_resizable(false)
-            .build(&event_loop)
-            .unwrap());
+    gtk_box.append(&img);
+
+    let button_increase = Button::builder()
+        .label("Increase")
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .build();
+
+    let button_decrease = Button::builder()
+        .label("Decrease")
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .build();
 
 
-        let context = softbuffer::Context::new(window.clone()).unwrap();
-        let surface = softbuffer::Surface::new(&context, window.clone()).unwrap();
+    // A mutable integer
+    let number = Rc::new(Cell::new(0));
 
-        println!("Opened a new window: {:?}", window.id());
-        windows.insert(window.id(), (window, surface));
-    }
+    button_increase.connect_clicked(glib::clone!(@weak number, @weak button_decrease =>
+        move |_| {
+            number.set(number.get() + 1);
+            button_decrease.set_label(&number.get().to_string());
+    }));
+    button_decrease.connect_clicked(glib::clone!(@weak button_increase =>
+        move |_| {
+            number.set(number.get() - 1);
+            button_increase.set_label(&number.get().to_string());
+    }));
 
-    event_loop.run(move |event, elwt| {
-        match event {
-            Event::WindowEvent { event, window_id } => {
-                match event {
-                    WindowEvent::CloseRequested => {
-                        println!("Window {window_id:?} has received the signal to close");
+    gtk_box.append(&button_increase);
+    gtk_box.append(&button_decrease);
 
-                        elwt.exit();
-                    }
-                    WindowEvent::RedrawRequested => {
-                        let window = windows.get_mut(&window_id).unwrap();
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .title("Hello, World!")
+        .child(&gtk_box)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .margin_top(12)
+        .build();
 
-                        // Grab the window's client area dimensions
-                        if let (Some(width), Some(height)) = {
-                            let size = window.0.inner_size();
-                            (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
-                        } {
-                            // Resize surface if needed
-                            window.1.resize(width, height).unwrap();
+    window.init_layer_shell();
+    window.set_layer(Layer::Overlay);
 
-                            // Draw something in the window
-                            let mut buffer = window.1.buffer_mut().unwrap();
-                            redraw(
-                                &mut buffer,
-                                width.get() as usize,
-                                height.get() as usize,
-                            );
-                            buffer.present().unwrap();
-                        }
-                    }
-                    _ => (),
-                }
-            }
-            Event::LoopExiting => {}
-            _ => (),
-        }
-    }).unwrap();
+    window.present()
 }
 
-fn redraw(buffer: &mut [u32], width: usize, height: usize) {
-    for y in 0..height {
-        for x in 0..width {
-            let value = if x >= 100 && x < width - 100 && y >= 100 && y < height - 100 {
-                0x0ecfcfe0
-            } else {
-                let red = (x & 0xff) ^ (y & 0xff);
-                let green = (x & 0x7f) ^ (y & 0x7f);
-                let blue = (x & 0x3f) ^ (y & 0x3f);
-                (blue | (green << 8) | (red << 16)) as u32
-            };
-            buffer[y * width + x] = value;
-        }
-    }
+pub fn test_gui() {
+    let application = Application::new(Some("org.example.HelloWorld"), Default::default());
+
+    application.connect_activate(|app| {
+        activate(app);
+    });
+
+    application.run();
 }
