@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::path::Path;
 use std::rc::Rc;
 
-use gtk4::{Application, ApplicationWindow, Box, Button, gdk_pixbuf, glib, Image, Orientation, Text};
+use gtk4::{Application, ApplicationWindow, Box, Button, gdk_pixbuf, glib, Image, Orientation, PolicyType, Text};
 use gtk4::gdk;
 use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
@@ -15,12 +15,22 @@ fn activate(app: &Application, x: &Monitor) {
         .build();
 
     let text = Text::builder()
-        .margin_start(12)
-        .margin_end(12)
+        // .width_chars(50)
+        .margin_start(10)
+        .margin_end(10)
+        .margin_bottom(10)
+        .width_request(500)
         .text(format!("geo: {:?}", x.geometry()))
         .build();
 
-    gtk_box.append(&text);
+    let scroll = gtk4::ScrolledWindow::builder()
+        .margin_bottom(20)
+        .hscrollbar_policy(PolicyType::Automatic)
+        .vscrollbar_policy(PolicyType::Never)
+        .child(&text)
+        .build();
+
+    gtk_box.append(&scroll);
 
     let img = Image::builder()
         .margin_start(12)
@@ -51,15 +61,17 @@ fn activate(app: &Application, x: &Monitor) {
     // A mutable integer
     let number = Rc::new(Cell::new(0));
 
-    button_increase.connect_clicked(glib::clone!(@weak number, @weak button_decrease =>
+    button_increase.connect_clicked(glib::clone!(@weak number, @weak button_decrease, @weak button_increase =>
         move |_| {
             number.set(number.get() + 1);
-            button_decrease.set_label(&number.get().to_string());
+            button_increase.set_label(&format!("Inc: {}", number.get()));
+            button_decrease.set_label(&format!("Dec: {}", number.get()));
     }));
-    button_decrease.connect_clicked(glib::clone!(@weak button_increase =>
+    button_decrease.connect_clicked(glib::clone!(@weak button_increase, @weak button_decrease =>
         move |_| {
             number.set(number.get() - 1);
-            button_increase.set_label(&number.get().to_string());
+            button_increase.set_label(&format!("Inc: {}", number.get()));
+            button_decrease.set_label(&format!("Dec: {}", number.get()));
     }));
 
     gtk_box.append(&button_increase);
