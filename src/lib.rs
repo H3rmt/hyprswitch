@@ -1,4 +1,6 @@
 pub mod sort;
+#[cfg(feature = "gui")]
+pub mod windows;
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct MonitorData {

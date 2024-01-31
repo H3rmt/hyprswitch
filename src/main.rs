@@ -8,7 +8,7 @@ use hyprland::dispatch::DispatchType::FocusWindow;
 use hyprland::prelude::*;
 use hyprland::shared::WorkspaceId;
 
-use window_switcher::{MonitorData, MonitorId, WorkspaceData};
+use window_switcher::{MonitorData, MonitorId, windows, WorkspaceData};
 use window_switcher::sort::{sort_clients, SortableClient, update_clients};
 
 #[derive(Parser, Debug)]
@@ -38,7 +38,7 @@ struct Args {
     #[arg(long)]
     vertical_workspaces: bool,
 
-    /// Dont execute window switch, just print
+    /// Don't execute window switch, just print next window
     #[arg(long, short)]
     dry_run: bool,
 
@@ -85,6 +85,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         workspaces.sort_by(|a, b| a.id.cmp(&b.id));
         workspaces
     };
+
+    windows::test_gui();
 
     // all monitors with their data, x and y are the offset of the monitor, width and height are the size of the monitor
     // combined_width and combined_height are the combined size of all workspaces on the monitor and workspaces_on_monitor is the number of workspaces on the monitor
@@ -171,6 +173,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let binding = Client::get_active()?;
+    if cli.verbose && binding.is_none() {
+        println!("no active client found, using {:?}", clients.get(0).expect("no active window and no windows").title);
+    }
+
     let active = binding
         .as_ref()
         .unwrap_or(clients.get(0).expect("no active window and no windows"));

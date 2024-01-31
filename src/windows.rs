@@ -1,23 +1,33 @@
 use std::cell::Cell;
 use std::path::Path;
 use std::rc::Rc;
-use gtk4::{Application, ApplicationWindow, Button, Box, Orientation, glib, gdk_pixbuf, Image, IconSize};
+
+use gtk4::{Application, ApplicationWindow, Box, Button, gdk_pixbuf, glib, Image, Orientation, Text};
+use gtk4::gdk;
+use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
 
-// https://github.com/wmww/gtk-layer-shell/blob/master/examples/simple-example.c
-fn activate(app: &Application) {
+fn activate(app: &Application, x: &Monitor) {
     let gtk_box = Box::builder()
-        .orientation(Orientation::Horizontal)
+        .orientation(Orientation::Vertical)
+        .spacing(12)
         .build();
 
+    let text = Text::builder()
+        .margin_start(12)
+        .margin_end(12)
+        .text(format!("geo: {:?}", x.geometry()))
+        .build();
+
+    gtk_box.append(&text);
+
     let img = Image::builder()
-        .margin_top(12)
-        .margin_bottom(12)
         .margin_start(12)
         .margin_end(12)
         .pixel_size(50)
         .build();
+
 
     // Load and scale the image in one line
     let pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale(Path::new("/usr/share/icons/Dracula/scalable/apps/vivaldi.svg"), -1, 400, true).unwrap();
@@ -27,16 +37,12 @@ fn activate(app: &Application) {
 
     let button_increase = Button::builder()
         .label("Increase")
-        .margin_top(12)
-        .margin_bottom(12)
         .margin_start(12)
         .margin_end(12)
         .build();
 
     let button_decrease = Button::builder()
         .label("Decrease")
-        .margin_top(12)
-        .margin_bottom(12)
         .margin_start(12)
         .margin_end(12)
         .build();
@@ -63,23 +69,29 @@ fn activate(app: &Application) {
         .application(app)
         .title("Hello, World!")
         .child(&gtk_box)
-        .margin_bottom(12)
-        .margin_start(12)
-        .margin_end(12)
-        .margin_top(12)
         .build();
 
     window.init_layer_shell();
     window.set_layer(Layer::Overlay);
+    window.set_monitor(x);
+    window.present();
+}
 
-    window.present()
+fn get_all_monitors() -> Vec<Monitor> {
+    let display_manager = gdk::DisplayManager::get();
+    let displays = display_manager.list_displays();
+    displays.get(0).expect("No Display found")
+        .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
 }
 
 pub fn test_gui() {
     let application = Application::new(Some("org.example.HelloWorld"), Default::default());
 
     application.connect_activate(|app| {
-        activate(app);
+        let monitors = get_all_monitors();
+        for monitor in monitors {
+            activate(app, &monitor);
+        }
     });
 
     application.run();
