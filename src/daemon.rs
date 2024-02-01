@@ -21,7 +21,6 @@ pub fn start_daemon() -> Result<(), Box<dyn std::error::Error>> {
     if Path::new(PATH).exists() {
         std::fs::remove_file(PATH)?;
     }
-
     let listener = UnixListener::bind(PATH)?;
 
     loop {

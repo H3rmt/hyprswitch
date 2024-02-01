@@ -2,13 +2,13 @@ use std::fmt::Debug;
 
 use clap::Parser;
 
-use window_switcher::{gui, handle, toast};
+use window_switcher::handle;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Switch between windows of same class (type)
-    #[arg(long)]
+    #[arg(long, short)]
     same_class: bool,
 
     /// Reverse the order of the windows
@@ -39,10 +39,22 @@ struct Args {
     #[arg(long, short)]
     verbose: bool,
 
+    /// Enable toasting of errors
+    #[arg(long, short)]
+    #[cfg(feature = "toast")]
+    toast: bool,
+
     /// Starts as the daemon, starts socket server and executes current window switch
     /// Sends Commands to the daemon if running instead
     #[arg(long)]
-    gui_daemon: bool,
+    #[cfg(feature = "daemon")]
+    daemon: bool,
+
+    /// Starts the daemon with the gui
+    /// Needs to be used with --daemon
+    #[arg(long)]
+    #[cfg(feature = "gui")]
+    gui: bool,
 }
 
 ///
@@ -66,10 +78,11 @@ struct Args {
 /// * Display workspaces vertically on monitors
 ///     * `window_switcher --vertical-workspaces`
 ///
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let cli = Args::parse();
 
-    if cli.gui_daemon {
+    #[cfg(feature = "daemon")]
+    if cli.daemon {
         use window_switcher::daemon;
         if !daemon::daemon_running() {
             if cli.verbose {
@@ -78,11 +91,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // create new os thread for daemon
             std::thread::spawn(move || {
                 daemon::start_daemon()
-                    .unwrap_or_else(|e|
-                        toast::toast(&format!("Failed to start daemon: {}", e))
-                    );
+                    .map_err(|_e| {
+                        #[cfg(feature = "toast")] {
+                            use window_switcher::toast::toast;
+                            if cli.toast {
+                                toast(&format!("Failed to start daemon: {}", _e));
+                            }
+                        }
+                    })
+                    .expect("Failed to start daemon");
             });
-            gui::start_gui();
+            #[cfg(feature = "gui")]
+            if cli.gui {
+                use window_switcher::gui;
+                gui::start_gui();
+            }
         } else if cli.verbose {
             println!("Daemon already running");
         }
@@ -96,8 +119,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cli.stay_workspace,
             cli.verbose,
             cli.dry_run,
-        )?;
-        return Ok(());
+        ).map_err(|_e| {
+            #[cfg(feature = "toast")] {
+                use window_switcher::toast::toast;
+                if cli.toast {
+                    toast(&format!("Failed to send command to daemon: {}", _e));
+                }
+            }
+        }).expect("Failed to send command to daemon");
+
+        return;
     }
 
     handle::handle(
@@ -109,7 +140,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cli.stay_workspace,
         cli.verbose,
         cli.dry_run,
-    )?;
-
-    Ok(())
+    ).map_err(|_e| {
+        #[cfg(feature = "toast")] {
+            use window_switcher::toast::toast;
+            if cli.toast {
+                toast(&format!("Failed to handle command: {}", _e));
+            }
+        }
+    }).expect("Failed to handle command");
 }

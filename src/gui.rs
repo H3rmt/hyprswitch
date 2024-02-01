@@ -40,8 +40,8 @@ fn activate(app: &Application, x: &Monitor) {
 
 
     // Load and scale the image in one line
-    let pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale(Path::new("/usr/share/icons/Dracula/scalable/apps/vivaldi.svg"), -1, 400, true).unwrap();
-    img.set_from_pixbuf(Some(&pixbuf));
+    let pix_buffer = gdk_pixbuf::Pixbuf::from_file_at_scale(Path::new("/usr/share/icons/Dracula/scalable/apps/vivaldi.svg"), -1, 400, true).unwrap();
+    img.set_from_pixbuf(Some(&pix_buffer));
 
     gtk_box.append(&img);
 
@@ -92,12 +92,12 @@ fn activate(app: &Application, x: &Monitor) {
 fn get_all_monitors() -> Vec<Monitor> {
     let display_manager = gdk::DisplayManager::get();
     let displays = display_manager.list_displays();
-    displays.get(0).expect("No Display found")
+    displays.first().expect("No Display found")
         .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
 }
 
-pub fn test_gui() {
-    let application = Application::new(Some("org.example.HelloWorld"), Default::default());
+pub fn start_gui() {
+    let application = Application::new(Some("org.example.HelloWorld3"), Default::default());
 
     application.connect_activate(|app| {
         let monitors = get_all_monitors();
@@ -106,5 +106,5 @@ pub fn test_gui() {
         }
     });
 
-    application.run();
+    application.run_with_args::<String>(&[]);
 }

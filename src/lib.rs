@@ -4,6 +4,7 @@ pub mod handle;
 pub mod gui;
 #[cfg(feature = "daemon")]
 pub mod daemon;
+#[cfg(feature = "toast")]
 pub mod toast;
 
 #[derive(Default, Debug, Clone, Copy)]
