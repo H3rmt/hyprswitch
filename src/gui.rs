@@ -9,7 +9,7 @@ use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
 
-use crate::Info;
+use crate::{Data, Info};
 
 fn activate(app: &Application, x: &Monitor) {
     let gtk_box = Box::builder()
@@ -99,7 +99,7 @@ fn get_all_monitors() -> Vec<Monitor> {
         .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
 }
 
-pub fn start_gui(_info: Arc<Mutex<Info>>) {
+pub fn start_gui(_info: Arc<Mutex<Info>>, _data: Arc<Mutex<Data>>) {
     let application = Application::new(Some("org.example.HelloWorld"), Default::default());
 
     application.connect_activate(|app| {

@@ -6,11 +6,76 @@ use hyprland::dispatch::DispatchType::FocusWindow;
 use hyprland::prelude::*;
 use hyprland::shared::WorkspaceId;
 
-use crate::{Info, MonitorData, MonitorId, WorkspaceData};
+use crate::{Data, Info, MonitorData, MonitorId, WorkspaceData};
 use crate::sort::{sort_clients, SortableClient, update_clients};
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle(info: Info) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle(
+    info: Info,
+    clients: Vec<Client>,
+    active: Option<Client>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let active = active
+        .map(|a| (a.class, a.workspace.id, a.address.to_string()))
+        .unwrap_or_else(|| {
+            let a = clients.first().expect("No active client and no clients found");
+            (a.class.to_string(), a.workspace.id, a.address.to_string())
+        });
+
+    let mut clients = clients;
+
+    // filter clients by class
+    if info.same_class {
+        clients = clients
+            .into_iter()
+            .filter(|c| c.class == active.0)
+            .collect::<Vec<_>>();
+    }
+
+    // filter clients by workspace
+    if info.stay_workspace {
+        clients = clients
+            .into_iter()
+            .filter(|c| c.workspace.id == active.1)
+            .collect::<Vec<_>>();
+    }
+
+    let mut current_window_index = clients
+        .iter()
+        .position(|r| r.address.to_string() == active.2)
+        .expect("Active window not found?");
+
+    if info.reverse {
+        current_window_index = if current_window_index == 0 {
+            clients.len() - 1
+        } else {
+            current_window_index - 1
+        };
+    } else {
+        current_window_index += 1;
+    }
+
+    let next_client = clients
+        .into_iter()
+        .cycle()
+        .nth(current_window_index)
+        .expect("No next window?");
+
+    if info.verbose {
+        println!("next_client: {:?}", next_client);
+    }
+
+    if !info.dry_run {
+        Dispatch::call(FocusWindow(WindowIdentifier::Address(next_client.address.clone())))?;
+    } else {
+        // print regardless of verbose
+        println!("next_client: {}", next_client.title);
+    }
+
+    Ok(())
+}
+
+pub fn collect_data(info: Info) -> Result<Data, Box<dyn std::error::Error>> {
     let mut clients = Clients::get()?
         .filter(|c| c.workspace.id != -1)
         .collect::<Vec<_>>();
@@ -104,69 +169,21 @@ pub fn handle(info: Info) -> Result<(), Box<dyn std::error::Error>> {
     if info.verbose {
         println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, MonitorId, u16, u16, u16, u16, WorkspaceId, String)>>());
     }
-    clients = sort_clients(clients, info.ignore_workspaces, info.ignore_monitors);
+    let clients = sort_clients(clients, info.ignore_workspaces, info.ignore_monitors);
 
     if info.verbose {
         println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, MonitorId, u16, u16, u16, u16, WorkspaceId, String)>>());
     }
 
-    let binding = Client::get_active()?;
-    if info.verbose && binding.is_none() {
-        println!("no active client found, using {:?}", clients.first().expect("no active window and no windows").title);
+    let active = Client::get_active()?;
+    if info.verbose && active.is_none() {
+        println!("no active client found");
     }
 
-    let active = binding
-        .as_ref()
-        .unwrap_or(clients.first().expect("no active window and no windows"));
-    let active_address = active.address.to_string();
-    let active_class = active.class.clone();
-    let active_workspace_id = active.workspace.id;
-
-    if info.same_class {
-        clients = clients
-            .into_iter()
-            .filter(|c| c.class == active_class)
-            .collect::<Vec<_>>();
-    }
-
-    if info.stay_workspace {
-        clients = clients
-            .into_iter()
-            .filter(|c| c.workspace.id == active_workspace_id)
-            .collect::<Vec<_>>();
-    }
-
-    let mut current_window_index = clients
-        .iter()
-        .position(|r| r.address.to_string() == active_address)
-        .expect("Active window not found?");
-
-    if info.reverse {
-        current_window_index = if current_window_index == 0 {
-            clients.len() - 1
-        } else {
-            current_window_index - 1
-        };
-    } else {
-        current_window_index += 1;
-    }
-
-    let next_client = clients
-        .into_iter()
-        .cycle()
-        .nth(current_window_index)
-        .expect("No next window?");
-
-    if info.verbose {
-        println!("next_client: {:?}", next_client);
-    }
-
-    if !info.dry_run {
-        Dispatch::call(FocusWindow(WindowIdentifier::Address(next_client.address.clone())))?;
-    } else {
-        // print regardless of verbose
-        println!("next_client: {}", next_client.title);
-    }
-
-    Ok(())
+    Ok(Data {
+        clients,
+        workspace_data,
+        monitor_data,
+        active,
+    })
 }

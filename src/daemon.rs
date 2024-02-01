@@ -1,9 +1,10 @@
 use std::io::{Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::Info;
+use crate::{Data, Info};
 
 const PATH: &str = "/tmp/window_switcher.sock";
 
@@ -17,7 +18,9 @@ pub fn daemon_running() -> bool {
 }
 
 // pass function to start_daemon taking info from socket
-pub fn start_daemon(exec: impl FnOnce(Info) + Copy + Send + 'static) -> Result<(), Box<dyn std::error::Error>> {
+pub fn start_daemon<F>(info: Arc<Mutex<Info>>, data: Arc<Mutex<Data>>, exec: F) -> Result<(), Box<dyn std::error::Error>>
+    where F: FnOnce(Info, Arc<Mutex<Data>>) + Copy + Send + 'static
+{
     // remove old PATH
     if Path::new(PATH).exists() {
         std::fs::remove_file(PATH)?;
@@ -27,7 +30,9 @@ pub fn start_daemon(exec: impl FnOnce(Info) + Copy + Send + 'static) -> Result<(
     loop {
         match listener.accept() {
             Ok((stream, _)) => {
-                thread::spawn(move || handle_client(stream, exec));
+                let info = info.clone();
+                let data = data.clone();
+                thread::spawn(move || handle_client(stream, exec, info, data));
             }
             Err(e) => {
                 println!("couldn't get client: {:?}", e);
@@ -36,7 +41,9 @@ pub fn start_daemon(exec: impl FnOnce(Info) + Copy + Send + 'static) -> Result<(
     }
 }
 
-fn handle_client(mut stream: UnixStream, exec: impl FnOnce(Info)) {
+fn handle_client<F>(mut stream: UnixStream, exec: F, info_arc: Arc<Mutex<Info>>, data_arc: Arc<Mutex<Data>>)
+    where F: FnOnce(Info, Arc<Mutex<Data>>) + Copy + Send + 'static
+{
     println!("Handling client");
     let mut buffer = Vec::new();
     stream.read_to_end(&mut buffer).unwrap();
@@ -52,7 +59,7 @@ fn handle_client(mut stream: UnixStream, exec: impl FnOnce(Info)) {
         let verbose = buffer[7] == 1;
         let dry_run = buffer[8] == 1;
 
-        exec(Info {
+        let info = Info {
             vertical_workspaces,
             ignore_monitors,
             ignore_workspaces,
@@ -61,7 +68,12 @@ fn handle_client(mut stream: UnixStream, exec: impl FnOnce(Info)) {
             stay_workspace,
             verbose,
             dry_run,
-        });
+        };
+
+        let mut i = info_arc.lock().expect("Failed to lock mutex");
+        *i = info;
+
+        exec(info, data_arc);
     }
 }
 

@@ -1,3 +1,8 @@
+use std::collections::HashMap;
+
+use hyprland::data::Client;
+use hyprland::shared::WorkspaceId;
+
 pub mod sort;
 pub mod handle;
 #[cfg(feature = "gui")]
@@ -36,4 +41,12 @@ pub struct Info {
     pub stay_workspace: bool,
     pub verbose: bool,
     pub dry_run: bool,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct Data {
+    pub clients: Vec<Client>,
+    pub workspace_data: HashMap<WorkspaceId, WorkspaceData>,
+    pub monitor_data: HashMap<MonitorId, MonitorData>,
+    pub active: Option<Client>,
 }
