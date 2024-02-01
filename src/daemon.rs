@@ -3,7 +3,7 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::thread;
 
-use crate::handle;
+use crate::Info;
 
 const PATH: &str = "/tmp/window_switcher.sock";
 
@@ -16,7 +16,8 @@ pub fn daemon_running() -> bool {
     }
 }
 
-pub fn start_daemon() -> Result<(), Box<dyn std::error::Error>> {
+// pass function to start_daemon taking info from socket
+pub fn start_daemon(exec: impl FnOnce(Info) + Copy + Send + 'static) -> Result<(), Box<dyn std::error::Error>> {
     // remove old PATH
     if Path::new(PATH).exists() {
         std::fs::remove_file(PATH)?;
@@ -26,7 +27,7 @@ pub fn start_daemon() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match listener.accept() {
             Ok((stream, _)) => {
-                thread::spawn(|| handle_client(stream));
+                thread::spawn(move || handle_client(stream, exec));
             }
             Err(e) => {
                 println!("couldn't get client: {:?}", e);
@@ -35,7 +36,7 @@ pub fn start_daemon() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn handle_client(mut stream: UnixStream) {
+fn handle_client(mut stream: UnixStream, exec: impl FnOnce(Info)) {
     println!("Handling client");
     let mut buffer = Vec::new();
     stream.read_to_end(&mut buffer).unwrap();
@@ -50,7 +51,8 @@ fn handle_client(mut stream: UnixStream) {
         let stay_workspace = buffer[6] == 1;
         let verbose = buffer[7] == 1;
         let dry_run = buffer[8] == 1;
-        handle::handle(
+
+        exec(Info {
             vertical_workspaces,
             ignore_monitors,
             ignore_workspaces,
@@ -59,36 +61,24 @@ fn handle_client(mut stream: UnixStream) {
             stay_workspace,
             verbose,
             dry_run,
-        ).expect("Failed to handle command")
-    } else {
-        println!("Invalid data");
+        });
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn send_command(
-    vertical_workspaces: bool,
-    ignore_monitors: bool,
-    ignore_workspaces: bool,
-    same_class: bool,
-    reverse: bool,
-    stay_workspace: bool,
-    verbose: bool,
-    dry_run: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn send_command(info: Info) -> Result<(), Box<dyn std::error::Error>> {
     // send data to socket
     let mut stream = UnixStream::connect(PATH)?;
     // send 12 to identify as real command
     let buf = &[
         b'w',
-        vertical_workspaces as u8,
-        ignore_monitors as u8,
-        ignore_workspaces as u8,
-        same_class as u8,
-        reverse as u8,
-        stay_workspace as u8,
-        verbose as u8,
-        dry_run as u8,
+        info.vertical_workspaces as u8,
+        info.ignore_monitors as u8,
+        info.ignore_workspaces as u8,
+        info.same_class as u8,
+        info.reverse as u8,
+        info.stay_workspace as u8,
+        info.verbose as u8,
+        info.dry_run as u8,
     ];
     println!("buffer: {:?}", buf);
     stream.write_all(buf)?;

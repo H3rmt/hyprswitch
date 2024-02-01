@@ -7,7 +7,7 @@ pub mod daemon;
 #[cfg(feature = "toast")]
 pub mod toast;
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct MonitorData {
     pub x: u16,
     pub y: u16,
@@ -18,10 +18,22 @@ pub struct MonitorData {
     pub workspaces_on_monitor: u16,
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct WorkspaceData {
     pub x: u16,
     pub y: u16,
 }
 
 pub type MonitorId = i64;
+
+#[derive(Debug, Clone, Copy)]
+pub struct Info {
+    pub vertical_workspaces: bool,
+    pub ignore_monitors: bool,
+    pub ignore_workspaces: bool,
+    pub same_class: bool,
+    pub reverse: bool,
+    pub stay_workspace: bool,
+    pub verbose: bool,
+    pub dry_run: bool,
+}

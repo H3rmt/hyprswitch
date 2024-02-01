@@ -1,12 +1,15 @@
 use std::cell::Cell;
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use gtk4::{Application, ApplicationWindow, Box, Button, gdk_pixbuf, glib, Image, Orientation, PolicyType, Text};
 use gtk4::gdk;
 use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
+
+use crate::Info;
 
 fn activate(app: &Application, x: &Monitor) {
     let gtk_box = Box::builder()
@@ -96,8 +99,8 @@ fn get_all_monitors() -> Vec<Monitor> {
         .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
 }
 
-pub fn start_gui() {
-    let application = Application::new(Some("org.example.HelloWorld3"), Default::default());
+pub fn start_gui(_info: Arc<Mutex<Info>>) {
+    let application = Application::new(Some("org.example.HelloWorld"), Default::default());
 
     application.connect_activate(|app| {
         let monitors = get_all_monitors();

@@ -1,61 +1,12 @@
-use std::fmt::Debug;
+use std::sync::{Arc, Mutex};
 
 use clap::Parser;
 
-use window_switcher::handle;
+use window_switcher::{handle, Info};
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Switch between windows of same class (type)
-    #[arg(long, short)]
-    same_class: bool,
+use crate::cli::Args;
 
-    /// Reverse the order of the windows
-    #[arg(long, short)]
-    reverse: bool,
-
-    /// Restrict cycling of windows to current workspace
-    #[arg(long)]
-    stay_workspace: bool,
-
-    /// Ignore workspaces and sort like one big workspace for each monitor
-    #[arg(long)]
-    ignore_workspaces: bool,
-
-    /// Ignore monitors and sort like one big monitor, workspaces must have offset of 10 for each monitor (read TODO link)
-    #[arg(long)]
-    ignore_monitors: bool,
-
-    /// Display workspaces vertically on monitors
-    #[arg(long)]
-    vertical_workspaces: bool,
-
-    /// Don't execute window switch, just print next window
-    #[arg(long, short)]
-    dry_run: bool,
-
-    /// Enable verbose output
-    #[arg(long, short)]
-    verbose: bool,
-
-    /// Enable toasting of errors
-    #[arg(long, short)]
-    #[cfg(feature = "toast")]
-    toast: bool,
-
-    /// Starts as the daemon, starts socket server and executes current window switch
-    /// Sends Commands to the daemon if running instead
-    #[arg(long)]
-    #[cfg(feature = "daemon")]
-    daemon: bool,
-
-    /// Starts the daemon with the gui
-    /// Needs to be used with --daemon
-    #[arg(long)]
-    #[cfg(feature = "gui")]
-    gui: bool,
-}
+mod cli;
 
 ///
 /// # Usage
@@ -88,38 +39,41 @@ fn main() {
             if cli.verbose {
                 println!("Starting daemon");
             }
-            // create new os thread for daemon
-            std::thread::spawn(move || {
-                daemon::start_daemon()
-                    .map_err(|_e| {
-                        #[cfg(feature = "toast")] {
-                            use window_switcher::toast::toast;
-                            if cli.toast {
-                                toast(&format!("Failed to start daemon: {}", _e));
-                            }
-                        }
-                    })
-                    .expect("Failed to start daemon");
-            });
+
             #[cfg(feature = "gui")]
             if cli.gui {
-                use window_switcher::gui;
-                gui::start_gui();
+                // create arc to send to thread
+                let latest_info: Arc<Mutex<Info>> = Arc::new(Mutex::new(cli.into()));
+
+                std::thread::spawn(move || {
+                    use window_switcher::gui;
+                    gui::start_gui(latest_info);
+                });
             }
+
+            daemon::start_daemon(move |info| {
+                handle::handle(info).map_err(|_e| {
+                    #[cfg(feature = "toast")] {
+                        use window_switcher::toast::toast;
+                        if cli.toast {
+                            toast(&format!("Failed to handle command: {}", _e));
+                        }
+                    }
+                }).expect("Failed to handle command")
+            }).map_err(|_e| {
+                #[cfg(feature = "toast")] {
+                    use window_switcher::toast::toast;
+                    if cli.toast {
+                        toast(&format!("Failed to start daemon: {}", _e));
+                    }
+                }
+            })
+                .expect("Failed to start daemon");
         } else if cli.verbose {
             println!("Daemon already running");
         }
 
-        daemon::send_command(
-            cli.vertical_workspaces,
-            cli.ignore_monitors,
-            cli.ignore_workspaces,
-            cli.same_class,
-            cli.reverse,
-            cli.stay_workspace,
-            cli.verbose,
-            cli.dry_run,
-        ).map_err(|_e| {
+        daemon::send_command(cli.into()).map_err(|_e| {
             #[cfg(feature = "toast")] {
                 use window_switcher::toast::toast;
                 if cli.toast {
@@ -131,16 +85,7 @@ fn main() {
         return;
     }
 
-    handle::handle(
-        cli.vertical_workspaces,
-        cli.ignore_monitors,
-        cli.ignore_workspaces,
-        cli.same_class,
-        cli.reverse,
-        cli.stay_workspace,
-        cli.verbose,
-        cli.dry_run,
-    ).map_err(|_e| {
+    handle::handle(cli.into()).map_err(|_e| {
         #[cfg(feature = "toast")] {
             use window_switcher::toast::toast;
             if cli.toast {
