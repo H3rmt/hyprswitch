@@ -1,6 +1,10 @@
 pub mod sort;
+pub mod handle;
 #[cfg(feature = "gui")]
-pub mod windows;
+pub mod gui;
+#[cfg(feature = "daemon")]
+pub mod daemon;
+pub mod toast;
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct MonitorData {
