@@ -10,7 +10,7 @@ env:
 
 jobs:
   publish:
-    name: publish
+    name: Publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,29 +25,4 @@ jobs:
           && ninja -C build
           && sudo ninja -C build install
           && sudo ldconfig
-      - run: cargo publish --token $${{ secrets.CRATES_TOKEN }}
-
-  release:
-    name: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install gtk4-layer-shell
-        run: sudo apt-get update
-          && sudo apt -y install git libglib2.0-dev libgraphene-1.0-dev meson ninja-build libwayland-dev libgtk-4-dev gobject-introspection libgirepository1.0-dev python3 valac
-          && git clone https://github.com/wmww/gtk4-layer-shell
-          && cd gtk4-layer-shell
-          && meson setup build
-          && ninja -C build
-          && sudo ninja -C build install
-          && sudo ldconfig
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          RUSTTARGET: x86_64-unknown-linux-musl
-          EXTRA_FILES: "README.md LICENSE"
-          ARCHIVE_TYPES: tar.gz tar.xz tar.zst
+      - run: cargo publish --all-features --token $${{ secrets.CRATES_TOKEN }}
