@@ -12,7 +12,7 @@ pub mod daemon;
 #[cfg(feature = "toast")]
 pub mod toast;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct MonitorData {
     pub x: u16,
     pub y: u16,
@@ -21,6 +21,8 @@ pub struct MonitorData {
     pub combined_width: u16,
     pub combined_height: u16,
     pub workspaces_on_monitor: u16,
+    #[cfg(feature = "gui")]
+    pub connector: String,
 }
 
 #[derive(Debug, Clone, Copy)]

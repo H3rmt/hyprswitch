@@ -99,12 +99,20 @@ fn get_all_monitors() -> Vec<Monitor> {
         .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
 }
 
-pub fn start_gui(_info: Arc<Mutex<Info>>, _data: Arc<Mutex<Data>>) {
+pub fn start_gui(info: Arc<Mutex<Info>>, data: Arc<Mutex<Data>>) {
     let application = Application::new(Some("org.example.HelloWorld"), Default::default());
 
-    application.connect_activate(|app| {
+    println!("Starting GUI {:?}", data.lock().expect("Could not lock data").monitor_data);
+
+    application.connect_activate(move |app| {
         let monitors = get_all_monitors();
         for monitor in monitors {
+            // get monitor data by connector
+            let md = &data.lock().expect("Could not lock data").monitor_data;
+            let monitor_data = md
+                .iter().find(|(_, v)| v.connector == monitor.connector().expect("Monitor not found"))
+                .expect("Monitor not found").1;
+            println!("Monitor: {:?}, {monitor_data:?}", monitor.connector());
             activate(app, &monitor);
         }
     });

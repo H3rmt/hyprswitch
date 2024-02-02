@@ -1,8 +1,6 @@
-use std::sync::{Arc, Mutex};
-
 use clap::Parser;
 
-use window_switcher::{Data, handle, Info};
+use window_switcher::handle;
 
 use crate::cli::Args;
 
@@ -35,6 +33,8 @@ fn main() {
     #[cfg(feature = "daemon")]
     if cli.daemon {
         use window_switcher::daemon;
+        use std::sync::{Arc, Mutex};
+        use window_switcher::{Data, Info};
         if !daemon::daemon_running() {
             if cli.verbose {
                 println!("Starting daemon");
@@ -42,7 +42,14 @@ fn main() {
 
             // create arc to send to thread
             let latest_info: Arc<Mutex<Info>> = Arc::new(Mutex::new(cli.into()));
-            let latest_data: Arc<Mutex<Data>> = Arc::new(Mutex::new(Data::default()));
+            let latest_data: Arc<Mutex<Data>> = Arc::new(Mutex::new(handle::collect_data(cli.into()).map_err(|_e| {
+                #[cfg(feature = "toast")] {
+                    use window_switcher::toast::toast;
+                    if cli.toast {
+                        toast(&format!("Failed to collect data: {}", _e));
+                    }
+                }
+            }).expect("Failed to collect data")));
 
             #[cfg(feature = "gui")]
             if cli.gui {
@@ -55,7 +62,7 @@ fn main() {
                 });
             }
 
-            daemon::start_daemon(latest_info, latest_data, move |info, latest_data| {
+            daemon::start_daemon(latest_info, latest_data, move |info, latest_info, latest_data| {
                 let data = handle::collect_data(cli.into()).map_err(|_e| {
                     #[cfg(feature = "toast")] {
                         use window_switcher::toast::toast;
@@ -64,12 +71,19 @@ fn main() {
                         }
                     }
                 }).expect("Failed to collect data");
-                let d2 = data.clone();
+                let clients = data.clients.clone();
+                let active = data.active.clone();
 
-                let mut ld = latest_data.lock().expect("Failed to lock mutex");
-                *ld = data;
+                {
+                    let mut i = latest_info.lock().expect("Failed to lock mutex");
+                    *i = info;
+                }
+                {
+                    let mut ld = latest_data.lock().expect("Failed to lock mutex");
+                    *ld = data;
+                }
 
-                handle::handle(info, d2.clients, d2.active).map_err(|_e| {
+                handle::handle(info, clients, active).map_err(|_e| {
                     #[cfg(feature = "toast")] {
                         use window_switcher::toast::toast;
                         if cli.toast {

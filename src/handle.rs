@@ -120,6 +120,8 @@ pub fn collect_data(info: Info) -> Result<Data, Box<dyn std::error::Error>> {
                         combined_width: (monitor.width as f32 / monitor.scale) as u16,
                         combined_height: (monitor.height as f32 / monitor.scale) as u16,
                         workspaces_on_monitor: 1,
+                        #[cfg(feature = "gui")]
+                        connector: monitor.name.clone(),
                     }
                 });
         });

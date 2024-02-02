@@ -19,7 +19,7 @@ pub fn daemon_running() -> bool {
 
 // pass function to start_daemon taking info from socket
 pub fn start_daemon<F>(info: Arc<Mutex<Info>>, data: Arc<Mutex<Data>>, exec: F) -> Result<(), Box<dyn std::error::Error>>
-    where F: FnOnce(Info, Arc<Mutex<Data>>) + Copy + Send + 'static
+    where F: FnOnce(Info, Arc<Mutex<Info>>, Arc<Mutex<Data>>) + Copy + Send + 'static
 {
     // remove old PATH
     if Path::new(PATH).exists() {
@@ -42,9 +42,8 @@ pub fn start_daemon<F>(info: Arc<Mutex<Info>>, data: Arc<Mutex<Data>>, exec: F) 
 }
 
 fn handle_client<F>(mut stream: UnixStream, exec: F, info_arc: Arc<Mutex<Info>>, data_arc: Arc<Mutex<Data>>)
-    where F: FnOnce(Info, Arc<Mutex<Data>>) + Copy + Send + 'static
+    where F: FnOnce(Info, Arc<Mutex<Info>>, Arc<Mutex<Data>>) + Copy + Send + 'static
 {
-    println!("Handling client");
     let mut buffer = Vec::new();
     stream.read_to_end(&mut buffer).unwrap();
     println!("data: {:?}", buffer);
@@ -70,10 +69,7 @@ fn handle_client<F>(mut stream: UnixStream, exec: F, info_arc: Arc<Mutex<Info>>,
             dry_run,
         };
 
-        let mut i = info_arc.lock().expect("Failed to lock mutex");
-        *i = info;
-
-        exec(info, data_arc);
+        exec(info, info_arc, data_arc);
     }
 }
 
@@ -92,7 +88,6 @@ pub fn send_command(info: Info) -> Result<(), Box<dyn std::error::Error>> {
         info.verbose as u8,
         info.dry_run as u8,
     ];
-    println!("buffer: {:?}", buf);
     stream.write_all(buf)?;
     stream.flush()?;
     Ok(())
