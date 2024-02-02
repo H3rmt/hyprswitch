@@ -2,8 +2,6 @@ name: Rust
 
 on:
   push:
-    branches: 
-      - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -21,6 +19,7 @@ jobs:
       matrix:
         platform: [ ubuntu-20.04, ubuntu-latest ]
     runs-on: ${{ matrix.platform }}
+    name: build ${{ matrix.target }}
 
     steps:
     - uses: actions/checkout@v3
@@ -33,7 +32,7 @@ jobs:
     - name: Build
       run: cargo build --verbose --release
     - name: Test
-      run: cargo test --release
+      run: cargo test
 
   clippy:
     name: "Cargo clippy"
