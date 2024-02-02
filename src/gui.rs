@@ -1,57 +1,91 @@
-use std::path::Path;
-
-use gtk4::{Application, ApplicationWindow, Box, gdk_pixbuf, glib, Image, Orientation, PolicyType, Text};
-use gtk4::gdk;
+use gtk4::{ApplicationWindow, Frame, gdk, glib};
 use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
+use hyprland::data::Client;
+use libadwaita as adw;
+use tokio::sync::MutexGuard;
 
-use crate::Share;
+use crate::{Data, Info, Share};
+
+const SIZE_FACTOR: i16 = 7;
+
+fn client_ui(client: &Client) -> Frame {
+    let icon = gtk4::Image::from_icon_name(&client.class);
+    let pixel_size = (client.size.1 / (SIZE_FACTOR * 2)) as i32;
+    println!("pixel_size: {}", pixel_size);
+    icon.set_pixel_size(pixel_size);
+
+    let frame = Frame::builder()
+        .width_request((client.size.0 / SIZE_FACTOR) as i32)
+        .height_request((client.size.1 / SIZE_FACTOR) as i32)
+        .label(&client.class)
+        .label_xalign(0.5)
+        .child(&icon)
+        .build();
+
+
+    // let path = icon_loader::icon_loader_hicolor().load_icon(&client.class);
+    // println!("path: {:?}", path);
+    // if let Some(path) = path {
+    //     let pixbuf = gdk_pixbuf::Pixbuf::from_file(path.file_for_size(64)).unwrap();
+    //     let icon = gtk4::Image::from_pixbuf(Some(&pixbuf));
+    //     frame.set_child(Some(&icon));
+    // } else {
+    //     let icon = gtk4::Image::from_icon_name(&client.class);
+    //     frame.set_child(Some(&icon));
+    // }
+
+    frame
+}
 
 fn activate(
-    app: &Application,
+    app: &adw::Application,
     monitor: &Monitor,
     data: Share,
     #[cfg(feature = "toast")]
     do_toast: bool,
 ) {
-    let gtk_box = Box::builder()
-        .orientation(Orientation::Vertical)
-        .spacing(12)
+    let workspaces_box = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Horizontal)
+        .spacing(15)
+        .margin_top(15)
+        .margin_bottom(15)
+        .margin_start(15)
+        .margin_end(15)
         .build();
 
-    let text = Text::builder()
-        .width_chars(70)
-        .margin_start(10)
-        .margin_end(10)
-        .margin_bottom(10)
-        .text(format!("geo: {:?}", monitor.geometry()))
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .margin_bottom(15)
+        .margin_top(15)
+        .margin_start(15)
+        .margin_end(15)
+        .child(&workspaces_box)
+        .title("Hello, World!")
         .build();
 
-    let scroll = gtk4::ScrolledWindow::builder()
-        .margin_bottom(20)
-        .hscrollbar_policy(PolicyType::Automatic)
-        .vscrollbar_policy(PolicyType::Never)
-        .width_request(1300)
-        .child(&text)
-        .build();
+    listen(
+        workspaces_box,
+        monitor,
+        data,
+        #[cfg(feature = "toast")]
+            do_toast,
+    );
 
-    gtk_box.append(&scroll);
+    window.init_layer_shell();
+    window.set_layer(Layer::Overlay);
+    window.set_monitor(monitor);
+    window.present();
+}
 
-    let img = Image::builder()
-        .margin_start(12)
-        .margin_end(12)
-        .pixel_size(50)
-        .build();
-
-
-    // Load and scale the image in one line
-    let pix_buffer = gdk_pixbuf::Pixbuf::from_file_at_scale(Path::new("/usr/share/icons/Dracula/scalable/apps/vivaldi.svg"), -1, 400, true).unwrap();
-    img.set_from_pixbuf(Some(&pix_buffer));
-
-    gtk_box.append(&img);
-
-
+fn listen(
+    workspaces_box: gtk4::Box,
+    monitor: &Monitor,
+    data: Share,
+    #[cfg(feature = "toast")]
+    do_toast: bool,
+) {
     let connector = monitor
         .connector()
         .ok_or_else(|| {
@@ -66,69 +100,110 @@ fn activate(
             panic!("Failed to get connector")
         });
 
-    let text_clone = text.clone();
-    // let monitor2 = monitor.clone();
     glib::MainContext::default().spawn_local(async move {
         let (data, cvar) = &*data;
+        {
+            let first = data.lock().await;
+            update(
+                workspaces_box.clone(),
+                first,
+                &connector,
+                #[cfg(feature = "toast")]
+                    do_toast,
+            );
+        }
 
         loop {
             let data = cvar.wait(data.lock().await).await;
-
-            // get monitor data by connector
-            let monitor_data = data.1.monitor_data
-                .iter()
-                .find(|(_, v)|
-                    v.connector == connector
-                )
-                .ok_or_else(|| {
-                    #[cfg(feature = "toast")] {
-                        use crate::toast::toast;
-                        if do_toast {
-                            toast(&format!("Failed to find corresponding Monitor ({connector}) in Map:{:?}", data.1.monitor_data));
-                        }
-                    }
-                })
-                .unwrap_or_else(|_| {
-                    panic!("Failed to find corresponding Monitor ({connector}) in Map:{:?}", data.1.monitor_data)
-                }).1;
-
-            println!("Monitor (): {connector}, {monitor_data:?}");
-
-            // Update the text_clone with the monitor_data
-            // text_clone.set_text(&format!("geo: {monitor_data:?}"));
-            text_clone.set_text(&format!("dat: {:?}", data.0));
+            update(
+                workspaces_box.clone(),
+                data,
+                &connector,
+                #[cfg(feature = "toast")]
+                    do_toast,
+            );
         }
     });
-
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .title("Hello, World!")
-        .child(&gtk_box)
-        .build();
-
-    window.init_layer_shell();
-    window.set_layer(Layer::Overlay);
-    window.set_monitor(monitor);
-    window.present();
 }
 
-fn get_all_monitors(
+fn update(
+    workspaces_box: gtk4::Box,
+    data: MutexGuard<(Info, Data)>,
+    connector: &str,
     #[cfg(feature = "toast")]
     do_toast: bool,
-) -> Vec<Monitor> {
-    let display_manager = gdk::DisplayManager::get();
-    let displays = display_manager.list_displays();
-    displays.first()
+) {
+    while let Some(child) = workspaces_box.first_child() {
+        workspaces_box.remove(&child);
+    }
+
+    // get monitor data by connector
+    let (monitor_id, monitor_data) = data.1.monitor_data
+        .iter()
+        .find(|(_, v)|
+            v.connector == connector
+        )
         .ok_or_else(|| {
             #[cfg(feature = "toast")] {
                 use crate::toast::toast;
                 if do_toast {
-                    toast("No Display found");
+                    toast(&format!("Failed to find corresponding Monitor ({connector}) in Map:{:?}", data.1.monitor_data));
                 }
             }
         })
-        .expect("No Display found")
-        .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
+        .unwrap_or_else(|_| {
+            panic!("Failed to find corresponding Monitor ({connector}) in Map:{:?}", data.1.monitor_data)
+        });
+
+    println!("Monitor ({connector}), <{:?}> {monitor_data:?}", data.1.active);
+
+    let mut workspaces = data.1.workspace_data.iter()
+        .filter(|(_, v)| v.monitor == *monitor_id)
+        .collect::<Vec<_>>();
+    workspaces.sort_by(|a, b| a.0.cmp(b.0));
+
+    for workspace in workspaces {
+        let clients = data.1.clients
+            .iter()
+            .filter(|client| {
+                client.monitor == *monitor_id && client.workspace.id == *workspace.0
+            })
+            .collect::<Vec<&Client>>();
+
+        let fixed = gtk4::Fixed::builder()
+            .margin_end(7)
+            .margin_start(7)
+            .margin_top(7)
+            .margin_bottom(7)
+            .build();
+
+        let workspace_frame = Frame::builder()
+            .label(&workspace.1.name)
+            .label_xalign(0.5)
+            .child(&fixed)
+            .build();
+
+        for client in clients {
+            let frame = client_ui(client);
+            println!("ws: {workspace:?} > {} geo: x: {} y: {} width: {} height: {}",
+                     client.class, ((client.at.0 - workspace.1.x as i16) / SIZE_FACTOR) as f64,
+                     ((client.at.1 - workspace.1.y as i16) / SIZE_FACTOR) as f64, (client.size.0 / SIZE_FACTOR) as i32,
+                     (client.size.1 / SIZE_FACTOR) as i32);
+            fixed.put(&frame,
+                      ((client.at.0 - workspace.1.x as i16) / SIZE_FACTOR) as f64,
+                      ((client.at.1 - workspace.1.y as i16) / SIZE_FACTOR) as f64,
+            );
+        }
+
+        workspaces_box.append(&workspace_frame);
+    }
+
+    // let clients = data.1.clients
+    //     .iter()
+    //     .filter(|client| {
+    //         client.monitor == *monitor_data.0
+    //     })
+    //     .collect::<Vec<&Client>>();
 }
 
 pub fn start_gui(
@@ -136,7 +211,10 @@ pub fn start_gui(
     #[cfg(feature = "toast")]
     do_toast: bool,
 ) {
-    let application = Application::new(Some("org.example.HelloWorld"), Default::default());
+    let application = adw::Application::builder()
+        .application_id("com.github.h3rmt.window_switcher")
+        // .flags(ApplicationFlags::IS_LAUNCHER)
+        .build();
 
     application.connect_activate(move |app| {
         let monitors = get_all_monitors(
@@ -157,4 +235,23 @@ pub fn start_gui(
     });
 
     application.run_with_args::<String>(&[]);
+}
+
+fn get_all_monitors(
+    #[cfg(feature = "toast")]
+    do_toast: bool,
+) -> Vec<Monitor> {
+    let display_manager = gdk::DisplayManager::get();
+    let displays = display_manager.list_displays();
+    displays.first()
+        .ok_or_else(|| {
+            #[cfg(feature = "toast")] {
+                use crate::toast::toast;
+                if do_toast {
+                    toast("No Display found");
+                }
+            }
+        })
+        .expect("No Display found")
+        .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
 }

@@ -151,7 +151,14 @@ pub fn collect_data(info: Info) -> Result<Data, Box<dyn std::error::Error>> {
 
                     x_offset += monitor_data.width;
                     y_offset += monitor_data.height;
-                    wd.insert(workspace.id, WorkspaceData { x, y });
+                    wd.insert(workspace.id, WorkspaceData {
+                        x,
+                        y,
+                        #[cfg(feature = "gui")]
+                        name: workspace.name.clone(),
+                        #[cfg(feature = "gui")]
+                        monitor: *monitor_id,
+                    });
                 });
         });
         wd

@@ -12,6 +12,8 @@ pub mod daemon;
 #[cfg(feature = "toast")]
 pub mod toast;
 
+pub type MonitorId = i64;
+
 #[derive(Debug, Clone)]
 pub struct MonitorData {
     pub x: u16,
@@ -25,13 +27,16 @@ pub struct MonitorData {
     pub connector: String,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct WorkspaceData {
     pub x: u16,
     pub y: u16,
+    #[cfg(feature = "gui")]
+    pub name: String,
+    #[cfg(feature = "gui")]
+    pub monitor: MonitorId,
 }
 
-pub type MonitorId = i64;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Info {
