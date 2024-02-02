@@ -279,7 +279,7 @@ impl SortableClient for Client {
         self.at.1 = y as i16;
     }
     fn identifier(&self) -> String {
-        self.title.to_string()
+        self.title.clone()
     }
 }
 

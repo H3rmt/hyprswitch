@@ -1,19 +1,40 @@
 use gtk4::{ApplicationWindow, Frame, gdk, glib};
+#[cfg(not(feature = "adwaita"))]
+use gtk4::Application;
 use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
-use libadwaita as adw;
+#[cfg(feature = "adwaita")]
+use libadwaita::Application;
 use tokio::sync::MutexGuard;
 
 use crate::{Data, Info, Share};
 
 const SIZE_FACTOR: i16 = 7;
+const CSS: &str = r#"
+    frame.active {
+         background-color: rgba(0, 0, 0, 0.5);
+    }
+    frame.active-ws {
+         background-color: rgba(0, 0, 0, 0.2);
+    }
+    frame {
+        border-radius: 10px;
+        border: 3px solid rgba(0, 0, 0, 0.4);
+    }
+    window {
+        border-radius: 15px;
+        border: 6px solid rgba(0, 0, 0, 0.4);
+    }
+    frame.client:hover {
+        background-color: rgba(70, 70, 70, 0.2);
+    }
+"#;
 
-fn client_ui(client: &Client) -> Frame {
+fn client_ui(client: &Client, active: bool) -> Frame {
     let icon = gtk4::Image::from_icon_name(&client.class);
     let pixel_size = (client.size.1 / (SIZE_FACTOR * 2)) as i32;
-    println!("pixel_size: {}", pixel_size);
     icon.set_pixel_size(pixel_size);
 
     let frame = Frame::builder()
@@ -21,26 +42,20 @@ fn client_ui(client: &Client) -> Frame {
         .height_request((client.size.1 / SIZE_FACTOR) as i32)
         .label(&client.class)
         .label_xalign(0.5)
+        .css_classes(vec!["client"])
         .child(&icon)
         .build();
 
-
-    // let path = icon_loader::icon_loader_hicolor().load_icon(&client.class);
-    // println!("path: {:?}", path);
-    // if let Some(path) = path {
-    //     let pixbuf = gdk_pixbuf::Pixbuf::from_file(path.file_for_size(64)).unwrap();
-    //     let icon = gtk4::Image::from_pixbuf(Some(&pixbuf));
-    //     frame.set_child(Some(&icon));
-    // } else {
-    //     let icon = gtk4::Image::from_icon_name(&client.class);
-    //     frame.set_child(Some(&icon));
-    // }
+    if active {
+        frame.add_css_class("active");
+    }
 
     frame
 }
 
 fn activate(
-    app: &adw::Application,
+    focus: impl FnOnce(Client) + Copy + Send + 'static,
+    app: &Application,
     monitor: &Monitor,
     data: Share,
     #[cfg(feature = "toast")]
@@ -48,25 +63,23 @@ fn activate(
 ) {
     let workspaces_box = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
-        .spacing(15)
-        .margin_top(15)
-        .margin_bottom(15)
-        .margin_start(15)
-        .margin_end(15)
+        .css_classes(vec!["workspaces"])
+        .margin_top(10)
+        .margin_bottom(10)
+        .margin_start(10)
+        .margin_end(10)
+        .spacing(10)
         .build();
 
     let window = ApplicationWindow::builder()
         .application(app)
-        .margin_bottom(15)
-        .margin_top(15)
-        .margin_start(15)
-        .margin_end(15)
         .child(&workspaces_box)
         .title("Hello, World!")
         .build();
 
     listen(
         workspaces_box,
+        focus,
         monitor,
         data,
         #[cfg(feature = "toast")]
@@ -75,12 +88,17 @@ fn activate(
 
     window.init_layer_shell();
     window.set_layer(Layer::Overlay);
+    window.set_opacity(0.95);
     window.set_monitor(monitor);
-    window.present();
+
+    app.connect_activate(move |_| {
+        window.present();
+    });
 }
 
 fn listen(
     workspaces_box: gtk4::Box,
+    focus: impl FnOnce(Client) + Copy + Send + 'static,
     monitor: &Monitor,
     data: Share,
     #[cfg(feature = "toast")]
@@ -106,6 +124,7 @@ fn listen(
             let first = data.lock().await;
             update(
                 workspaces_box.clone(),
+                focus,
                 first,
                 &connector,
                 #[cfg(feature = "toast")]
@@ -117,6 +136,7 @@ fn listen(
             let data = cvar.wait(data.lock().await).await;
             update(
                 workspaces_box.clone(),
+                focus,
                 data,
                 &connector,
                 #[cfg(feature = "toast")]
@@ -128,6 +148,7 @@ fn listen(
 
 fn update(
     workspaces_box: gtk4::Box,
+    focus: impl FnOnce(Client) + Copy + Send + 'static,
     data: MutexGuard<(Info, Data)>,
     connector: &str,
     #[cfg(feature = "toast")]
@@ -183,40 +204,65 @@ fn update(
             .child(&fixed)
             .build();
 
+        let mut active_ws = false;
         for client in clients {
-            let frame = client_ui(client);
-            println!("ws: {workspace:?} > {} geo: x: {} y: {} width: {} height: {}",
-                     client.class, ((client.at.0 - workspace.1.x as i16) / SIZE_FACTOR) as f64,
-                     ((client.at.1 - workspace.1.y as i16) / SIZE_FACTOR) as f64, (client.size.0 / SIZE_FACTOR) as i32,
-                     (client.size.1 / SIZE_FACTOR) as i32);
-            fixed.put(&frame,
-                      ((client.at.0 - workspace.1.x as i16) / SIZE_FACTOR) as f64,
-                      ((client.at.1 - workspace.1.y as i16) / SIZE_FACTOR) as f64,
-            );
+            let active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
+            if active {
+                active_ws = true;
+            }
+            let frame = client_ui(client, active);
+            let x = ((client.at.0 - workspace.1.x as i16) / SIZE_FACTOR) as f64;
+            let y = ((client.at.1 - workspace.1.y as i16) / SIZE_FACTOR) as f64;
+            fixed.put(&frame, x, y);
+
+            let gesture = gtk4::GestureClick::new();
+            let client_clone = client.clone();
+            gesture.connect_pressed(move |gesture, _, _, _| {
+                gesture.set_state(gtk4::EventSequenceState::Claimed);
+                println!("clicked on {}", client_clone.class);
+                focus(client_clone.clone());
+            });
+            frame.add_controller(gesture);
+
+            let gesture_2 = gtk4::EventControllerMotion::new();
+            let client_clone_2 = client.clone();
+            gesture_2.connect_motion(move |_, _x, _y| {
+                println!("hovered on {}", client_clone_2.class);
+                focus(client_clone_2.clone());
+            });
+            // enable hover
+            // frame.add_controller(gesture_2);
+        }
+
+        if active_ws {
+            workspace_frame.add_css_class("active-ws");
         }
 
         workspaces_box.append(&workspace_frame);
     }
-
-    // let clients = data.1.clients
-    //     .iter()
-    //     .filter(|client| {
-    //         client.monitor == *monitor_data.0
-    //     })
-    //     .collect::<Vec<&Client>>();
 }
 
 pub fn start_gui(
+    focus: impl FnOnce(Client) + Copy + Send + 'static,
     data: Share,
     #[cfg(feature = "toast")]
     do_toast: bool,
 ) {
-    let application = adw::Application::builder()
+    let application = Application::builder()
         .application_id("com.github.h3rmt.window_switcher")
         // .flags(ApplicationFlags::IS_LAUNCHER)
         .build();
 
-    application.connect_activate(move |app| {
+    application.connect_startup(move |app| {
+        let provider = gtk4::CssProvider::new();
+        provider.load_from_string(CSS);
+
+        gtk4::style_context_add_provider_for_display(
+            &gdk::Display::default().expect("Could not connect to a display."),
+            &provider,
+            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+
         let monitors = get_all_monitors(
             #[cfg(feature = "toast")]
                 do_toast
@@ -225,6 +271,7 @@ pub fn start_gui(
         for monitor in monitors {
             let data = data.clone();
             activate(
+                focus,
                 app,
                 &monitor,
                 data,

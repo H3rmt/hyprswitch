@@ -4,22 +4,23 @@ use hyprland::data::{Client, Clients, Monitors, Workspace, Workspaces};
 use hyprland::dispatch::{Dispatch, WindowIdentifier};
 use hyprland::dispatch::DispatchType::FocusWindow;
 use hyprland::prelude::*;
+use hyprland::shared;
 use hyprland::shared::WorkspaceId;
 
 use crate::{Data, Info, MonitorData, MonitorId, WorkspaceData};
 use crate::sort::{sort_clients, SortableClient, update_clients};
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle(
+pub fn find_next(
     info: Info,
     clients: Vec<Client>,
     active: Option<Client>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<Client, Box<dyn std::error::Error>> {
     let active = active
-        .map(|a| (a.class, a.workspace.id, a.address.to_string()))
+        .map(|a| (a.class, a.workspace.id, a.address))
         .unwrap_or_else(|| {
             let a = clients.first().expect("No active client and no clients found");
-            (a.class.to_string(), a.workspace.id, a.address.to_string())
+            (a.class.clone(), a.workspace.id, a.address.clone())
         });
 
     let mut clients = clients;
@@ -42,7 +43,7 @@ pub fn handle(
 
     let mut current_window_index = clients
         .iter()
-        .position(|r| r.address.to_string() == active.2)
+        .position(|r| r.address == active.2)
         .expect("Active window not found?");
 
     if info.reverse {
@@ -65,13 +66,16 @@ pub fn handle(
         println!("next_client: {:?}", next_client);
     }
 
-    if !info.dry_run {
+    Ok(next_client)
+}
+
+pub fn execute(next_client: &Client, dry_run: bool) -> Result<(), shared::HyprError> {
+    if !dry_run {
         Dispatch::call(FocusWindow(WindowIdentifier::Address(next_client.address.clone())))?;
     } else {
         // print regardless of verbose
         println!("next_client: {}", next_client.title);
     }
-
     Ok(())
 }
 

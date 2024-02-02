@@ -1,4 +1,5 @@
 use clap::Parser;
+use hyprland::data::Client;
 
 use window_switcher::handle;
 
@@ -71,6 +72,16 @@ fn main() {
                         std::thread::spawn(move || {
                             use window_switcher::gui;
                             gui::start_gui(
+                                move |next_client: Client| {
+                                    handle::execute(&next_client, cli.dry_run).map_err(|_e| {
+                                        #[cfg(feature = "toast")] {
+                                            use window_switcher::toast::toast;
+                                            if cli.toast {
+                                                toast(&format!("Failed to focus next client: {}", _e));
+                                            }
+                                        }
+                                    }).expect("Failed to focus next client");
+                                },
                                 latest,
                                 #[cfg(feature = "toast")]
                                     cli.toast,
@@ -104,23 +115,32 @@ fn main() {
                         #[cfg(not(feature = "gui"))]
                             let active = data.active;
 
-
-                        #[cfg(feature = "gui")] {
-                            let (latest, cvar) = &*latest_data;
-                            let mut ld = latest.lock().await;
-                            ld.0 = info;
-                            ld.1 = data;
-                            cvar.notify_all();
-                        }
-
-                        handle::handle(info, clients, active).map_err(|_e| {
+                        let next_client = handle::find_next(info, clients, active).map_err(|_e| {
                             #[cfg(feature = "toast")] {
                                 use window_switcher::toast::toast;
                                 if cli.toast {
                                     toast(&format!("Failed to handle command: {}", _e));
                                 }
                             }
-                        }).expect("Failed to handle command")
+                        }).expect("Failed to handle command");
+
+                        handle::execute(&next_client, cli.dry_run).map_err(|_e| {
+                            #[cfg(feature = "toast")] {
+                                use window_switcher::toast::toast;
+                                if cli.toast {
+                                    toast(&format!("Failed to focus next client: {}", _e));
+                                }
+                            }
+                        }).expect("Failed to focus next client");
+
+                        #[cfg(feature = "gui")] {
+                            let (latest, cvar) = &*latest_data;
+                            let mut ld = latest.lock().await;
+                            ld.0 = info;
+                            ld.1 = data;
+                            ld.1.active = Some(next_client);
+                            cvar.notify_all();
+                        }
                     })
                     .await.map_err(|_e| {
                     #[cfg(feature = "toast")] {
@@ -156,12 +176,21 @@ fn main() {
         }
     }).expect("Failed to collect data");
 
-    handle::handle(cli.into(), data.clients, data.active).map_err(|_e| {
+    let next_client = handle::find_next(cli.into(), data.clients, data.active).map_err(|_e| {
         #[cfg(feature = "toast")] {
             use window_switcher::toast::toast;
             if cli.toast {
-                toast(&format!("Failed to handle command: {}", _e));
+                toast(&format!("Failed to find next client: {}", _e));
             }
         }
-    }).expect("Failed to handle command");
+    }).expect("Failed to find next client");
+
+    handle::execute(&next_client, cli.dry_run).map_err(|_e| {
+        #[cfg(feature = "toast")] {
+            use window_switcher::toast::toast;
+            if cli.toast {
+                toast(&format!("Failed to focus next client: {}", _e));
+            }
+        }
+    }).expect("Failed to focus next client");
 }

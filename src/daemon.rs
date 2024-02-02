@@ -1,6 +1,7 @@
 use std::future::Future;
 use std::path::Path;
 
+use hyprland::data::Client;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 
