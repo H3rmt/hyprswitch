@@ -217,8 +217,8 @@ fn update(
 
             let gesture = gtk4::GestureClick::new();
             let client_clone = client.clone();
-            // gesture.connect_pressed(move |gesture, _, _, _| {
-            gesture.connect_released(move |gesture, _, _, _| {
+            gesture.connect_pressed(move |gesture, _, _, _| {
+            // gesture.connect_released(move |gesture, _, _, _| {
                 gesture.set_state(gtk4::EventSequenceState::Claimed);
                 println!("clicked on {}", client_clone.class);
                 focus(client_clone.clone());
