@@ -25,7 +25,6 @@ fn activate(
         .margin_start(10)
         .margin_end(10)
         .margin_bottom(10)
-        .width_request(500)
         .text(format!("geo: {:?}", monitor.geometry()))
         .build();
 
@@ -33,6 +32,7 @@ fn activate(
         .margin_bottom(20)
         .hscrollbar_policy(PolicyType::Automatic)
         .vscrollbar_policy(PolicyType::Never)
+        .width_request(1300)
         .child(&text)
         .build();
 
@@ -95,7 +95,8 @@ fn activate(
             println!("Monitor (): {connector}, {monitor_data:?}");
 
             // Update the text_clone with the monitor_data
-            text_clone.set_text(&format!("geo: {monitor_data:?}"));
+            // text_clone.set_text(&format!("geo: {monitor_data:?}"));
+            text_clone.set_text(&format!("dat: {:?}", data.0));
         }
     });
 
