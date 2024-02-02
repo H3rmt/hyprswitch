@@ -217,10 +217,15 @@ fn update(
 
             let gesture = gtk4::GestureClick::new();
             let client_clone = client.clone();
-            gesture.connect_pressed(move |gesture, _, _, _| {
+            // gesture.connect_pressed(move |gesture, _, _, _| {
+            gesture.connect_released(move |gesture, _, _, _| {
                 gesture.set_state(gtk4::EventSequenceState::Claimed);
                 println!("clicked on {}", client_clone.class);
                 focus(client_clone.clone());
+
+                // TODO update focuses window
+
+                // TODO exit gtk4 application
             });
             frame.add_controller(gesture);
 
@@ -229,6 +234,8 @@ fn update(
             gesture_2.connect_motion(move |_, _x, _y| {
                 println!("hovered on {}", client_clone_2.class);
                 focus(client_clone_2.clone());
+
+                // TODO update focuses window
             });
             // enable hover
             // frame.add_controller(gesture_2);
