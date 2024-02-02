@@ -68,6 +68,8 @@ impl From<Args> for Info {
             stay_workspace: args.stay_workspace,
             verbose: args.verbose,
             dry_run: args.dry_run,
+            #[cfg(feature = "toast")]
+            toast: args.toast,
         }
     }
 }

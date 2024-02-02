@@ -43,6 +43,8 @@ pub struct Info {
     pub stay_workspace: bool,
     pub verbose: bool,
     pub dry_run: bool,
+    #[cfg(feature = "toast")]
+    pub toast: bool,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -52,3 +54,6 @@ pub struct Data {
     pub monitor_data: HashMap<MonitorId, MonitorData>,
     pub active: Option<Client>,
 }
+
+#[cfg(feature = "gui")]
+pub type Share = std::sync::Arc<(tokio::sync::Mutex<(Info, Data)>, tokio_condvar::Condvar)>;

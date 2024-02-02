@@ -32,87 +32,118 @@ fn main() {
 
     #[cfg(feature = "daemon")]
     if cli.daemon {
-        use window_switcher::daemon;
-        use std::sync::{Arc, Mutex};
-        use window_switcher::{Data, Info};
-        if !daemon::daemon_running() {
-            if cli.verbose {
-                println!("Starting daemon");
-            }
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
 
-            // create arc to send to thread
-            let latest_info: Arc<Mutex<Info>> = Arc::new(Mutex::new(cli.into()));
-            let latest_data: Arc<Mutex<Data>> = Arc::new(Mutex::new(handle::collect_data(cli.into()).map_err(|_e| {
-                #[cfg(feature = "toast")] {
-                    use window_switcher::toast::toast;
-                    if cli.toast {
-                        toast(&format!("Failed to collect data: {}", _e));
+        rt.block_on(async {
+            use window_switcher::daemon;
+
+            if !daemon::daemon_running().await {
+                if cli.verbose {
+                    println!("Starting daemon");
+                }
+
+                #[cfg(feature = "gui")]
+                    let latest: window_switcher::Share;
+
+                #[cfg(feature = "gui")] {
+                    use tokio::sync::Mutex;
+                    use std::sync::Arc;
+                    use tokio_condvar::Condvar;
+                    // create arc to send to thread
+                    latest = Arc::new((
+                        Mutex::new((cli.into(), handle::collect_data(cli.into())
+                            .map_err(|_e| {
+                                #[cfg(feature = "toast")] {
+                                    use window_switcher::toast::toast;
+                                    if cli.toast {
+                                        toast(&format!("Failed to collect data: {}", _e));
+                                    }
+                                }
+                            })
+                            .expect("Failed to collect data"),
+                        )), Condvar::new()));
+                }
+
+                #[cfg(feature = "gui")] {
+                    if cli.gui {
+                        let latest = latest.clone();
+
+                        std::thread::spawn(move || {
+                            use window_switcher::gui;
+                            gui::start_gui(
+                                latest,
+                                #[cfg(feature = "toast")]
+                                    cli.toast,
+                            );
+                        });
                     }
                 }
-            }).expect("Failed to collect data")));
 
-            #[cfg(feature = "gui")]
-            if cli.gui {
-                let latest_info = latest_info.clone();
-                let latest_data = latest_data.clone();
+                daemon::start_daemon(
+                    #[cfg(feature = "gui")]
+                        latest,
+                    move |info,
+                          #[cfg(feature = "gui")]
+                          latest_data| async move {
+                        let data = handle::collect_data(cli.into()).map_err(|_e| {
+                            #[cfg(feature = "toast")] {
+                                use window_switcher::toast::toast;
+                                if cli.toast {
+                                    toast(&format!("Failed to collect data: {}", _e));
+                                }
+                            }
+                        }).expect("Failed to collect data");
 
-                std::thread::spawn(move || {
-                    use window_switcher::gui;
-                    gui::start_gui(latest_info, latest_data);
-                });
-            }
+                        #[cfg(feature = "gui")]
+                            let clients = data.clients.clone();
+                        #[cfg(not(feature = "gui"))]
+                            let clients = data.clients;
 
-            daemon::start_daemon(latest_info, latest_data, move |info, latest_info, latest_data| {
-                let data = handle::collect_data(cli.into()).map_err(|_e| {
+                        #[cfg(feature = "gui")]
+                            let active = data.active.clone();
+                        #[cfg(not(feature = "gui"))]
+                            let active = data.active;
+
+
+                        #[cfg(feature = "gui")] {
+                            let (latest, cvar) = &*latest_data;
+                            let mut ld = latest.lock().await;
+                            ld.0 = info;
+                            ld.1 = data;
+                            cvar.notify_all();
+                        }
+
+                        handle::handle(info, clients, active).map_err(|_e| {
+                            #[cfg(feature = "toast")] {
+                                use window_switcher::toast::toast;
+                                if cli.toast {
+                                    toast(&format!("Failed to handle command: {}", _e));
+                                }
+                            }
+                        }).expect("Failed to handle command")
+                    })
+                    .await.map_err(|_e| {
                     #[cfg(feature = "toast")] {
                         use window_switcher::toast::toast;
                         if cli.toast {
-                            toast(&format!("Failed to collect data: {}", _e));
+                            toast(&format!("Failed to start daemon: {}", _e));
                         }
                     }
-                }).expect("Failed to collect data");
-                let clients = data.clients.clone();
-                let active = data.active.clone();
+                })
+                    .expect("Failed to start daemon");
+            } else if cli.verbose {
+                println!("Daemon already running");
+            }
 
-                {
-                    let mut i = latest_info.lock().expect("Failed to lock mutex");
-                    *i = info;
-                }
-                {
-                    let mut ld = latest_data.lock().expect("Failed to lock mutex");
-                    *ld = data;
-                }
-
-                handle::handle(info, clients, active).map_err(|_e| {
-                    #[cfg(feature = "toast")] {
-                        use window_switcher::toast::toast;
-                        if cli.toast {
-                            toast(&format!("Failed to handle command: {}", _e));
-                        }
-                    }
-                }).expect("Failed to handle command")
-            }).map_err(|_e| {
+            daemon::send_command(cli.into()).await.map_err(|_e| {
                 #[cfg(feature = "toast")] {
                     use window_switcher::toast::toast;
                     if cli.toast {
-                        toast(&format!("Failed to start daemon: {}", _e));
+                        toast(&format!("Failed to send command to daemon: {}", _e));
                     }
                 }
-            })
-                .expect("Failed to start daemon");
-        } else if cli.verbose {
-            println!("Daemon already running");
-        }
-
-        daemon::send_command(cli.into()).map_err(|_e| {
-            #[cfg(feature = "toast")] {
-                use window_switcher::toast::toast;
-                if cli.toast {
-                    toast(&format!("Failed to send command to daemon: {}", _e));
-                }
-            }
-        }).expect("Failed to send command to daemon");
-
+            }).expect("Failed to send command to daemon");
+        });
         return;
     }
 

@@ -1,29 +1,32 @@
-use std::cell::Cell;
 use std::path::Path;
-use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
-use gtk4::{Application, ApplicationWindow, Box, Button, gdk_pixbuf, glib, Image, Orientation, PolicyType, Text};
+use gtk4::{Application, ApplicationWindow, Box, gdk_pixbuf, glib, Image, Orientation, PolicyType, Text};
 use gtk4::gdk;
 use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
 
-use crate::{Data, Info};
+use crate::Share;
 
-fn activate(app: &Application, x: &Monitor) {
+fn activate(
+    app: &Application,
+    monitor: &Monitor,
+    data: Share,
+    #[cfg(feature = "toast")]
+    do_toast: bool,
+) {
     let gtk_box = Box::builder()
         .orientation(Orientation::Vertical)
         .spacing(12)
         .build();
 
     let text = Text::builder()
-        // .width_chars(50)
+        .width_chars(70)
         .margin_start(10)
         .margin_end(10)
         .margin_bottom(10)
         .width_request(500)
-        .text(format!("geo: {:?}", x.geometry()))
+        .text(format!("geo: {:?}", monitor.geometry()))
         .build();
 
     let scroll = gtk4::ScrolledWindow::builder()
@@ -48,37 +51,53 @@ fn activate(app: &Application, x: &Monitor) {
 
     gtk_box.append(&img);
 
-    let button_increase = Button::builder()
-        .label("Increase")
-        .margin_start(12)
-        .margin_end(12)
-        .build();
 
-    let button_decrease = Button::builder()
-        .label("Decrease")
-        .margin_start(12)
-        .margin_end(12)
-        .build();
+    let connector = monitor
+        .connector()
+        .ok_or_else(|| {
+            #[cfg(feature = "toast")] {
+                use crate::toast::toast;
+                if do_toast {
+                    toast("Failed to get connector");
+                }
+            }
+        })
+        .unwrap_or_else(|_| {
+            panic!("Failed to get connector")
+        });
 
+    let text_clone = text.clone();
+    // let monitor2 = monitor.clone();
+    glib::MainContext::default().spawn_local(async move {
+        let (data, cvar) = &*data;
 
-    // A mutable integer
-    let number = Rc::new(Cell::new(0));
+        loop {
+            let data = cvar.wait(data.lock().await).await;
 
-    button_increase.connect_clicked(glib::clone!(@weak number, @weak button_decrease, @weak button_increase =>
-        move |_| {
-            number.set(number.get() + 1);
-            button_increase.set_label(&format!("Inc: {}", number.get()));
-            button_decrease.set_label(&format!("Dec: {}", number.get()));
-    }));
-    button_decrease.connect_clicked(glib::clone!(@weak button_increase, @weak button_decrease =>
-        move |_| {
-            number.set(number.get() - 1);
-            button_increase.set_label(&format!("Inc: {}", number.get()));
-            button_decrease.set_label(&format!("Dec: {}", number.get()));
-    }));
+            // get monitor data by connector
+            let monitor_data = data.1.monitor_data
+                .iter()
+                .find(|(_, v)|
+                    v.connector == connector
+                )
+                .ok_or_else(|| {
+                    #[cfg(feature = "toast")] {
+                        use crate::toast::toast;
+                        if do_toast {
+                            toast(&format!("Failed to find corresponding Monitor ({connector}) in Map:{:?}", data.1.monitor_data));
+                        }
+                    }
+                })
+                .unwrap_or_else(|_| {
+                    panic!("Failed to find corresponding Monitor ({connector}) in Map:{:?}", data.1.monitor_data)
+                }).1;
 
-    gtk_box.append(&button_increase);
-    gtk_box.append(&button_decrease);
+            println!("Monitor (): {connector}, {monitor_data:?}");
+
+            // Update the text_clone with the monitor_data
+            text_clone.set_text(&format!("geo: {monitor_data:?}"));
+        }
+    });
 
     let window = ApplicationWindow::builder()
         .application(app)
@@ -88,32 +107,51 @@ fn activate(app: &Application, x: &Monitor) {
 
     window.init_layer_shell();
     window.set_layer(Layer::Overlay);
-    window.set_monitor(x);
+    window.set_monitor(monitor);
     window.present();
 }
 
-fn get_all_monitors() -> Vec<Monitor> {
+fn get_all_monitors(
+    #[cfg(feature = "toast")]
+    do_toast: bool,
+) -> Vec<Monitor> {
     let display_manager = gdk::DisplayManager::get();
     let displays = display_manager.list_displays();
-    displays.first().expect("No Display found")
+    displays.first()
+        .ok_or_else(|| {
+            #[cfg(feature = "toast")] {
+                use crate::toast::toast;
+                if do_toast {
+                    toast("No Display found");
+                }
+            }
+        })
+        .expect("No Display found")
         .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
 }
 
-pub fn start_gui(info: Arc<Mutex<Info>>, data: Arc<Mutex<Data>>) {
+pub fn start_gui(
+    data: Share,
+    #[cfg(feature = "toast")]
+    do_toast: bool,
+) {
     let application = Application::new(Some("org.example.HelloWorld"), Default::default());
 
-    println!("Starting GUI {:?}", data.lock().expect("Could not lock data").monitor_data);
-
     application.connect_activate(move |app| {
-        let monitors = get_all_monitors();
+        let monitors = get_all_monitors(
+            #[cfg(feature = "toast")]
+                do_toast
+        );
+
         for monitor in monitors {
-            // get monitor data by connector
-            let md = &data.lock().expect("Could not lock data").monitor_data;
-            let monitor_data = md
-                .iter().find(|(_, v)| v.connector == monitor.connector().expect("Monitor not found"))
-                .expect("Monitor not found").1;
-            println!("Monitor: {:?}, {monitor_data:?}", monitor.connector());
-            activate(app, &monitor);
+            let data = data.clone();
+            activate(
+                app,
+                &monitor,
+                data,
+                #[cfg(feature = "toast")]
+                    do_toast,
+            );
         }
     });
 

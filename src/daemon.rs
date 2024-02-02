@@ -1,25 +1,32 @@
-use std::io::{Read, Write};
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::future::Future;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::thread;
 
-use crate::{Data, Info};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{UnixListener, UnixStream};
+
+use crate::Info;
 
 const PATH: &str = "/tmp/window_switcher.sock";
 
-pub fn daemon_running() -> bool {
+pub async fn daemon_running() -> bool {
     // check if socket exists and socket is open
     if Path::new(PATH).exists() {
-        UnixStream::connect(PATH).is_ok()
+        UnixStream::connect(PATH).await.is_ok()
     } else {
         false
     }
 }
 
 // pass function to start_daemon taking info from socket
-pub fn start_daemon<F>(info: Arc<Mutex<Info>>, data: Arc<Mutex<Data>>, exec: F) -> Result<(), Box<dyn std::error::Error>>
-    where F: FnOnce(Info, Arc<Mutex<Info>>, Arc<Mutex<Data>>) + Copy + Send + 'static
+pub async fn start_daemon<F>(
+    #[cfg(feature = "gui")]
+    data: crate::Share,
+    #[cfg(feature = "gui")]
+    exec: impl FnOnce(Info, crate::Share) -> F + Copy + Send + 'static,
+    #[cfg(not(feature = "gui"))]
+    exec: impl FnOnce(Info) -> F + Copy + Send + 'static,
+) -> Result<(), Box<dyn std::error::Error>>
+    where F: Future<Output=()> + Send + 'static
 {
     // remove old PATH
     if Path::new(PATH).exists() {
@@ -28,11 +35,18 @@ pub fn start_daemon<F>(info: Arc<Mutex<Info>>, data: Arc<Mutex<Data>>, exec: F) 
     let listener = UnixListener::bind(PATH)?;
 
     loop {
-        match listener.accept() {
+        match listener.accept().await {
             Ok((stream, _)) => {
-                let info = info.clone();
-                let data = data.clone();
-                thread::spawn(move || handle_client(stream, exec, info, data));
+                #[cfg(feature = "gui")]
+                    let data = data.clone();
+                tokio::spawn(async move {
+                    handle_client(
+                        stream,
+                        exec,
+                        #[cfg(feature = "gui")]
+                            data,
+                    ).await;
+                });
             }
             Err(e) => {
                 println!("couldn't get client: {:?}", e);
@@ -41,14 +55,22 @@ pub fn start_daemon<F>(info: Arc<Mutex<Info>>, data: Arc<Mutex<Data>>, exec: F) 
     }
 }
 
-fn handle_client<F>(mut stream: UnixStream, exec: F, info_arc: Arc<Mutex<Info>>, data_arc: Arc<Mutex<Data>>)
-    where F: FnOnce(Info, Arc<Mutex<Info>>, Arc<Mutex<Data>>) + Copy + Send + 'static
+async fn handle_client<F>(
+    mut stream: UnixStream,
+    #[cfg(feature = "gui")]
+    exec: impl FnOnce(Info, crate::Share) -> F + Copy + Send + 'static,
+    #[cfg(not(feature = "gui"))]
+    exec: impl FnOnce(Info) -> F + Copy + Send + 'static,
+    #[cfg(feature = "gui")]
+    data_arc: crate::Share,
+)
+    where F: Future<Output=()> + Send + 'static
 {
     let mut buffer = Vec::new();
-    stream.read_to_end(&mut buffer).unwrap();
+    stream.read_to_end(&mut buffer).await.expect("Failed to read");
     println!("data: {:?}", buffer);
 
-    if buffer.len() == 9 && buffer[0] == b'w' {
+    if buffer.len() == 10 && buffer[0] == b'w' {
         let vertical_workspaces = buffer[1] == 1;
         let ignore_monitors = buffer[2] == 1;
         let ignore_workspaces = buffer[3] == 1;
@@ -57,6 +79,8 @@ fn handle_client<F>(mut stream: UnixStream, exec: F, info_arc: Arc<Mutex<Info>>,
         let stay_workspace = buffer[6] == 1;
         let verbose = buffer[7] == 1;
         let dry_run = buffer[8] == 1;
+        #[cfg(feature = "toast")]
+            let toast = buffer[9] == 1;
 
         let info = Info {
             vertical_workspaces,
@@ -67,15 +91,28 @@ fn handle_client<F>(mut stream: UnixStream, exec: F, info_arc: Arc<Mutex<Info>>,
             stay_workspace,
             verbose,
             dry_run,
+            #[cfg(feature = "toast")]
+            toast,
         };
 
-        exec(info, info_arc, data_arc);
+        exec(
+            info,
+            #[cfg(feature = "gui")]
+                data_arc,
+        ).await;
     }
 }
 
-pub fn send_command(info: Info) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn send_command(info: Info) -> Result<(), Box<dyn std::error::Error>> {
     // send data to socket
-    let mut stream = UnixStream::connect(PATH)?;
+    let mut stream = UnixStream::connect(PATH).await?;
+
+    #[cfg(feature = "toast")]
+        let toast = info.toast;
+    #[cfg(not(feature = "toast"))]
+        let toast = 0;
+
+
     // send 12 to identify as real command
     let buf = &[
         b'w',
@@ -87,8 +124,9 @@ pub fn send_command(info: Info) -> Result<(), Box<dyn std::error::Error>> {
         info.stay_workspace as u8,
         info.verbose as u8,
         info.dry_run as u8,
+        toast as u8,
     ];
-    stream.write_all(buf)?;
-    stream.flush()?;
+    stream.write_all(buf).await?;
+    stream.flush().await?;
     Ok(())
 }
