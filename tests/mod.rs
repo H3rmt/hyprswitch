@@ -11,8 +11,8 @@ pub mod common {
 
     use hyprland::shared::WorkspaceId;
 
-    use hyprswitch::sort::{SortableClient, MONITOR_WORKSPACE_INDEX_OFFSET};
-    use hyprswitch::MonitorData;
+    use window_switcher::sort::{SortableClient, MONITOR_WORKSPACE_INDEX_OFFSET};
+    use window_switcher::MonitorData;
 
     use crate::svg::create_svg;
 

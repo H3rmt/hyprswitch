@@ -8,8 +8,8 @@ use hyprland::dispatch::DispatchType::FocusWindow;
 use hyprland::prelude::*;
 use hyprland::shared::WorkspaceId;
 
-use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
-use hyprswitch::sort::{sort_clients, SortableClient, update_clients};
+use window_switcher::{MonitorData, MonitorId, WorkspaceData};
+use window_switcher::sort::{sort_clients, SortableClient, update_clients};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -182,7 +182,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let binding = Client::get_active()?;
     let active = binding
         .as_ref()
-        .unwrap_or(clients.get(0).expect("no active window and no windows"));
+        .unwrap_or(clients.first().expect("no active window and no windows"));
     let active_address = active.address.to_string();
     let active_class = active.class.clone();
     let active_workspace_id = active.workspace.id;

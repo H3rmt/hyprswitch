@@ -3,8 +3,8 @@ use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
-use hyprswitch::{MonitorData, WorkspaceData};
-use hyprswitch::sort::{sort_clients, update_clients};
+use window_switcher::{MonitorData, WorkspaceData};
+use window_switcher::sort::{sort_clients, update_clients};
 
 use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
 
