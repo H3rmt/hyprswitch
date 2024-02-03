@@ -22,6 +22,10 @@ struct Args {
     #[arg(long, short)]
     reverse: bool,
 
+    /// Sort windows by recently visited
+    #[arg(long)]
+    sort_recent: bool,
+
     /// Restrict cycling of windows to current workspace
     #[arg(long)]
     stay_workspace: bool,
@@ -51,22 +55,22 @@ struct Args {
 /// # Usage
 ///
 /// * Switch between windows of same class
-///     * `window_switcher --same-class`
+///     * `hyprswitch --same-class`
 /// * Switch backwards
-///     * `window_switcher --reverse`
+///     * `hyprswitch --reverse`
 ///
 /// ## Special
 ///
 /// * Cycles through window on current workspace
-///     * `window_switcher --stay-workspace`
+///     * `hyprswitch --stay-workspace`
 ///
 /// * Ignore workspaces and sort like one big workspace
-///     * `window_switcher --ignore-workspaces`
+///     * `hyprswitch --ignore-workspaces`
 /// * Ignore monitors and sort like one big monitor
-///     * `window_switcher --ignore-monitors`
+///     * `hyprswitch --ignore-monitors`
 ///
 /// * Display workspaces vertically on monitors
-///     * `window_switcher --vertical-workspaces`
+///     * `hyprswitch --vertical-workspaces`
 ///
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Args::parse();
@@ -164,7 +168,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if cli.verbose {
         println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, MonitorId, u16, u16, u16, u16, WorkspaceId, String)>>());
     }
-    clients = sort_clients(clients, cli.ignore_workspaces, cli.ignore_monitors);
+
+    if cli.sort_recent {
+        clients.sort_by(|a, b| a.focus_history_id.cmp(&b.focus_history_id));
+    } else {
+        clients = sort_clients(clients, cli.ignore_workspaces, cli.ignore_monitors);
+    }
 
     if cli.verbose {
         println!("clients: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, MonitorId, u16, u16, u16, u16, WorkspaceId, String)>>());
@@ -173,8 +182,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let binding = Client::get_active()?;
     let active = binding
         .as_ref()
-        .unwrap_or(clients.get(0).expect("no active window and no windows"));
-    let active_address = active.address.to_string();
+        .unwrap_or(clients.first().expect("no active window and no windows"));
+    let active_address = active.address.clone();
     let active_class = active.class.clone();
     let active_workspace_id = active.workspace.id;
 
@@ -194,7 +203,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut current_window_index = clients
         .iter()
-        .position(|r| r.address.to_string() == active_address)
+        .position(|r| r.address == active_address)
         .expect("Active window not found?");
 
     if cli.reverse {

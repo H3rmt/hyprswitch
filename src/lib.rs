@@ -17,4 +17,4 @@ pub struct WorkspaceData {
     pub y: u16,
 }
 
-pub type MonitorId = i64;
+pub type MonitorId = i128;
