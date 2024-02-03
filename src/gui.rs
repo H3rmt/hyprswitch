@@ -223,7 +223,7 @@ fn update(
                 println!("clicked on {}", client_clone.class);
                 focus(client_clone.clone());
 
-                // TODO update focuses window
+                // TODO update focused window
 
                 // TODO exit gtk4 application
             });
@@ -235,7 +235,7 @@ fn update(
                 println!("hovered on {}", client_clone_2.class);
                 focus(client_clone_2.clone());
 
-                // TODO update focuses window
+                // TODO update focused window
             });
             // enable hover
             // frame.add_controller(gesture_2);
@@ -262,7 +262,7 @@ pub fn start_gui(
 
     application.connect_startup(move |app| {
         let provider = gtk4::CssProvider::new();
-        provider.load_from_string(CSS);
+        provider.load_from_data(CSS);
 
         gtk4::style_context_add_provider_for_display(
             &gdk::Display::default().expect("Could not connect to a display."),
