@@ -12,7 +12,7 @@ pub mod daemon;
 #[cfg(feature = "toast")]
 pub mod toast;
 
-pub type MonitorId = i64;
+pub type MonitorId = i128;
 
 #[derive(Debug, Clone)]
 pub struct MonitorData {

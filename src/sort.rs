@@ -9,8 +9,8 @@ use crate::{MonitorData, MonitorId, WorkspaceData};
 /// Sorts clients with complex sorting
 ///
 /// * 'clients' - Vector of clients to sort
-/// * 'ignore_workspaces' - Dont split clients into workspaces (treat all clients on monitor as one workspace)
-/// * 'ignore_monitors' - Dont split clients into monitors (treat all clients as one monitor)
+/// * 'ignore_workspaces' - Don't split clients into workspaces (treat all clients on monitor as one workspace)
+/// * 'ignore_monitors' - Don't split clients into monitors (treat all clients as one monitor)
 pub fn sort_clients<SC>(
     clients: Vec<SC>,
     ignore_workspaces: bool,

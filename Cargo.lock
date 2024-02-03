@@ -1168,9 +1168,8 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hyprland"
-version = "0.3.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d42b8c26f4d39e0c489b7495ba8d91bde7de45bf02e1d8ddc7b759befd4a5c8"
+version = "0.3.13"
+source = "git+https://github.com/hyprland-community/hyprland-rs?branch=master#31538957dad484d34715382ee2f8c69a9952a361"
 dependencies = [
  "async-trait",
  "derive_more",
@@ -1191,9 +1190,8 @@ dependencies = [
 
 [[package]]
 name = "hyprland-macros"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c941d3d52e979612af8cb94e8de49000c7fada2014a7791d173ab41339f4e4eb"
+version = "0.3.13"
+source = "git+https://github.com/hyprland-community/hyprland-rs?branch=master#31538957dad484d34715382ee2f8c69a9952a361"
 dependencies = [
  "quote",
  "syn 2.0.41",
@@ -2018,18 +2016,18 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "strum"
-version = "0.25.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
+checksum = "723b93e8addf9aa965ebe2d11da6d7540fa2283fcea14b3371ff055f7ba13f5f"
 dependencies = [
  "strum_macros",
 ]
 
 [[package]]
 name = "strum_macros"
-version = "0.25.3"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23dc1fa9ac9c169a78ba62f0b841814b7abae11bdd047b9c58f893439e309ea0"
+checksum = "7a3417fc93d76740d974a01654a09777cb500428cc874ca9f45edfe0c4d4cd18"
 dependencies = [
  "heck",
  "proc-macro2",
