@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
-use window_switcher::{MonitorData, WorkspaceData};
+use window_switcher::{MonitorData, MonitorId, WorkspaceData};
 use window_switcher::sort::{sort_clients, update_clients};
 
 use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
@@ -36,7 +36,7 @@ fn many_1() {
         MockClient(7, 8, 2, 2, 0, 0, "7".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 12, height: 10, combined_width: 12, combined_height: 10, workspaces_on_monitor: 1 });
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
@@ -86,7 +86,7 @@ fn many_2() {
         MockClient(10, 11, 2, 2, 0, 0, "9".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 12, height: 10, combined_width: 12, combined_height: 10, workspaces_on_monitor: 1 });
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();

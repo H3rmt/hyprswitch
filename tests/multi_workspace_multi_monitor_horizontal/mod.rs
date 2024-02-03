@@ -4,7 +4,7 @@ use std::time::Instant;
 use hyprland::shared::WorkspaceId;
 
 use window_switcher::sort::{sort_clients, update_clients};
-use window_switcher::{MonitorData, WorkspaceData};
+use window_switcher::{MonitorData, MonitorId, WorkspaceData};
 
 use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
 
@@ -41,7 +41,7 @@ fn default() {
         MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
 
@@ -95,7 +95,7 @@ fn ignore_workspaces() {
         MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
 
@@ -149,7 +149,7 @@ fn ignore_monitor() {
         MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
 
@@ -204,7 +204,7 @@ fn ignore_monitor_ignore_workspace() {
         MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
 
@@ -286,7 +286,7 @@ fn default_more_monitor() {
         MockClient(7, 12, 2, 2, 7, 3, "32".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(2, MonitorData { x: 0, y: 8, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
@@ -374,7 +374,7 @@ fn ignore_workspaces_more_monitor() {
         MockClient(5, 11, 1, 3, 7, 3, "28".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(2, MonitorData { x: 0, y: 8, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
@@ -462,7 +462,7 @@ fn ignore_monitor_more_monitor() {
         MockClient(5, 11, 1, 3, 32, 3, "29".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(2, MonitorData { x: 0, y: 8, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
@@ -551,7 +551,7 @@ fn ignore_monitor_ignore_workspace_more_monitor() {
         MockClient(5, 12, 1, 2, 7, 3, "32".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(2, MonitorData { x: 0, y: 8, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });

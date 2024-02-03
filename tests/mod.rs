@@ -12,7 +12,7 @@ pub mod common {
     use hyprland::shared::WorkspaceId;
 
     use window_switcher::sort::{SortableClient, MONITOR_WORKSPACE_INDEX_OFFSET};
-    use window_switcher::MonitorData;
+    use window_switcher::{MonitorData, MonitorId};
 
     use crate::svg::create_svg;
 
@@ -23,7 +23,7 @@ pub mod common {
         pub u16,
         pub u16,
         pub WorkspaceId,
-        pub i64,
+        pub MonitorId,
         pub String,
     );
 
@@ -43,10 +43,10 @@ pub mod common {
         fn ws(&self) -> WorkspaceId {
             self.4
         }
-        fn wsi(&self, monitor_count: i64) -> WorkspaceId {
+        fn wsi(&self, monitor_count: MonitorId) -> WorkspaceId {
             self.4 - (MONITOR_WORKSPACE_INDEX_OFFSET * monitor_count as i32)
         }
-        fn m(&self) -> i64 {
+        fn m(&self) -> MonitorId {
             self.5
         }
         fn set_x(&mut self, x: u16) {
@@ -69,7 +69,7 @@ pub mod common {
     pub fn create_svg_from_client_tests<SC>(
         clients: &[SC],
         filename: &str,
-        monitor_data: HashMap<i64, MonitorData>,
+        monitor_data: HashMap<MonitorId, MonitorData>,
     ) where
         SC: SortableClient + Debug,
     {
