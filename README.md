@@ -1,4 +1,4 @@
-# WindowSwitcher
+# hyprswitch
 
 [![crates.io](https://img.shields.io/crates/v/window_switcher.svg)](https://crates.io/crates/window_switcher)
 [![Docs](https://docs.rs/built/badge.svg)](https://docs.rs/window_switcher)
@@ -11,7 +11,7 @@ It can switch through all windows or only windows of same class(= application) i
 
 # Installation
 `
-cargo install window_switcher
+cargo install hyprswitch
 `
 
 # Usage
@@ -22,36 +22,36 @@ Here are some samples:
 - simple config
 ```
 # switches to next window
-bind = ALT, TAB, exec, $HOME/.cargo/bin/window_switcher
+bind = ALT, TAB, exec, $HOME/.cargo/bin/hyprswitch
 
 # switches to next window of same class
-bind = ALT CTRL, TAB, exec, $HOME/.cargo/bin/window_switcher --same-class
+bind = ALT CTRL, TAB, exec, $HOME/.cargo/bin/hyprswitch --same-class
 
 # switches to next window in workspace
-bind = SUPER, TAB, exec, $HOME/.cargo/bin/window_switcher --stay-workspace
+bind = SUPER, TAB, exec, $HOME/.cargo/bin/hyprswitch --stay-workspace
 ```
 
 - with reverse binds
 ```
 # switches to next window
-bind = ALT, TAB, exec, $HOME/.cargo/bin/window_switcher
+bind = ALT, TAB, exec, $HOME/.cargo/bin/hyprswitch
 
 # switches to next window in reverse order
-bind = ALT SHIFT, TAB, exec, $HOME/.cargo/bin/window_switcher --reverse
+bind = ALT SHIFT, TAB, exec, $HOME/.cargo/bin/hyprswitch --reverse
 
 
 # switches to next window in workspace
-bind = SUPER, TAB, exec, $HOME/.cargo/bin/window_switcher --stay-workspace
+bind = SUPER, TAB, exec, $HOME/.cargo/bin/hyprswitch --stay-workspace
 
 # switches to next window in workspace in reverse order
-bind = SUPER, TAB, exec, $HOME/.cargo/bin/window_switcher --stay-workspace --reverse
+bind = SUPER, TAB, exec, $HOME/.cargo/bin/hyprswitch --stay-workspace --reverse
 
 
 # switches to next window of same class
-bind = ALT CTRL, TAB, exec, $HOME/.cargo/bin/window_switcher --same-class
+bind = ALT CTRL, TAB, exec, $HOME/.cargo/bin/hyprswitch --same-class
 
 # switches to next window of same class in reverse order
-bind = ALT CTRL SHIFT, TAB, exec, $HOME/.cargo/bin/window_switcher --reverse --same-class
+bind = ALT CTRL SHIFT, TAB, exec, $HOME/.cargo/bin/hyprswitch --reverse --same-class
 ```
 
 The script accepts 5 parameters:.
