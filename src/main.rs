@@ -183,7 +183,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let active = binding
         .as_ref()
         .unwrap_or(clients.first().expect("no active window and no windows"));
-    let active_address = active.address.to_string();
+    let active_address = active.address.clone();
     let active_class = active.class.clone();
     let active_workspace_id = active.workspace.id;
 
@@ -203,7 +203,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut current_window_index = clients
         .iter()
-        .position(|r| r.address.to_string() == active_address)
+        .position(|r| r.address == active_address)
         .expect("Active window not found?");
 
     if cli.reverse {
