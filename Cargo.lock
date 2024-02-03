@@ -1200,6 +1200,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyprswitch"
+version = "0.2.1"
+dependencies = [
+ "clap",
+ "gtk4",
+ "gtk4-layer-shell",
+ "hyprland",
+ "icon-loader",
+ "libadwaita",
+ "notify-rust",
+ "random_color",
+ "svg",
+ "tokio",
+ "tokio-condvar",
+]
+
+[[package]]
 name = "icon-loader"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2328,23 +2345,6 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-
-[[package]]
-name = "window_switcher"
-version = "0.2.1"
-dependencies = [
- "clap",
- "gtk4",
- "gtk4-layer-shell",
- "hyprland",
- "icon-loader",
- "libadwaita",
- "notify-rust",
- "random_color",
- "svg",
- "tokio",
- "tokio-condvar",
-]
 
 [[package]]
 name = "windows"

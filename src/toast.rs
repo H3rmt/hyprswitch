@@ -2,9 +2,9 @@ use notify_rust::Notification;
 
 pub fn toast(message: &str) {
     Notification::new()
-        .summary("Error in window_switcher")
+        .summary("Error in hyprswitch")
         .body(message)
-        .appname("window_switcher")
+        .appname("hyprswitch")
         .timeout(0)
         .show().expect("Failed to send notification");
 }

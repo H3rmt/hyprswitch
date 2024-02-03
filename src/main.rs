@@ -1,7 +1,7 @@
 use clap::Parser;
 use hyprland::data::Client;
 
-use window_switcher::handle;
+use hyprswitch::handle;
 
 use crate::cli::Args;
 
@@ -11,22 +11,22 @@ mod cli;
 /// # Usage
 ///
 /// * Switch between windows of same class
-///     * `window_switcher --same-class`
+///     * `hyprswitch --same-class`
 /// * Switch backwards
-///     * `window_switcher --reverse`
+///     * `hyprswitch --reverse`
 ///
 /// ## Special
 ///
 /// * Cycles through window on current workspace
-///     * `window_switcher --stay-workspace`
+///     * `hyprswitch --stay-workspace`
 ///
 /// * Ignore workspaces and sort like one big workspace
-///     * `window_switcher --ignore-workspaces`
+///     * `hyprswitch --ignore-workspaces`
 /// * Ignore monitors and sort like one big monitor
-///     * `window_switcher --ignore-monitors`
+///     * `hyprswitch --ignore-monitors`
 ///
 /// * Display workspaces vertically on monitors
-///     * `window_switcher --vertical-workspaces`
+///     * `hyprswitch --vertical-workspaces`
 ///
 fn main() {
     let cli = Args::parse();
@@ -36,7 +36,7 @@ fn main() {
         let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
 
         rt.block_on(async {
-            use window_switcher::daemon;
+            use hyprswitch::daemon;
 
             if !daemon::daemon_running().await {
                 if cli.verbose {
@@ -44,7 +44,7 @@ fn main() {
                 }
 
                 #[cfg(feature = "gui")]
-                    let latest: window_switcher::Share;
+                    let latest: hyprswitch::Share;
 
                 #[cfg(feature = "gui")] {
                     use tokio::sync::Mutex;
@@ -55,7 +55,7 @@ fn main() {
                         Mutex::new((cli.into(), handle::collect_data(cli.into())
                             .map_err(|_e| {
                                 #[cfg(feature = "toast")] {
-                                    use window_switcher::toast::toast;
+                                    use hyprswitch::toast::toast;
                                     if cli.toast {
                                         toast(&format!("Failed to collect data: {}", _e));
                                     }
@@ -70,12 +70,12 @@ fn main() {
                         let latest = latest.clone();
 
                         std::thread::spawn(move || {
-                            use window_switcher::gui;
+                            use hyprswitch::gui;
                             gui::start_gui(
                                 move |next_client: Client| {
                                     handle::execute(&next_client, cli.dry_run).map_err(|_e| {
                                         #[cfg(feature = "toast")] {
-                                            use window_switcher::toast::toast;
+                                            use hyprswitch::toast::toast;
                                             if cli.toast {
                                                 toast(&format!("Failed to focus next client: {}", _e));
                                             }
@@ -98,7 +98,7 @@ fn main() {
                           latest_data| async move {
                         let data = handle::collect_data(cli.into()).map_err(|_e| {
                             #[cfg(feature = "toast")] {
-                                use window_switcher::toast::toast;
+                                use hyprswitch::toast::toast;
                                 if cli.toast {
                                     toast(&format!("Failed to collect data: {}", _e));
                                 }
@@ -117,7 +117,7 @@ fn main() {
 
                         let next_client = handle::find_next(info, clients, active).map_err(|_e| {
                             #[cfg(feature = "toast")] {
-                                use window_switcher::toast::toast;
+                                use hyprswitch::toast::toast;
                                 if cli.toast {
                                     toast(&format!("Failed to handle command: {}", _e));
                                 }
@@ -126,7 +126,7 @@ fn main() {
 
                         handle::execute(&next_client, cli.dry_run).map_err(|_e| {
                             #[cfg(feature = "toast")] {
-                                use window_switcher::toast::toast;
+                                use hyprswitch::toast::toast;
                                 if cli.toast {
                                     toast(&format!("Failed to focus next client: {}", _e));
                                 }
@@ -144,7 +144,7 @@ fn main() {
                     })
                     .await.map_err(|_e| {
                     #[cfg(feature = "toast")] {
-                        use window_switcher::toast::toast;
+                        use hyprswitch::toast::toast;
                         if cli.toast {
                             toast(&format!("Failed to start daemon: {}", _e));
                         }
@@ -157,7 +157,7 @@ fn main() {
 
             daemon::send_command(cli.into()).await.map_err(|_e| {
                 #[cfg(feature = "toast")] {
-                    use window_switcher::toast::toast;
+                    use hyprswitch::toast::toast;
                     if cli.toast {
                         toast(&format!("Failed to send command to daemon: {}", _e));
                     }
@@ -169,7 +169,7 @@ fn main() {
 
     let data = handle::collect_data(cli.into()).map_err(|_e| {
         #[cfg(feature = "toast")] {
-            use window_switcher::toast::toast;
+            use hyprswitch::toast::toast;
             if cli.toast {
                 toast(&format!("Failed to collect data: {}", _e));
             }
@@ -178,7 +178,7 @@ fn main() {
 
     let next_client = handle::find_next(cli.into(), data.clients, data.active).map_err(|_e| {
         #[cfg(feature = "toast")] {
-            use window_switcher::toast::toast;
+            use hyprswitch::toast::toast;
             if cli.toast {
                 toast(&format!("Failed to find next client: {}", _e));
             }
@@ -187,7 +187,7 @@ fn main() {
 
     handle::execute(&next_client, cli.dry_run).map_err(|_e| {
         #[cfg(feature = "toast")] {
-            use window_switcher::toast::toast;
+            use hyprswitch::toast::toast;
             if cli.toast {
                 toast(&format!("Failed to focus next client: {}", _e));
             }

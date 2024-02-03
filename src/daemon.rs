@@ -7,7 +7,7 @@ use tokio::net::{UnixListener, UnixStream};
 
 use crate::Info;
 
-const PATH: &str = "/tmp/window_switcher.sock";
+const PATH: &str = "/tmp/hyprswitch.sock";
 
 pub async fn daemon_running() -> bool {
     // check if socket exists and socket is open

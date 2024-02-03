@@ -256,7 +256,7 @@ pub fn start_gui(
     do_toast: bool,
 ) {
     let application = Application::builder()
-        .application_id("com.github.h3rmt.window_switcher")
+        .application_id("com.github.h3rmt.hyprswitch")
         // .flags(ApplicationFlags::IS_LAUNCHER)
         .build();
 

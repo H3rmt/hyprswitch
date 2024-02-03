@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use clap::Parser;
 
-use window_switcher::Info;
+use hyprswitch::Info;
 
 #[derive(Parser, Debug, Clone, Copy)]
 #[command(author, version, about, long_about = None)]
