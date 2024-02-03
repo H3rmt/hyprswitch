@@ -8,8 +8,8 @@ use hyprland::dispatch::DispatchType::FocusWindow;
 use hyprland::prelude::*;
 use hyprland::shared::WorkspaceId;
 
-use window_switcher::{MonitorData, MonitorId, WorkspaceData};
-use window_switcher::sort::{sort_clients, SortableClient, update_clients};
+use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
+use hyprswitch::sort::{sort_clients, SortableClient, update_clients};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -55,22 +55,22 @@ struct Args {
 /// # Usage
 ///
 /// * Switch between windows of same class
-///     * `window_switcher --same-class`
+///     * `hyprswitch --same-class`
 /// * Switch backwards
-///     * `window_switcher --reverse`
+///     * `hyprswitch --reverse`
 ///
 /// ## Special
 ///
 /// * Cycles through window on current workspace
-///     * `window_switcher --stay-workspace`
+///     * `hyprswitch --stay-workspace`
 ///
 /// * Ignore workspaces and sort like one big workspace
-///     * `window_switcher --ignore-workspaces`
+///     * `hyprswitch --ignore-workspaces`
 /// * Ignore monitors and sort like one big monitor
-///     * `window_switcher --ignore-monitors`
+///     * `hyprswitch --ignore-monitors`
 ///
 /// * Display workspaces vertically on monitors
-///     * `window_switcher --vertical-workspaces`
+///     * `hyprswitch --vertical-workspaces`
 ///
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Args::parse();

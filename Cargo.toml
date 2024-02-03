@@ -1,12 +1,12 @@
 [package]
-name = "window_switcher"
+name = "hyprswitch"
 description = "A CLI that allows switching between windows in Hyprland"
 version = "0.2.1"
 edition = "2021"
 license = "MIT"
 readme = "README.md"
-documentation = "https://docs.rs/crate/window_switcher"
-repository = "https://github.com/H3rmt/WindowSwitcher/"
+documentation = "https://docs.rs/crate/hyprswitch"
+repository = "https://github.com/h3rmt/hyprswitch/"
 keywords = ["hyprland", "hyprland"]
 categories = ["command-line-utilities"]
 

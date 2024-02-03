@@ -1,8 +1,8 @@
 # hyprswitch
 
-[![crates.io](https://img.shields.io/crates/v/window_switcher.svg)](https://crates.io/crates/window_switcher)
-[![Docs](https://docs.rs/built/badge.svg)](https://docs.rs/window_switcher)
-[![Tests](https://github.com/H3rmt/WindowSwitcher/actions/workflows/rust.yml/badge.svg)](https://github.com/H3rmt/WindowSwitcher/actions/workflows/rust.yml)
+[![crates.io](https://img.shields.io/crates/v/hyprswitch.svg)](https://crates.io/crates/hyprswitch)
+[![Docs](https://docs.rs/built/badge.svg)](https://docs.rs/hyprswitch)
+[![Tests](https://github.com/h3rmt/hyprswitch/actions/workflows/rust.yml/badge.svg)](https://github.com/h3rmt/hyprswitch/actions/workflows/rust.yml)
 
 A small rust CLI tool to switch between windows in hyperland.
 
