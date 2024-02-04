@@ -1,17 +1,19 @@
 use gtk4::{ApplicationWindow, Frame, gdk, glib};
-#[cfg(not(feature = "adwaita"))]
+#[cfg(not(feature = "libadwaita"))]
 use gtk4::Application;
 use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
-#[cfg(feature = "adwaita")]
-use libadwaita::Application;
+#[cfg(feature = "libadwaita")]
+use adw::Application;
 use tokio::sync::MutexGuard;
 
 use crate::{Data, Info, Share};
 
 const SIZE_FACTOR: i16 = 7;
+const IMG_SIZE_FACTOR: i16 = 9;
+
 const CSS: &str = r#"
     frame.active {
          background-color: rgba(0, 0, 0, 0.5);
@@ -34,7 +36,7 @@ const CSS: &str = r#"
 
 fn client_ui(client: &Client, active: bool) -> Frame {
     let icon = gtk4::Image::from_icon_name(&client.class);
-    let pixel_size = (client.size.1 / (SIZE_FACTOR * 2)) as i32;
+    let pixel_size = (client.size.1 / IMG_SIZE_FACTOR) as i32;
     icon.set_pixel_size(pixel_size);
 
     let frame = Frame::builder()

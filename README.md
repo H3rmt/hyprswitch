@@ -150,7 +150,7 @@ bind = $mainMod, 3, exec, hyprswitch --offset 3
 bind = $mainMod, 4, exec, hyprswitch --offset 4
 
 # exit submap and kill hyprswitch
-bindrt = $mainMod, SUPER_L, exec, pkill hyprswitch
+bindrt = $mainMod, SUPER_L, exec, hyprswitch --stop-daemon
 bindrt = $mainMod, SUPER_L, submap, reset
 submap = reset
 ```

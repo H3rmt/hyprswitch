@@ -7,29 +7,37 @@ use crate::cli::Args;
 
 mod cli;
 
-///
-/// # Usage
-///
-/// * Switch between windows of same class
-///     * `hyprswitch --same-class`
-/// * Switch backwards
-///     * `hyprswitch --reverse`
-///
-/// ## Special
-///
-/// * Cycles through window on current workspace
-///     * `hyprswitch --stay-workspace`
-///
-/// * Ignore workspaces and sort like one big workspace
-///     * `hyprswitch --ignore-workspaces`
-/// * Ignore monitors and sort like one big monitor
-///     * `hyprswitch --ignore-monitors`
-///
-/// * Display workspaces vertically on monitors
-///     * `hyprswitch --vertical-workspaces`
-///
+
 fn main() {
     let cli = Args::parse();
+
+    #[cfg(feature = "daemon")]
+    if cli.stop_daemon {
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+
+        rt.block_on(async {
+            use hyprswitch::daemon;
+            if cli.verbose {
+                println!("Stopping daemon");
+            }
+            if !daemon::daemon_running().await {
+                if cli.verbose {
+                    println!("Daemon not running");
+                }
+                return;
+            }
+
+            daemon::send_stop_daemon().await.map_err(|_e| {
+                #[cfg(feature = "toast")] {
+                    use hyprswitch::toast::toast;
+                    if cli.toast {
+                        toast(&format!("Failed to stop daemon: {}", _e));
+                    }
+                }
+            }).expect("Failed to stop daemon");
+        });
+        return;
+    }
 
     #[cfg(feature = "daemon")]
     if cli.daemon {

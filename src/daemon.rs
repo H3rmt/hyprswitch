@@ -68,39 +68,56 @@ async fn handle_client<F>(
 {
     let mut buffer = Vec::new();
     stream.read_to_end(&mut buffer).await.expect("Failed to read");
-    println!("data: {:?}", buffer);
-
-    if buffer.len() == 10 && buffer[0] == b'w' {
-        let vertical_workspaces = buffer[1] == 1;
-        let ignore_monitors = buffer[2] == 1;
-        let ignore_workspaces = buffer[3] == 1;
-        let same_class = buffer[4] == 1;
-        let reverse = buffer[5] == 1;
-        let stay_workspace = buffer[6] == 1;
-        let verbose = buffer[7] == 1;
-        let dry_run = buffer[8] == 1;
-        #[cfg(feature = "toast")]
-            let toast = buffer[9] == 1;
-
-        let info = Info {
-            vertical_workspaces,
-            ignore_monitors,
-            ignore_workspaces,
-            same_class,
-            reverse,
-            stay_workspace,
-            verbose,
-            dry_run,
-            #[cfg(feature = "toast")]
-            toast,
-        };
-
-        exec(
-            info,
-            #[cfg(feature = "gui")]
-                data_arc,
-        ).await;
+    if buffer.is_empty() {
+        return;
     }
+
+    println!("data: {:?}", buffer);
+    match buffer[0] {
+        b's' => {
+            println!("Stopping daemon");
+            if Path::new(PATH).exists() {
+                std::fs::remove_file(PATH).expect("Failed to remove socket");
+            }
+            std::process::exit(0);
+        }
+        b'w' => {
+            if buffer.len() == 10 {
+                let vertical_workspaces = buffer[1] == 1;
+                let ignore_monitors = buffer[2] == 1;
+                let ignore_workspaces = buffer[3] == 1;
+                let same_class = buffer[4] == 1;
+                let reverse = buffer[5] == 1;
+                let stay_workspace = buffer[6] == 1;
+                let verbose = buffer[7] == 1;
+                let dry_run = buffer[8] == 1;
+                #[cfg(feature = "toast")]
+                    let toast = buffer[9] == 1;
+
+                let info = Info {
+                    vertical_workspaces,
+                    ignore_monitors,
+                    ignore_workspaces,
+                    same_class,
+                    reverse,
+                    stay_workspace,
+                    verbose,
+                    dry_run,
+                    #[cfg(feature = "toast")]
+                    toast,
+                };
+
+                exec(
+                    info,
+                    #[cfg(feature = "gui")]
+                        data_arc,
+                ).await;
+            }
+        }
+        _ => {
+            println!("Unknown command");
+        }
+    };
 }
 
 pub async fn send_command(info: Info) -> Result<(), Box<dyn std::error::Error>> {
@@ -113,7 +130,7 @@ pub async fn send_command(info: Info) -> Result<(), Box<dyn std::error::Error>> 
         let toast = 0;
 
 
-    // send 12 to identify as real command
+    // send 'w' to identify as real command
     let buf = &[
         b'w',
         info.vertical_workspaces as u8,
@@ -127,6 +144,14 @@ pub async fn send_command(info: Info) -> Result<(), Box<dyn std::error::Error>> 
         toast as u8,
     ];
     stream.write_all(buf).await?;
+    stream.flush().await?;
+    Ok(())
+}
+
+pub async fn send_stop_daemon() -> Result<(), Box<dyn std::error::Error>> {
+    // send 's' to identify as stop command
+    let mut stream = UnixStream::connect(PATH).await?;
+    stream.write_all(&[b's']).await?;
     stream.flush().await?;
     Ok(())
 }

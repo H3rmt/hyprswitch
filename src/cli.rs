@@ -15,7 +15,7 @@ pub struct Args {
     #[arg(long, short)]
     pub reverse: bool,
 
-    /// Restrict cycling of windows to current workspace
+    /// Restrict cycling of windows to the current workspace
     #[arg(long)]
     pub stay_workspace: bool,
 
@@ -49,6 +49,12 @@ pub struct Args {
     #[arg(long)]
     #[cfg(feature = "daemon")]
     pub daemon: bool,
+
+    /// Stops the daemon, sends stop to socket server, doesn't execute current window switch
+    /// Needs to be used with --daemon
+    #[arg(long)]
+    #[cfg(feature = "daemon")]
+    pub stop_daemon: bool,
 
     /// Starts the daemon with the gui
     /// Needs to be used with --daemon
