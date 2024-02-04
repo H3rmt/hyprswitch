@@ -12,12 +12,14 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "^4.4.11", features = ["derive"] }
-hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", branch = "master" }
+hyprland = { version = "0.3.13" }
 
 gtk4 = { version = "0.7.3", optional = true }
-libadwaita = { version = "0.5.3", optional = true }
+#gtk4 = { version = "0.8.0", optional = true }
+adw = { package = "libadwaita", version = "0.5.3", optional = true }
+#adw = { package = "libadwaita", version = "0.6.0", optional = true }
 gtk4-layer-shell = { version = "0.2.0", optional = true }
-notify-rust = { version = "4.0.0", optional = true }
+notify-rust = { version = "3.6.3", optional = true }
 tokio = { version = "1.35.1", optional = true }
 tokio-condvar = { version = "0.1.0", optional = true }
 icon-loader = { version = "0.4.0", optional = true }
@@ -27,8 +29,15 @@ random_color = "0.8.0"
 svg = "0.15.0"
 
 [features]
-default = ["gui", "daemon", "adwaita"]
+default = ["gui", "daemon"]
 gui = ["gtk4", "gtk4-layer-shell", "tokio", "tokio-condvar", "icon-loader", "daemon"]
-adwaita = ["libadwaita"]
+libadwaita = ["adw"]
 daemon = ["tokio"]
 toast = ["notify-rust"]
+
+[profile.release]
+strip = "debuginfo"
+lto = true
+opt-level = "s"
+panic = "abort"
+codegen-units = 1
