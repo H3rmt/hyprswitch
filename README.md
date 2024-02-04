@@ -23,7 +23,7 @@ Here are some samples:
 
 - simple config
 
-```
+```ini
 # switches to next window
 bind = ALT, TAB, exec, $HOME/.cargo/bin/hyprswitch
 
@@ -36,7 +36,7 @@ bind = SUPER, TAB, exec, $HOME/.cargo/bin/hyprswitch --stay-workspace
 
 - with reverse binds
 
-```
+```ini
 # switches to next window
 bind = ALT, TAB, exec, $HOME/.cargo/bin/hyprswitch
 
@@ -122,3 +122,35 @@ This means that if you have 2 monitors, the workspaces on the second monitor mus
 the first monitor is 1.
 
 this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.org/Configuring/Workspace-Rules/)
+
+
+### GUI Config
+```ini
+$mainMod = SUPER
+$secondMod = ALT
+$switchKey = TAB
+
+# allows repeated switching with same keypress that starts the submap
+binde = $mainMod, $switchKey, exec, hyprswitch
+bind = $mainMod, $switchKey, submap, switch
+
+# allows repeated switching with same keypress that starts the submap
+binde = $mainMod SHIFT, $switchKey, exec, hyprswitch --reverse
+bind = $mainMod SHIFT, $switchKey, submap, switch
+
+submap = switch
+# allow repeated window switching in submap (same keys as repeating while starting)
+binde = $mainMod, $switchKey, exec, hyprswitch
+binde = $mainMod SHIFT, $switchKey, exec, hyprswitch --reverse
+
+# switch to specific window offset
+bind = $mainMod, 1, exec, hyprswitch --offset 1
+bind = $mainMod, 2, exec, hyprswitch --offset 2
+bind = $mainMod, 3, exec, hyprswitch --offset 3
+bind = $mainMod, 4, exec, hyprswitch --offset 4
+
+# exit submap and kill hyprswitch
+bindrt = $mainMod, SUPER_L, exec, pkill hyprswitch
+bindrt = $mainMod, SUPER_L, submap, reset
+submap = reset
+```
