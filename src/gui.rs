@@ -1,3 +1,8 @@
+use std::future::Future;
+
+#[cfg(feature = "libadwaita")]
+use adw::Application;
+use anyhow::Context;
 use gtk4::{ApplicationWindow, Frame, gdk, glib};
 #[cfg(not(feature = "libadwaita"))]
 use gtk4::Application;
@@ -5,8 +10,7 @@ use gtk4::gdk::Monitor;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
-#[cfg(feature = "libadwaita")]
-use adw::Application;
+use hyprland::shared::WorkspaceId;
 use tokio::sync::MutexGuard;
 
 use crate::{Data, Info, Share};
@@ -34,7 +38,7 @@ const CSS: &str = r#"
     }
 "#;
 
-fn client_ui(client: &Client, active: bool) -> Frame {
+fn client_ui(client: &Client, client_active: bool) -> Frame {
     let icon = gtk4::Image::from_icon_name(&client.class);
     let pixel_size = (client.size.1 / IMG_SIZE_FACTOR) as i32;
     icon.set_pixel_size(pixel_size);
@@ -48,21 +52,20 @@ fn client_ui(client: &Client, active: bool) -> Frame {
         .child(&icon)
         .build();
 
-    if active {
+    if client_active {
         frame.add_css_class("active");
     }
 
     frame
 }
 
-fn activate(
-    focus: impl FnOnce(Client) + Copy + Send + 'static,
+fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
+    focus_client: impl FnOnce(Client) -> F + Copy + Send + 'static,
+    focus_workspace: impl FnOnce(WorkspaceId) -> G + Sized + Send + Copy + 'static,
     app: &Application,
     monitor: &Monitor,
     data: Share,
-    #[cfg(feature = "toast")]
-    do_toast: bool,
-) {
+) -> anyhow::Result<()> {
     let workspaces_box = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
         .css_classes(vec!["workspaces"])
@@ -79,14 +82,7 @@ fn activate(
         .title("Hello, World!")
         .build();
 
-    listen(
-        workspaces_box,
-        focus,
-        monitor,
-        data,
-        #[cfg(feature = "toast")]
-            do_toast,
-    );
+    listen(workspaces_box, focus_client, focus_workspace, monitor, data)?;
 
     window.init_layer_shell();
     window.set_layer(Layer::Overlay);
@@ -96,89 +92,60 @@ fn activate(
     app.connect_activate(move |_| {
         window.present();
     });
+
+    Ok(())
 }
 
-fn listen(
+fn listen<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
     workspaces_box: gtk4::Box,
-    focus: impl FnOnce(Client) + Copy + Send + 'static,
+    focus_client: impl FnOnce(Client) -> F + Sized + Send + Copy + 'static,
+    focus_workspace: impl FnOnce(WorkspaceId) -> G + Sized + Send + Copy + 'static,
     monitor: &Monitor,
     data: Share,
-    #[cfg(feature = "toast")]
-    do_toast: bool,
-) {
-    let connector = monitor
-        .connector()
-        .ok_or_else(|| {
-            #[cfg(feature = "toast")] {
-                use crate::toast::toast;
-                if do_toast {
-                    toast("Failed to get connector");
-                }
-            }
-        })
-        .unwrap_or_else(|_| {
-            panic!("Failed to get connector")
-        });
+) -> anyhow::Result<()> {
+    let connector = monitor.connector()
+        .with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
 
+    let monitor_clone = monitor.clone();
     glib::MainContext::default().spawn_local(async move {
         let (data, cvar) = &*data;
         {
             let first = data.lock().await;
-            update(
-                workspaces_box.clone(),
-                focus,
-                first,
-                &connector,
-                #[cfg(feature = "toast")]
-                    do_toast,
-            );
+            update(workspaces_box.clone(), focus_client, focus_workspace, first, &connector)
+                .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
+                .expect("Failed to update workspaces");
         }
 
         loop {
             let data = cvar.wait(data.lock().await).await;
-            update(
-                workspaces_box.clone(),
-                focus,
-                data,
-                &connector,
-                #[cfg(feature = "toast")]
-                    do_toast,
-            );
+            update(workspaces_box.clone(), focus_client, focus_workspace, data, &connector)
+                .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
+                .expect("Failed to update workspaces");
         }
     });
+
+    Ok(())
 }
 
-fn update(
+fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
     workspaces_box: gtk4::Box,
-    focus: impl FnOnce(Client) + Copy + Send + 'static,
+    focus_client: impl FnOnce(Client) -> F + Copy + Send + 'static,
+    focus_workspace: impl FnOnce(WorkspaceId) -> G + Sized + Send + Copy + 'static,
     data: MutexGuard<(Info, Data)>,
     connector: &str,
-    #[cfg(feature = "toast")]
-    do_toast: bool,
-) {
+) -> anyhow::Result<()> {
+    // remove all children
     while let Some(child) = workspaces_box.first_child() {
         workspaces_box.remove(&child);
     }
 
     // get monitor data by connector
-    let (monitor_id, monitor_data) = data.1.monitor_data
+    let (monitor_id, _monitor_data) = data.1.monitor_data
         .iter()
         .find(|(_, v)|
             v.connector == connector
         )
-        .ok_or_else(|| {
-            #[cfg(feature = "toast")] {
-                use crate::toast::toast;
-                if do_toast {
-                    toast(&format!("Failed to find corresponding Monitor ({connector}) in Map:{:?}", data.1.monitor_data));
-                }
-            }
-        })
-        .unwrap_or_else(|_| {
-            panic!("Failed to find corresponding Monitor ({connector}) in Map:{:?}", data.1.monitor_data)
-        });
-
-    println!("Monitor ({connector}), <{:?}> {monitor_data:?}", data.1.active);
+        .with_context(|| format!("Failed to find monitor with connector {connector}"))?;
 
     let mut workspaces = data.1.workspace_data.iter()
         .filter(|(_, v)| v.monitor == *monitor_id)
@@ -208,11 +175,11 @@ fn update(
 
         let mut active_ws = false;
         for client in clients {
-            let active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
-            if active {
+            let client_active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
+            if client_active {
                 active_ws = true;
             }
-            let frame = client_ui(client, active);
+            let frame = client_ui(client, client_active);
             let x = ((client.at.0 - workspace.1.x as i16) / SIZE_FACTOR) as f64;
             let y = ((client.at.1 - workspace.1.y as i16) / SIZE_FACTOR) as f64;
             fixed.put(&frame, x, y);
@@ -220,28 +187,36 @@ fn update(
             let gesture = gtk4::GestureClick::new();
             let client_clone = client.clone();
             gesture.connect_pressed(move |gesture, _, _, _| {
-            // gesture.connect_released(move |gesture, _, _, _| {
-                gesture.set_state(gtk4::EventSequenceState::Claimed);
-                println!("clicked on {}", client_clone.class);
-                focus(client_clone.clone());
+                let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
 
-                // TODO update focused window
+                rt.block_on(async {
+                    gesture.set_state(gtk4::EventSequenceState::Claimed);
+                    focus_client(client_clone.clone()).await
+                        .with_context(|| format!("Failed to focus client {}", client_clone.class))
+                        .expect("Failed to focus client");
 
-                // TODO exit gtk4 application
+                    // TODO update focused window
+
+                    // TODO close window
+                    std::process::exit(0);
+                });
             });
             frame.add_controller(gesture);
-
-            let gesture_2 = gtk4::EventControllerMotion::new();
-            let client_clone_2 = client.clone();
-            gesture_2.connect_motion(move |_, _x, _y| {
-                println!("hovered on {}", client_clone_2.class);
-                focus(client_clone_2.clone());
-
-                // TODO update focused window
-            });
-            // enable hover
-            // frame.add_controller(gesture_2);
         }
+
+        let gesture_2 = gtk4::EventControllerMotion::new();
+        let workspace_clone = *workspace.0;
+        gesture_2.connect_motion(move |_, _x, _y| {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
+
+            rt.block_on(async {
+                // println!("hovered on {}", client_clone_2.class);
+                focus_workspace(workspace_clone).await
+                    .with_context(|| format!("Failed to focus workspace {}", workspace_clone))
+                    .expect("Failed to focus client");
+            });
+        });
+        workspace_frame.add_controller(gesture_2);
 
         if active_ws {
             workspace_frame.add_css_class("active-ws");
@@ -249,15 +224,17 @@ fn update(
 
         workspaces_box.append(&workspace_frame);
     }
+
+    Ok(())
 }
 
-pub fn start_gui(
+pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
     data: Share,
-    focus: impl FnOnce(Client) + Copy + Send + 'static,
-) {
+    focus_client: impl FnOnce(Client) -> F + Copy + Send + 'static,
+    focus_workspace: impl FnOnce(WorkspaceId) -> G + Sized + Send + Copy + 'static,
+) -> anyhow::Result<()> {
     let application = Application::builder()
         .application_id("com.github.h3rmt.hyprswitch")
-        // .flags(ApplicationFlags::IS_LAUNCHER)
         .build();
 
     application.connect_startup(move |app| {
@@ -265,47 +242,35 @@ pub fn start_gui(
         provider.load_from_data(CSS);
 
         gtk4::style_context_add_provider_for_display(
-            &gdk::Display::default().expect("Could not connect to a display."),
+            &gdk::Display::default()
+                .context("Could not connect to a display.")
+                .expect("Could not connect to a display."),
             &provider,
             gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
-        let monitors = get_all_monitors(
-            #[cfg(feature = "toast")]
-                do_toast
-        );
+        let monitors = get_all_monitors()
+            .context("Failed to get all monitors")
+            .expect("Failed to get all monitors");
 
         for monitor in monitors {
             let data = data.clone();
-            activate(
-                focus,
-                app,
-                &monitor,
-                data,
-                #[cfg(feature = "toast")]
-                    do_toast,
-            );
+            activate(focus_client, focus_workspace, app, &monitor, data)
+                .with_context(|| format!("Failed to activate for monitor {monitor}"))
+                .expect("Failed to activate");
         }
     });
 
     application.run_with_args::<String>(&[]);
+
+    Ok(())
 }
 
-fn get_all_monitors(
-    #[cfg(feature = "toast")]
-    do_toast: bool,
-) -> Vec<Monitor> {
+fn get_all_monitors() -> anyhow::Result<Vec<Monitor>> {
     let display_manager = gdk::DisplayManager::get();
     let displays = display_manager.list_displays();
-    displays.first()
-        .ok_or_else(|| {
-            #[cfg(feature = "toast")] {
-                use crate::toast::toast;
-                if do_toast {
-                    toast("No Display found");
-                }
-            }
-        })
-        .expect("No Display found")
-        .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>()
+
+    Ok(displays.first()
+        .context("No Display found")?
+        .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>())
 }
