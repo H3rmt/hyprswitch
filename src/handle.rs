@@ -79,7 +79,7 @@ pub fn execute(next_client: &Client, dry_run: bool) -> Result<(), shared::HyprEr
     Ok(())
 }
 
-pub fn collect_data(info: Info) -> Result<Data, Box<dyn std::error::Error>> {
+pub fn collect_data() -> Result<Data, Box<dyn std::error::Error>> {
     let mut clients = Clients::get()?
         .filter(|c| c.workspace.id != -1)
         .collect::<Vec<_>>();
@@ -109,11 +109,11 @@ pub fn collect_data(info: Info) -> Result<Data, Box<dyn std::error::Error>> {
             md.entry(monitor.id)
                 .and_modify(|entry| {
                     entry.workspaces_on_monitor += 1;
-                    if info.vertical_workspaces {
-                        entry.combined_height += entry.height;
-                    } else {
-                        entry.combined_width += entry.width;
-                    }
+                    // if info.vertical_workspaces {
+                    entry.combined_height += entry.height;
+                    // } else {
+                    //     entry.combined_width += entry.width;
+                    // }
                 })
                 .or_insert_with(|| {
                     MonitorData {
@@ -143,11 +143,12 @@ pub fn collect_data(info: Info) -> Result<Data, Box<dyn std::error::Error>> {
             workspaces.iter()
                 .filter(|ws| ws.monitor == monitors.iter().find(|m| m.id == *monitor_id).unwrap().name)
                 .for_each(|workspace| {
-                    let (x, y) = if info.vertical_workspaces {
-                        (monitor_data.x, y_offset)
-                    } else {
-                        (x_offset, monitor_data.y)
-                    };
+                    // let (x, y) = if info.vertical_workspaces {
+                    //     (monitor_data.x, y_offset)
+                    // } else {
+                    //     (x_offset, monitor_data.y)
+                    // };
+                    let (x, y) = (x_offset, monitor_data.y);
 
                     if info.verbose {
                         println!("workspace {:?} on monitor {} at ({}, {})", workspace.id, monitor_id, x, y);

@@ -7,7 +7,7 @@ pub mod sort;
 pub mod handle;
 #[cfg(feature = "gui")]
 pub mod gui;
-#[cfg(feature = "daemon")]
+#[cfg(feature = "gui")]
 pub mod daemon;
 #[cfg(feature = "toast")]
 pub mod toast;
@@ -40,16 +40,15 @@ pub struct WorkspaceData {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Info {
-    pub vertical_workspaces: bool,
     pub ignore_monitors: bool,
     pub ignore_workspaces: bool,
     pub same_class: bool,
     pub reverse: bool,
     pub stay_workspace: bool,
-    pub verbose: bool,
-    pub dry_run: bool,
-    #[cfg(feature = "toast")]
-    pub toast: bool,
+    // pub verbose: bool,
+    // pub dry_run: bool,
+    // #[cfg(feature = "toast")]
+    // pub toast: bool,
 }
 
 #[derive(Default, Debug, Clone)]

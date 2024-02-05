@@ -27,17 +27,13 @@ pub struct Args {
     #[arg(long)]
     pub ignore_monitors: bool,
 
-    /// Display workspaces vertically on monitors
-    #[arg(long)]
-    pub vertical_workspaces: bool,
-
     /// Don't execute window switch, just print next window
     #[arg(long, short)]
     pub dry_run: bool,
 
-    /// Enable verbose output
-    #[arg(long, short)]
-    pub verbose: bool,
+    /// Enable verbose output (Increase message verbosity)
+    #[arg(long, short, parse(from_occurrences))]
+    pub verbose: usize,
 
     /// Enable toasting of errors
     #[arg(long, short)]
@@ -47,35 +43,24 @@ pub struct Args {
     /// Starts as the daemon, starts socket server and executes current window switch
     /// Sends Commands to the daemon if running instead
     #[arg(long)]
-    #[cfg(feature = "daemon")]
+    #[cfg(feature = "gui")]
     pub daemon: bool,
 
     /// Stops the daemon, sends stop to socket server, doesn't execute current window switch
     /// Needs to be used with --daemon
     #[arg(long)]
-    #[cfg(feature = "daemon")]
-    pub stop_daemon: bool,
-
-    /// Starts the daemon with the gui
-    /// Needs to be used with --daemon
-    #[arg(long)]
     #[cfg(feature = "gui")]
-    pub gui: bool,
+    pub stop_daemon: bool,
 }
 
 impl From<Args> for Info {
     fn from(args: Args) -> Self {
         Self {
-            vertical_workspaces: args.vertical_workspaces,
             ignore_monitors: args.ignore_monitors,
             ignore_workspaces: args.ignore_workspaces,
             same_class: args.same_class,
             reverse: args.reverse,
             stay_workspace: args.stay_workspace,
-            verbose: args.verbose,
-            dry_run: args.dry_run,
-            #[cfg(feature = "toast")]
-            toast: args.toast,
         }
     }
 }

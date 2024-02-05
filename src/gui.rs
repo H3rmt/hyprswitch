@@ -252,10 +252,8 @@ fn update(
 }
 
 pub fn start_gui(
-    focus: impl FnOnce(Client) + Copy + Send + 'static,
     data: Share,
-    #[cfg(feature = "toast")]
-    do_toast: bool,
+    focus: impl FnOnce(Client) + Copy + Send + 'static,
 ) {
     let application = Application::builder()
         .application_id("com.github.h3rmt.hyprswitch")
