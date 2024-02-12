@@ -206,7 +206,7 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
 
         let gesture_2 = gtk4::EventControllerMotion::new();
         let workspace_clone = *workspace.0;
-        gesture_2.connect_motion(move |_, _x, _y| {
+        gesture_2.connect_enter(move |_, _x, _y| {
             let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
 
             rt.block_on(async {
