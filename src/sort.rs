@@ -282,16 +282,3 @@ impl SortableClient for Client {
         self.title.clone()
     }
 }
-
-#[allow(dead_code)]
-fn pretty_print<T: Debug>(nested_vector: &[Vec<Vec<T>>]) {
-    for (i, inner_vector) in nested_vector.iter().enumerate() {
-        println!("Vector {}:", i);
-        for (j, second_inner_vector) in inner_vector.iter().enumerate() {
-            println!("\tInner Vector {}: ", j);
-            for (k, item) in second_inner_vector.iter().enumerate() {
-                println!("\t\tItem {}: {:?}", k, item);
-            }
-        }
-    }
-}

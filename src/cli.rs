@@ -28,7 +28,7 @@ pub struct Args {
     pub ignore_monitors: bool,
 
     /// Offset for the chosen window, default is 1
-    #[arg(long, default_value = "1")]
+    #[arg(long, short, default_value = "1")]
     pub offset: usize,
 
     /// Starts as the daemon, starts socket server and executes current window switch
@@ -38,7 +38,6 @@ pub struct Args {
     pub daemon: bool,
 
     /// Stops the daemon, sends stop to socket server, doesn't execute current window switch
-    /// Needs to be used with --daemon
     #[arg(long)]
     #[cfg(feature = "gui")]
     pub stop_daemon: bool,

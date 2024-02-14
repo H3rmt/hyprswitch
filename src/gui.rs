@@ -20,10 +20,10 @@ use crate::{Data, icons, Info, Share};
 
 const CSS: &str = r#"
     frame.active {
-         background-color: rgba(0, 0, 0, 0.5);
+        border: 3px solid rgba(255, 0, 0, 0.4);
     }
     frame.active-ws {
-         background-color: rgba(0, 0, 0, 0.2);
+         background-color: rgba(0, 0, 0, 0.4);
     }
     frame {
         border-radius: 10px;
@@ -43,6 +43,7 @@ lazy_static! {
     static ref ICON_SIZE: i32 = option_env!("ICON_SIZE").map_or(256, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
     static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(6, |s| s.parse().expect("Failed to parse ICON_SCALE"));
+    static ref EXIT_ON_CLICK: bool = option_env!("EXIT_ON_CLICK").map_or(true, |s| s.parse().expect("Failed to parse EXIT_ON_CLICK"));
 }
 
 fn client_ui(client: &Client, client_active: bool, index: i32) -> Frame {
@@ -110,8 +111,8 @@ fn client_ui(client: &Client, client_active: bool, index: i32) -> Frame {
 }
 
 fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
-    focus_client: impl FnOnce(Client) -> F + Copy + Send + 'static,
-    focus_workspace: impl FnOnce(WorkspaceId) -> G + Sized + Send + Copy + 'static,
+    focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
+    focus_workspace: impl FnOnce(WorkspaceId, Share) -> G + Sized + Send + Copy + 'static,
     app: &Application,
     monitor: &Monitor,
     data: Share,
@@ -132,7 +133,27 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Out
         .title("Hello, World!")
         .build();
 
-    listen(workspaces_box, focus_client, focus_workspace, monitor, data)?;
+    let connector = monitor.connector()
+        .with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
+    let monitor_clone = monitor.clone();
+    let window_clone = window.clone();
+    glib::MainContext::default().spawn_local(async move {
+        let (data_mut, cvar) = &*data;
+        {
+            let first = data_mut.lock().await;
+            update(workspaces_box.clone(), focus_client, focus_workspace, first, window_clone.clone(), &connector, data.clone())
+                .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
+                .expect("Failed to update workspaces");
+        }
+
+        loop {
+            let data_mut_unlock = cvar.wait(data_mut.lock().await).await;
+            update(workspaces_box.clone(), focus_client, focus_workspace, data_mut_unlock, window_clone.clone(), &connector, data.clone())
+                .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
+                .expect("Failed to update workspaces");
+        }
+    });
+
 
     window.init_layer_shell();
     window.set_layer(Layer::Overlay);
@@ -146,43 +167,14 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Out
     Ok(())
 }
 
-fn listen<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
-    workspaces_box: gtk4::Box,
-    focus_client: impl FnOnce(Client) -> F + Sized + Send + Copy + 'static,
-    focus_workspace: impl FnOnce(WorkspaceId) -> G + Sized + Send + Copy + 'static,
-    monitor: &Monitor,
-    data: Share,
-) -> anyhow::Result<()> {
-    let connector = monitor.connector()
-        .with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
-
-    let monitor_clone = monitor.clone();
-    glib::MainContext::default().spawn_local(async move {
-        let (data, cvar) = &*data;
-        {
-            let first = data.lock().await;
-            update(workspaces_box.clone(), focus_client, focus_workspace, first, &connector)
-                .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
-                .expect("Failed to update workspaces");
-        }
-
-        loop {
-            let data = cvar.wait(data.lock().await).await;
-            update(workspaces_box.clone(), focus_client, focus_workspace, data, &connector)
-                .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
-                .expect("Failed to update workspaces");
-        }
-    });
-
-    Ok(())
-}
-
 fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
     workspaces_box: gtk4::Box,
-    focus_client: impl FnOnce(Client) -> F + Copy + Send + 'static,
-    focus_workspace: impl FnOnce(WorkspaceId) -> G + Sized + Send + Copy + 'static,
+    focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
+    focus_workspace: impl FnOnce(WorkspaceId, Share) -> G + Sized + Send + Copy + 'static,
     data: MutexGuard<(Info, Data)>,
+    window: ApplicationWindow,
     connector: &str,
+    data_arc: Share,
 ) -> anyhow::Result<()> {
     // remove all children
     while let Some(child) = workspaces_box.first_child() {
@@ -224,12 +216,12 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
             .child(&fixed)
             .build();
 
-        let mut active_ws = false;
+        // let mut active_ws = false;
         for (index, client) in clients {
             let client_active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
-            if client_active {
-                active_ws = true;
-            }
+            // if client_active {
+            //     active_ws = true;
+            // }
 
             let frame = client_ui(client, client_active, (index as i32) - (data.1.selected_index.unwrap_or(0) as i32));
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
@@ -243,41 +235,43 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
 
             let gesture = gtk4::GestureClick::new();
             let client_clone = client.clone();
+            let window_clone = window.clone();
+            let data_arc_clone = data_arc.clone();
             gesture.connect_pressed(move |gesture, _, _, _| {
-                let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
-
-                rt.block_on(async {
+                tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(async {
                     gesture.set_state(gtk4::EventSequenceState::Claimed);
-                    focus_client(client_clone.clone()).await
+                    focus_client(client_clone.clone(), data_arc_clone.clone()).await
                         .with_context(|| format!("Failed to focus client {}", client_clone.class))
                         .expect("Failed to focus client");
 
-                    // TODO update focused window
-
-                    // TODO close window
-                    std::process::exit(0);
+                    if *EXIT_ON_CLICK {
+                        if let Some(app) = window_clone.application() {
+                            app.windows().iter().for_each(|w| w.close())
+                        }
+                        std::process::exit(0);
+                    }
                 });
             });
             frame.add_controller(gesture);
         }
+        // if active_ws {
+        //     workspace_frame.add_css_class("active-ws");
+        // }
 
         let gesture_2 = gtk4::EventControllerMotion::new();
-        let workspace_clone = *workspace.0;
+        let workspace_copy = *workspace.0;
+        let _workspace_frame_clone = workspace_frame.clone();
+        let data_arc_clone_2 = data_arc.clone();
         gesture_2.connect_enter(move |_, _x, _y| {
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
+            // workspace_frame_clone.add_css_class("active-ws");
 
-            rt.block_on(async {
-                // println!("hovered on {}", client_clone_2.class);
-                focus_workspace(workspace_clone).await
-                    .with_context(|| format!("Failed to focus workspace {}", workspace_clone))
+            tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(async {
+                focus_workspace(workspace_copy, data_arc_clone_2.clone()).await
+                    .with_context(|| format!("Failed to focus workspace {}", workspace_copy))
                     .expect("Failed to focus client");
             });
         });
         workspace_frame.add_controller(gesture_2);
-
-        if active_ws {
-            workspace_frame.add_css_class("active-ws");
-        }
 
         workspaces_box.append(&workspace_frame);
     }
@@ -287,8 +281,8 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
 
 pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
     data: Share,
-    focus_client: impl FnOnce(Client) -> F + Copy + Send + 'static,
-    focus_workspace: impl FnOnce(WorkspaceId) -> G + Sized + Send + Copy + 'static,
+    focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
+    focus_workspace: impl FnOnce(WorkspaceId, Share) -> G + Sized + Send + Copy + 'static,
 ) -> anyhow::Result<()> {
     let application = Application::builder()
         .application_id("com.github.h3rmt.hyprswitch")

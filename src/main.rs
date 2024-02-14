@@ -33,7 +33,7 @@ async fn main() -> anyhow::Result<()> {
 
 #[cfg(feature = "gui")]
 async fn run_daemon(info: Info, dry: bool) -> anyhow::Result<()> {
-    use hyprswitch::{daemon, gui};
+    use hyprswitch::{daemon, gui, Share};
     use tokio::sync::Mutex;
     use std::sync::Arc;
     use tokio_condvar::Condvar;
@@ -41,57 +41,77 @@ async fn run_daemon(info: Info, dry: bool) -> anyhow::Result<()> {
     if !daemon::daemon_running().await {
         warn!("Daemon not running, starting daemon");
 
+        run_normal(info, dry).await?;
+
         let data = handle::collect_data(info).await
             .with_context(|| format!("Failed to collect data with info {info:?}"))?;
 
         // create arc to send to thread
-        let latest = Arc::new((Mutex::new((info, data)), Condvar::new()));
+        let latest_arc: Share = Arc::new((Mutex::new((info, data)), Condvar::new()));
 
         info!("Starting gui");
-        let latest_clone = latest.clone();
-        let th = std::thread::spawn(move || {
-            let a = move |next_client: Client| async move {
+        let latest_arc_clone = latest_arc.clone();
+        std::thread::spawn(move || {
+            let switch = move |next_client: Client, latest_data: Share| async move {
                 handle::switch(&next_client, dry).await
                     .with_context(|| format!("Failed to execute with next_client {next_client:?} and dry {dry:?}"))?;
-                Ok(())
-            };
-            let b = move |ws_id: WorkspaceId| async move {
-                handle::switch_workspace(ws_id, dry).await
-                    .with_context(|| format!("Failed to execute switch workspace with ws_id {ws_id:?} and dry {dry:?}"))?;
+
+                let data = handle::collect_data(info).await
+                    .with_context(|| format!("Failed to collect data with info {info:?}"))?;
+                debug!("collected Data: {:?}", data);
+
+                let (latest, cvar) = &*latest_data;
+                let mut ld = latest.lock().await;
+                ld.1 = data;
+                ld.1.active = Some(next_client);
+                cvar.notify_all();
                 Ok(())
             };
 
-            gui::start_gui(latest_clone, a, b).context("Failed to start gui")
+            let switch_workspace = move |ws_id: WorkspaceId, _latest_data: Share| async move {
+                handle::switch_workspace(ws_id, dry).await
+                    .with_context(|| format!("Failed to execute switch workspace with ws_id {ws_id:?} and dry {dry:?}"))?;
+
+                // let data = handle::collect_data(info).await
+                //     .with_context(|| format!("Failed to collect data with info {info:?}"))?;
+                // debug!("collected Data: {:?}", data);
+                //
+                // let (latest, cvar) = &*latest_data;
+                // let mut ld = latest.lock().await;
+                // ld.1 = data;
+                // cvar.notify_all();
+                Ok(())
+            };
+
+            gui::start_gui(latest_arc_clone, switch, switch_workspace)
+                .context("Failed to start gui")
                 .expect("Failed to start gui")
         });
 
-        // // async block exit if gui fails
-        // tokio::task::spawn_blocking(move || {
-        //     th.join().expect("Gui thread failed");
-        // }).await?;
+        let callback = move |info: Info, latest_data: Share| async move {
+            let (latest, cvar) = &*latest_data;
+            let mut ld = latest.lock().await;
 
-        info!("Starting daemon");
-        daemon::start_daemon(latest, move |info, latest_data| async move {
-            let data = handle::collect_data(info).await
-                .with_context(|| format!("Failed to collect data with info {info:?}"))?;
-            debug!("collected Data: {:?}", data);
-
-            let next_client = handle::find_next(info, data.active.clone(), data.clients.clone())
+            let next_client = handle::find_next(info, ld.1.active.clone(), ld.1.clients.clone())
                 .with_context(|| format!("Failed to find next client with info {info:?}"))?;
             info!("Next client: {:?}", next_client);
 
             handle::switch(&next_client, dry).await
                 .with_context(|| format!("Failed to execute with next_client {next_client:?} and dry {dry:?}"))?;
 
-            let (latest, cvar) = &*latest_data;
-            let mut ld = latest.lock().await;
+            let data = handle::collect_data(info).await
+                .with_context(|| format!("Failed to collect data with info {info:?}"))?;
+            debug!("collected Data: {:?}", data);
+
             ld.0 = info;
             ld.1 = data;
-            ld.1.active = Some(next_client);
             cvar.notify_all();
 
             Ok(())
-        }).await?;
+        };
+
+        info!("Starting daemon");
+        daemon::start_daemon(latest_arc, callback).await?
     } else {
         info!("Daemon already running");
     }
