@@ -795,6 +795,7 @@ dependencies = [
  "gtk4",
  "gtk4-layer-shell",
  "hyprland",
+ "lazy_static",
  "libadwaita",
  "log",
  "random_color",

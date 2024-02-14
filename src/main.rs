@@ -4,7 +4,7 @@ use hyprland::data::Client;
 use hyprland::shared::WorkspaceId;
 use log::{debug, info, warn};
 
-use hyprswitch::{handle, icons, Info};
+use hyprswitch::{handle, Info};
 
 use crate::cli::Args;
 
@@ -14,11 +14,6 @@ mod cli;
 async fn main() -> anyhow::Result<()> {
     let cli = Args::parse();
     stderrlog::new().module(module_path!()).verbosity(cli.verbose as usize + 1).init().expect("Failed to initialize logging");
-
-    let u = icons::create_desktop_file_map();
-    for (k, v) in u.iter() {
-        debug!("{}: {:?}", k, v);
-    }
 
     #[cfg(feature = "gui")]
     if cli.stop_daemon {

@@ -3,9 +3,18 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs::DirEntry;
+use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
-use log::{debug, warn};
+use log::warn;
+
+pub fn get_icon_name(icon: &str) -> Option<&str> {
+    static LOADER: OnceLock<HashMap<Box<str>, Box<str>>> = OnceLock::new();
+    let map = LOADER.get_or_init(create_desktop_file_map);
+    map.get(icon.to_ascii_lowercase().as_str()).map(Deref::deref)
+}
+
 
 fn find_application_dirs() -> Vec<PathBuf> {
     let mut dirs = env::var_os("XDG_DATA_DIRS")
@@ -35,7 +44,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
     let mut res = Vec::new();
     for dir in find_application_dirs() {
         if !dir.exists() {
-            debug!("Dir {dir:?} does not exist");
+            // debug!("Dir {dir:?} does not exist");
             continue;
         }
         match dir.read_dir() {
@@ -54,51 +63,41 @@ fn collect_desktop_files() -> Vec<DirEntry> {
     res
 }
 
-pub fn create_desktop_file_map() -> HashMap<Box<str>, (Box<str>, Option<Box<str>>)> {
-    let map = collect_desktop_files()
-        .into_iter()
-        .filter_map(|entry| {
-            let file = std::fs::read_to_string(entry.path());
-            match file {
-                Ok(file) => {
-                    let name = file.lines()
-                        .find(|l| l.starts_with("Name="))
-                        .and_then(|l| l.split('=').nth(1));
-                    let icon = file.lines()
-                        .find(|l| l.starts_with("Icon="))
-                        .and_then(|l| l.split('=').nth(1));
-                    let startup_wm_class = file.lines()
-                        .find(|l| l.starts_with("StartupWMClass="))
-                        .and_then(|l| l.split('=').nth(1));
-                    match (name, icon, startup_wm_class) {
-                        (Some(name), Some(icon), startup_wm_class) => {
-                            let n = Box::from(name);
-                            let i = Box::from(icon);
-                            let s = startup_wm_class.map(Box::from);
-                            Some((n, (i, s)))
-                        }
-                        _ => None
-                    }
+fn create_desktop_file_map() -> HashMap<Box<str>, Box<str>> {
+    let mut map = HashMap::new();
+
+    for entry in collect_desktop_files() {
+        let file = std::fs::read_to_string(entry.path());
+        match file {
+            Ok(file) => {
+                let name = file.lines()
+                    .find(|l| l.starts_with("Name="))
+                    .and_then(|l| l.split('=').nth(1));
+                let icon = file.lines()
+                    .find(|l| l.starts_with("Icon="))
+                    .and_then(|l| l.split('=').nth(1));
+                let startup_wm_class = file.lines()
+                    .find(|l| l.starts_with("StartupWMClass="))
+                    .and_then(|l| l.split('=').nth(1));
+
+                if let (Some(name), Some(icon)) = (name, icon) {
+                    let mut n: Box<str> = Box::from(name);
+                    n.make_ascii_lowercase();
+                    let i = Box::from(icon);
+                    map.insert(n, i);
                 }
-                Err(e) => {
-                    warn!("Failed to read file {}: {e}", entry.path().display());
-                    None
+                if let (Some(startup_wm_class), Some(icon)) = (startup_wm_class, icon) {
+                    let mut s: Box<str> = Box::from(startup_wm_class);
+                    s.make_ascii_lowercase();
+                    let i = Box::from(icon);
+                    map.insert(s, i);
                 }
             }
-        });
+            Err(e) => {
+                warn!("Failed to read file {}: {e}", entry.path().display());
+            }
+        }
+    }
 
-    HashMap::from_iter(map)
+    map
 }
-
-/*
-class: python3
-title: Tor Browser Launcher Settings
-initialClass: python3
-initialTitle: Tor Browser Launcher Settings
-
-DEBUG Tor Browser Launcher Settings: ("org.torproject.torbrowser-launcher", None)
-
-Icon=org.torproject.torbrowser-launcher
-Categories=Network;WebBrowser;
-StartupWMClass=Tor Browser
- */

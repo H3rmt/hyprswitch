@@ -4,7 +4,7 @@ pub mod handle;
 pub mod gui;
 #[cfg(feature = "gui")]
 pub mod daemon;
-pub mod icons;
+mod icons;
 
 pub type MonitorId = i128;
 

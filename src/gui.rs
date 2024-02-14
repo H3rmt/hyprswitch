@@ -3,20 +3,20 @@ use std::future::Future;
 #[cfg(feature = "libadwaita")]
 use adw::Application;
 use anyhow::Context;
-use gtk4::{ApplicationWindow, Frame, gdk, glib};
+use gtk4::{ApplicationWindow, Frame, gdk, glib, IconLookupFlags, IconPaintable, TextDirection};
 #[cfg(not(feature = "libadwaita"))]
 use gtk4::Application;
 use gtk4::gdk::Monitor;
+use gtk4::gio::File;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
 use hyprland::shared::WorkspaceId;
+use lazy_static::lazy_static;
+use log::{debug, warn};
 use tokio::sync::MutexGuard;
 
-use crate::{Data, Info, Share};
-
-const SIZE_FACTOR: i16 = 7;
-const IMG_SIZE_FACTOR: i16 = 9;
+use crate::{Data, icons, Info, Share};
 
 const CSS: &str = r#"
     frame.active {
@@ -38,14 +38,48 @@ const CSS: &str = r#"
     }
 "#;
 
+lazy_static! {
+    static ref SIZE_FACTOR: i16 = option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
+    static ref ICON_SIZE: i32 = option_env!("ICON_SIZE").map_or(256, |s| s.parse().expect("Failed to parse ICON_SIZE"));
+    static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
+}
+
 fn client_ui(client: &Client, client_active: bool) -> Frame {
-    let icon = gtk4::Image::from_icon_name(&client.class);
-    let pixel_size = (client.size.1 / IMG_SIZE_FACTOR) as i32;
-    icon.set_pixel_size(pixel_size);
+    let theme = gtk4::IconTheme::new();
+    let icon = if theme.has_icon(&client.class) {
+        debug!("Icon found for {}", client.class);
+        theme.lookup_icon(&client.class, &[], *ICON_SIZE, *ICON_SCALE, TextDirection::None, IconLookupFlags::PRELOAD)
+    } else {
+        warn!("Icon not found for {}", client.class);
+
+        icons::get_icon_name(&client.class)
+            .map(|icon| {
+                debug!("desktop file found for {}: {icon}", client.class);
+
+                // check if icon is a path or name
+                if icon.contains('/') {
+                    let file = File::for_path(icon);
+                    IconPaintable::for_file(&file, *ICON_SIZE, *ICON_SCALE)
+                } else {
+                    theme.lookup_icon(icon, &[], *ICON_SIZE, *ICON_SCALE, TextDirection::None, IconLookupFlags::PRELOAD)
+                }
+            })
+            .unwrap_or_else(|| {
+                warn!("No desktop file with icon found for {}", client.class);
+                // just lookup the icon and hope for the best
+                theme.lookup_icon(&client.class, &[], *ICON_SIZE, *ICON_SCALE, TextDirection::None, IconLookupFlags::PRELOAD)
+            })
+    };
+    debug!("{:?}\n", icon.file().expect("Failed to get icon file").path());
+    let icon = gtk4::Image::from_paintable(Some(&icon));
+    icon.set_margin_start(20);
+    icon.set_margin_end(20);
+    icon.set_margin_top(20);
+    icon.set_margin_bottom(20);
 
     let frame = Frame::builder()
-        .width_request((client.size.0 / SIZE_FACTOR) as i32)
-        .height_request((client.size.1 / SIZE_FACTOR) as i32)
+        .width_request((client.size.0 / *SIZE_FACTOR) as i32)
+        .height_request((client.size.1 / *SIZE_FACTOR) as i32)
         .label(&client.class)
         .label_xalign(0.5)
         .css_classes(vec!["client"])
@@ -180,8 +214,8 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
                 active_ws = true;
             }
             let frame = client_ui(client, client_active);
-            let x = ((client.at.0 - workspace.1.x as i16) / SIZE_FACTOR) as f64;
-            let y = ((client.at.1 - workspace.1.y as i16) / SIZE_FACTOR) as f64;
+            let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
+            let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
             fixed.put(&frame, x, y);
 
             let gesture = gtk4::GestureClick::new();
