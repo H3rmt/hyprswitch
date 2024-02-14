@@ -65,10 +65,10 @@ async fn run_daemon(info: Info, dry: bool) -> anyhow::Result<()> {
                 .expect("Failed to start gui")
         });
 
-        // async block exit if gui fails
-        tokio::task::spawn_blocking(move || {
-            th.join().expect("Gui thread failed");
-        }).await?;
+        // // async block exit if gui fails
+        // tokio::task::spawn_blocking(move || {
+        //     th.join().expect("Gui thread failed");
+        // }).await?;
 
         info!("Starting daemon");
         daemon::start_daemon(latest, move |info, latest_data| async move {

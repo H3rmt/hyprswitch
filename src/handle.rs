@@ -163,8 +163,15 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
 
     let active = Client::get_active_async().await?;
 
+    let selected_index = if let Some(aa) = active.as_ref().map(|a| a.address.clone()) {
+        clients.iter().position(|c| c.address == aa)
+    } else {
+        None
+    };
+
     Ok(Data {
         clients,
+        selected_index,
         workspace_data,
         monitor_data,
         active,

@@ -15,8 +15,15 @@ const CMDLEN: usize = 7;
 pub async fn daemon_running() -> bool {
     // check if socket exists and socket is open
     if Path::new(PATH).exists() {
-        UnixStream::connect(PATH).await.is_ok()
+        debug!("Checking if daemon is running");
+        UnixStream::connect(PATH).await
+            .map_err(|e| {
+                debug!("Daemon not running: {e}");
+                e
+            })
+            .is_ok()
     } else {
+        debug!("Daemon not running");
         false
     }
 }
@@ -76,7 +83,6 @@ async fn handle_client<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
             std::process::exit(0);
         }
         b's' => {
-            info!("Received switch command {buffer:?}");
             if buffer.len() == CMDLEN {
                 let info = Info {
                     reverse: buffer[1] == 1,
@@ -87,6 +93,7 @@ async fn handle_client<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
                     filter_same_class: buffer[6] == 1,
                 };
 
+                info!("Received switch command {info:?}");
                 exec(info, data_arc).await
                     .with_context(|| format!("Failed to execute with info {info:?}"))?;
             } else {

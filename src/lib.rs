@@ -42,6 +42,7 @@ pub struct Info {
 #[derive(Debug, Clone)]
 pub struct Data {
     pub clients: Vec<hyprland::data::Client>,
+    pub selected_index: Option<usize>,
     pub workspace_data: std::collections::HashMap<hyprland::shared::WorkspaceId, WorkspaceData>,
     pub monitor_data: std::collections::HashMap<MonitorId, MonitorData>,
     pub active: Option<hyprland::data::Client>,

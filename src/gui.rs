@@ -3,7 +3,7 @@ use std::future::Future;
 #[cfg(feature = "libadwaita")]
 use adw::Application;
 use anyhow::Context;
-use gtk4::{ApplicationWindow, Frame, gdk, glib, IconLookupFlags, IconPaintable, TextDirection};
+use gtk4::{ApplicationWindow, Frame, gdk, glib, IconLookupFlags, IconPaintable, Image, Label, pango, TextDirection};
 #[cfg(not(feature = "libadwaita"))]
 use gtk4::Application;
 use gtk4::gdk::Monitor;
@@ -29,12 +29,12 @@ const CSS: &str = r#"
         border-radius: 10px;
         border: 3px solid rgba(0, 0, 0, 0.4);
     }
+    frame.client:hover {
+        background-color: rgba(70, 70, 70, 0.2);
+    }
     window {
         border-radius: 15px;
         border: 6px solid rgba(0, 0, 0, 0.4);
-    }
-    frame.client:hover {
-        background-color: rgba(70, 70, 70, 0.2);
     }
 "#;
 
@@ -42,9 +42,10 @@ lazy_static! {
     static ref SIZE_FACTOR: i16 = option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
     static ref ICON_SIZE: i32 = option_env!("ICON_SIZE").map_or(256, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
+    static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(6, |s| s.parse().expect("Failed to parse ICON_SCALE"));
 }
 
-fn client_ui(client: &Client, client_active: bool) -> Frame {
+fn client_ui(client: &Client, client_active: bool, index: i32) -> Frame {
     let theme = gtk4::IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
         debug!("Icon found for {}", client.class);
@@ -71,17 +72,32 @@ fn client_ui(client: &Client, client_active: bool) -> Frame {
             })
     };
     debug!("{:?}\n", icon.file().expect("Failed to get icon file").path());
-    let icon = gtk4::Image::from_paintable(Some(&icon));
-    icon.set_margin_start(20);
-    icon.set_margin_end(20);
-    icon.set_margin_top(20);
-    icon.set_margin_bottom(20);
+    let icon = Image::from_paintable(Some(&icon));
+    icon.set_margin_start(15);
+    icon.set_margin_end(15);
+    icon.set_margin_top(15);
+    icon.set_margin_bottom(15);
+
+    let text = if index < *NEXT_INDEX_MAX && index > -(*NEXT_INDEX_MAX) {
+        format!("{} - {}", index, client.class)
+    } else {
+        client.class.clone()
+    };
+
+    let label = Label::builder()
+        .overflow(gtk4::Overflow::Visible)
+        .margin_start(8)
+        .margin_end(8)
+        .margin_top(4)
+        .margin_bottom(4)
+        .ellipsize(pango::EllipsizeMode::End)
+        .label(text)
+        .build();
 
     let frame = Frame::builder()
-        .width_request((client.size.0 / *SIZE_FACTOR) as i32)
-        .height_request((client.size.1 / *SIZE_FACTOR) as i32)
-        .label(&client.class)
         .label_xalign(0.5)
+        .label_widget(&label)
+        .overflow(gtk4::Overflow::Hidden)
         .css_classes(vec!["client"])
         .child(&icon)
         .build();
@@ -189,10 +205,11 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
     for workspace in workspaces {
         let clients = data.1.clients
             .iter()
-            .filter(|client| {
+            .enumerate()
+            .filter(|(_, client)| {
                 client.monitor == *monitor_id && client.workspace.id == *workspace.0
             })
-            .collect::<Vec<&Client>>();
+            .collect::<Vec<(usize, &Client)>>();
 
         let fixed = gtk4::Fixed::builder()
             .margin_end(7)
@@ -208,14 +225,20 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
             .build();
 
         let mut active_ws = false;
-        for client in clients {
+        for (index, client) in clients {
             let client_active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
             if client_active {
                 active_ws = true;
             }
-            let frame = client_ui(client, client_active);
+
+            let frame = client_ui(client, client_active, (index as i32) - (data.1.selected_index.unwrap_or(0) as i32));
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
             let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
+            let width = (client.size.0 / *SIZE_FACTOR) as i32;
+            let height = (client.size.1 / *SIZE_FACTOR) as i32;
+            frame.set_width_request(width);
+            frame.set_height_request(height);
+
             fixed.put(&frame, x, y);
 
             let gesture = gtk4::GestureClick::new();
