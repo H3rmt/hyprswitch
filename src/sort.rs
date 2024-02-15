@@ -53,8 +53,6 @@ pub fn sort_clients<SC>(
         }
     };
 
-    // pretty_print(&monitors);
-
     let mut sorted_clients: Vec<SC> = vec![];
 
     for ws in monitors {
@@ -67,6 +65,8 @@ pub fn sort_clients<SC>(
                     a.x().cmp(&b.x())
                 }
             });
+
+            println!("ws_clients: {:?}", ws_clients);
 
             let mut clients_queue: VecDeque<SC> = VecDeque::from(ws_clients);
 

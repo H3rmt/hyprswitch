@@ -3,10 +3,10 @@ use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
-use hyprswitch::{MonitorData, WorkspaceData};
+use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
 use hyprswitch::sort::{sort_clients, update_clients};
 
-use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
+use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
 /// ```
 ///       1       3    5   6     8   10  11  12
@@ -36,11 +36,11 @@ fn many_1() {
         MockClient(7, 8, 2, 2, 0, 0, "7".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 12, height: 10, combined_width: 12, combined_height: 10, workspaces_on_monitor: 1 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 12, 10));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
+    workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -86,11 +86,11 @@ fn many_2() {
         MockClient(10, 11, 2, 2, 0, 0, "9".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 12, height: 10, combined_width: 12, combined_height: 10, workspaces_on_monitor: 1 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 12, 10));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
+    workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
