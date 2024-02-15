@@ -3,10 +3,10 @@ use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
+use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
 use hyprswitch::sort::{sort_clients, update_clients};
-use hyprswitch::{MonitorData, WorkspaceData};
 
-use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
+use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
 /// ```
 ///    1      2  3      4
@@ -28,11 +28,11 @@ fn simple_1() {
         MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 4, combined_height: 7, workspaces_on_monitor: 1 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 4, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
+    workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -65,11 +65,11 @@ fn simple_2() {
         MockClient(4, 5, 1, 2, 0, 0, "4".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 5, height: 7, combined_width: 5, combined_height: 7, workspaces_on_monitor: 1 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 5, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
+    workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -102,22 +102,11 @@ fn simple_3() {
         MockClient(5, 5, 1, 2, 0, 0, "4".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(
-        0,
-        MonitorData {
-            x: 0,
-            y: 0,
-            width: 6,
-            height: 7,
-            combined_width: 6,
-            combined_height: 7,
-            workspaces_on_monitor: 1,
-        },
-    );
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(1, mon(0, 0, 6, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
+    workspace_data.insert(1, ws(0, 0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -150,11 +139,11 @@ fn simple_4() {
         MockClient(1, 5, 1, 2, 0, 0, "4".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 4, combined_height: 7, workspaces_on_monitor: 1 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(1, mon(0, 0, 4, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
+    workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -188,11 +177,11 @@ fn simple_5() {
         MockClient(1, 6, 1, 2, 0, 0, "4".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 8, combined_width: 4, combined_height: 8, workspaces_on_monitor: 1 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 4, 8));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
+    workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -225,11 +214,11 @@ fn float_1() {
         MockClient(1, 5, 2, 2, 0, 0, "4".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 6, height: 7, combined_width: 4, combined_height: 6, workspaces_on_monitor: 1 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 6, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
+    workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");

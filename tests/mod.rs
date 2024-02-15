@@ -11,8 +11,8 @@ pub mod common {
 
     use hyprland::shared::WorkspaceId;
 
-    use hyprswitch::sort::{SortableClient, MONITOR_WORKSPACE_INDEX_OFFSET};
-    use hyprswitch::MonitorData;
+    use hyprswitch::{MonitorData, WorkspaceData};
+    use hyprswitch::sort::{MONITOR_WORKSPACE_INDEX_OFFSET, SortableClient};
 
     use crate::svg::create_svg;
 
@@ -23,7 +23,7 @@ pub mod common {
         pub u16,
         pub u16,
         pub WorkspaceId,
-        pub i64,
+        pub i128,
         pub String,
     );
 
@@ -43,10 +43,10 @@ pub mod common {
         fn ws(&self) -> WorkspaceId {
             self.4
         }
-        fn wsi(&self, monitor_count: i64) -> WorkspaceId {
-            self.4 - (MONITOR_WORKSPACE_INDEX_OFFSET * monitor_count as i32)
+        fn wsi(&self, monitor_count: i128) -> WorkspaceId {
+            self.4 - (*MONITOR_WORKSPACE_INDEX_OFFSET * monitor_count as i32)
         }
-        fn m(&self) -> i64 {
+        fn m(&self) -> i128 {
             self.5
         }
         fn set_x(&mut self, x: u16) {
@@ -60,6 +60,25 @@ pub mod common {
         }
     }
 
+    pub fn mon(x: u16, y: u16, w: u16, h: u16) -> MonitorData {
+        MonitorData {
+            x,
+            y,
+            width: w,
+            height: h,
+            connector: "test".to_string(),
+        }
+    }
+
+    pub fn ws(x: u16, y: u16) -> WorkspaceData {
+        WorkspaceData {
+            x,
+            y,
+            name: "test".to_string(),
+            monitor: 0,
+        }
+    }
+
     pub fn is_sorted(data: &[MockClient]) -> bool {
         data.windows(2).all(|w| {
             w[0].identifier().parse::<u16>().unwrap() < w[1].identifier().parse::<u16>().unwrap()
@@ -69,7 +88,7 @@ pub mod common {
     pub fn create_svg_from_client_tests<SC>(
         clients: &[SC],
         filename: &str,
-        monitor_data: HashMap<i64, MonitorData>,
+        monitor_data: HashMap<i128, MonitorData>,
     ) where
         SC: SortableClient + Debug,
     {
@@ -100,13 +119,16 @@ pub mod common {
                 n.to_owned()
             };
 
+            // find the width of the svg by finding the max x+width value
+            let wid = cl.iter().map(|(_, x, _, w, _, _)| x + w).max().unwrap();
+
             create_svg(
                 cl,
                 format!("{filename}/{iden}.svg"),
                 0,
                 0,
-                monitor.combined_width * 15,
-                monitor.combined_height * 15,
+                wid,
+                monitor.height * 10,
                 2,
             );
         }
