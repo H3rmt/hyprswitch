@@ -97,9 +97,10 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
 
             md.entry(monitor.id)
                 .and_modify(|entry| {
-                    entry.workspaces_on_monitor += 1;
+                    // entry.workspaces_on_monitor += 1;
+
                     // if info.vertical_workspaces {
-                    entry.combined_height += entry.height;
+                    // entry.combined_height += entry.height;
                     // } else {
                     //     entry.combined_width += entry.width;
                     // }
@@ -110,9 +111,9 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
                         y: monitor.y as u16,
                         width: (monitor.width as f32 / monitor.scale) as u16,
                         height: (monitor.height as f32 / monitor.scale) as u16,
-                        combined_width: (monitor.width as f32 / monitor.scale) as u16,
-                        combined_height: (monitor.height as f32 / monitor.scale) as u16,
-                        workspaces_on_monitor: 1,
+                        // combined_width: (monitor.width as f32 / monitor.scale) as u16,
+                        // combined_height: (monitor.height as f32 / monitor.scale) as u16,
+                        // workspaces_on_monitor: 1,
                         connector: monitor.name.clone(),
                     }
                 });

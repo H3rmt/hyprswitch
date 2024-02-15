@@ -3,6 +3,7 @@ use std::fmt::Debug;
 
 use hyprland::data::Client;
 use hyprland::shared::WorkspaceId;
+use lazy_static::lazy_static;
 
 use crate::{MonitorData, MonitorId, WorkspaceData};
 
@@ -247,10 +248,12 @@ pub trait SortableClient {
     fn identifier(&self) -> String;
 }
 
-/// allows for mapping 2 workspaces on different monitors together
-/// e.g. if you have 2 monitors with 2 workspaces each, you can map the 2 workspaces on the second monitor to the 2 workspaces on the first monitor
-/// MONITOR_WORKSPACE_INDEX_OFFSET gets multiplied by the number of monitors to get the workspace id of the second monitor, so 10 means 10 workspaces per monitor
-pub const MONITOR_WORKSPACE_INDEX_OFFSET: i32 = 10;
+lazy_static! {
+    /// allows for mapping 2 workspaces on different monitors together
+    /// e.g. if you have 2 monitors with 2 workspaces each, you can map the 2 workspaces on the second monitor to the 2 workspaces on the first monitor
+    /// MONITOR_WORKSPACE_INDEX_OFFSET gets multiplied by the number of monitors to get the workspace id of the second monitor, so 10 means 10 workspaces per monitor
+    pub static ref MONITOR_WORKSPACE_INDEX_OFFSET: i32 = option_env!("MONITOR_WORKSPACE_INDEX_OFFSET").map_or(10, |s| s.parse().expect("Failed to parse MONITOR_WORKSPACE_INDEX_OFFSET"));
+}
 
 impl SortableClient for Client {
     fn x(&self) -> u16 {
@@ -269,7 +272,7 @@ impl SortableClient for Client {
         self.workspace.id
     }
     fn wsi(&self, monitor_index: MonitorId) -> i32 {
-        self.workspace.id - (MONITOR_WORKSPACE_INDEX_OFFSET * monitor_index as i32)
+        self.workspace.id - (*MONITOR_WORKSPACE_INDEX_OFFSET * monitor_index as i32)
     }
     fn m(&self) -> MonitorId { self.monitor }
     fn set_x(&mut self, x: u16) {
