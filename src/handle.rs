@@ -89,34 +89,16 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     let monitor_data = {
         let mut md: HashMap<MonitorId, MonitorData> = HashMap::new();
 
-        workspaces.iter().for_each(|ws| {
-            let monitor = monitors
-                .iter()
-                .find(|m| m.name == ws.monitor)
-                .unwrap_or_else(|| panic!("Monitor for Workspace {ws:?} not found"));
-
-            md.entry(monitor.id)
-                .and_modify(|entry| {
-                    // entry.workspaces_on_monitor += 1;
-
-                    // if info.vertical_workspaces {
-                    // entry.combined_height += entry.height;
-                    // } else {
-                    //     entry.combined_width += entry.width;
-                    // }
-                })
-                .or_insert_with(|| {
-                    MonitorData {
-                        x: monitor.x as u16,
-                        y: monitor.y as u16,
-                        width: (monitor.width as f32 / monitor.scale) as u16,
-                        height: (monitor.height as f32 / monitor.scale) as u16,
-                        // combined_width: (monitor.width as f32 / monitor.scale) as u16,
-                        // combined_height: (monitor.height as f32 / monitor.scale) as u16,
-                        // workspaces_on_monitor: 1,
-                        connector: monitor.name.clone(),
-                    }
-                });
+        monitors.iter().for_each(|monitor| {
+            md.entry(monitor.id).or_insert_with(|| {
+                MonitorData {
+                    x: monitor.x as u16,
+                    y: monitor.y as u16,
+                    width: (monitor.width as f32 / monitor.scale) as u16,
+                    height: (monitor.height as f32 / monitor.scale) as u16,
+                    connector: monitor.name.clone(),
+                }
+            });
         });
         md
     };
@@ -132,11 +114,6 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
             workspaces.iter()
                 .filter(|ws| ws.monitor == monitors.iter().find(|m| m.id == *monitor_id).unwrap().name)
                 .for_each(|workspace| {
-                    // let (x, y) = if info.vertical_workspaces {
-                    //     (monitor_data.x, y_offset)
-                    // } else {
-                    //     (x_offset, monitor_data.y)
-                    // };
                     let (x, y) = (x_offset, monitor_data.y);
 
                     debug!("workspace {:?} on monitor {} at ({}, {})", workspace.id, monitor_id, x, y);
@@ -181,7 +158,7 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
 
 pub async fn switch(next_client: &Client, dry_run: bool) -> Result<(), shared::HyprError> {
     if dry_run {
-        println!("next_client: {}", next_client.title);
+        println!("switch to next_client: {}", next_client.title);
     } else {
         Dispatch::call_async(FocusWindow(WindowIdentifier::Address(next_client.address.clone()))).await?;
     }
@@ -190,15 +167,8 @@ pub async fn switch(next_client: &Client, dry_run: bool) -> Result<(), shared::H
 
 pub async fn switch_workspace(workspace_id: WorkspaceId, dry_run: bool) -> Result<(), shared::HyprError> {
     if dry_run {
-        println!("workspace_id: {}", workspace_id);
+        println!("switch to workspace {workspace_id}");
     } else {
-        // check if workspace is selected
-        let active = hyprland::data::Workspace::get_active_async().await?;
-        if active.id == workspace_id {
-            debug!("Workspace already selected");
-            return Ok(());
-        }
-
         Dispatch::call_async(Workspace(WorkspaceIdentifierWithSpecial::Id(workspace_id))).await?;
     }
     Ok(())

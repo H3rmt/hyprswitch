@@ -120,7 +120,7 @@ pub mod common {
             };
 
             // find the width of the svg by finding the max x+width value
-            let wid = cl.iter().map(|(_, x, _, w, _, _)| x + w).max().unwrap();
+            let wid = cl.iter().map(|(_, x, _, w, _, _)| x + w).max().expect("no clients");
 
             create_svg(
                 cl,

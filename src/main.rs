@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "gui")]
     if cli.daemon {
-        run_daemon(cli.into(), cli.dry_run).await?;
+        run_daemon(cli.into(), cli.dry_run, cli.do_initial_execute).await?;
         return Ok(());
     }
 
@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 #[cfg(feature = "gui")]
-async fn run_daemon(info: Info, dry: bool) -> anyhow::Result<()> {
+async fn run_daemon(info: Info, dry: bool, do_initial_execute: bool) -> anyhow::Result<()> {
     use hyprswitch::{daemon, gui, Share};
     use tokio::sync::Mutex;
     use std::sync::Arc;
@@ -41,7 +41,11 @@ async fn run_daemon(info: Info, dry: bool) -> anyhow::Result<()> {
     if !daemon::daemon_running().await {
         warn!("Daemon not running, starting daemon");
 
-        run_normal(info, dry).await?;
+        if do_initial_execute {
+            info!("Skipping initial execution, just starting daemon");
+        } else {
+            run_normal(info, dry).await?;
+        }
 
         let data = handle::collect_data(info).await
             .with_context(|| format!("Failed to collect data with info {info:?}"))?;
@@ -111,7 +115,8 @@ async fn run_daemon(info: Info, dry: bool) -> anyhow::Result<()> {
         };
 
         info!("Starting daemon");
-        daemon::start_daemon(latest_arc, callback).await?
+        daemon::start_daemon(latest_arc, callback).await?;
+        return Ok(());
     } else {
         info!("Daemon already running");
     }

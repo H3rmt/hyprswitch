@@ -1,4 +1,5 @@
 pub mod sort;
+pub mod sort_v2;
 pub mod handle;
 #[cfg(feature = "gui")]
 pub mod gui;

@@ -12,11 +12,11 @@ pub struct Args {
     pub reverse: bool,
 
     /// Restrict cycling of windows to the current workspace
-    #[arg(long)]
+    #[arg(long, short = 'w')]
     pub filter_current_workspace: bool,
 
     /// Switch between windows of the same class (type)
-    #[arg(long, short)]
+    #[arg(long, short = 's')]
     pub filter_same_class: bool,
 
     /// Ignore workspaces and sort like one big workspace for each monitor
@@ -28,7 +28,7 @@ pub struct Args {
     pub ignore_monitors: bool,
 
     /// Offset for the chosen window, default is 1
-    #[arg(long, short, default_value = "1")]
+    #[arg(long, short = 'o', default_value = "1")]
     pub offset: usize,
 
     /// Starts as the daemon, starts socket server and executes current window switch
@@ -42,12 +42,17 @@ pub struct Args {
     #[cfg(feature = "gui")]
     pub stop_daemon: bool,
 
+    /// Also execute the initial window switch when starting the daemon
+    #[arg(long)]
+    #[cfg(feature = "gui")]
+    pub do_initial_execute: bool,
+
     /// Don't execute window switch, just print next window
     #[arg(long, short = 'd')]
     pub dry_run: bool,
 
     /// Enable verbose output (Increase message verbosity)
-    #[arg(long, short = 'v', action = clap::ArgAction::Count,)]
+    #[arg(long, short = 'v', action = clap::ArgAction::Count)]
     pub verbose: u8,
 }
 
