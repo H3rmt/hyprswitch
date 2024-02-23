@@ -253,6 +253,7 @@ fn order_1() {
         MockClient(3, 5, 1, 2, 0, 0, "3".to_string()),
         MockClient(5, 5, 1, 2, 0, 0, "4".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 6, 7));
@@ -268,6 +269,7 @@ fn order_1() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -291,6 +293,7 @@ fn order_2() {
         MockClient(5, 1, 1, 3, 0, 0, "3".to_string()),
         MockClient(5, 5, 1, 2, 0, 0, "4".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 6, 7));
@@ -306,6 +309,7 @@ fn order_2() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 

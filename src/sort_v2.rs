@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, VecDeque};
 use std::fmt::Debug;
 
 use hyprland::shared::WorkspaceId;
-use log::debug;
 
 use crate::MonitorId;
 use crate::sort::SortableClient;
@@ -54,6 +53,7 @@ pub fn sort_clients<SC>(
 
     for workspaces in monitors {
         for mut clients in workspaces {
+            
             clients.sort_by(|a, b| {
                 if a.x() == b.x() {
                     a.y().cmp(&b.y())
@@ -64,10 +64,44 @@ pub fn sort_clients<SC>(
             println!("sorted clients: {:?}", clients);
             let mut queue: VecDeque<SC> = VecDeque::from(clients);
 
-            while let Some(current) = queue.pop_front() {
+            let mut line_start = queue.pop_front();
+            while let Some(current) = line_start {
+                let current_top = current.y();
+                let current_bottom = current.y() + current.h();
                 sorted_clients.push(current);
 
+                loop {
+                    let mut next_index = None;
+                    for (i, client) in queue.iter().enumerate() {
+                        let client_top = client.y();
+                        let client_bottom = client.y() + client.h();
+                        let client_left = client.x();
 
+                        println!("{:?} current_top: {}, client_top: {}, client_bottom: {}", client.identifier(), current_top, client_top, client_bottom);
+                        if current_top <= client_top && client_top < current_bottom {
+                            // client top is inside current row
+                            println!("{:?} inside", client.identifier());
+
+                            let on_left = queue.iter().find(|c| c.x() < client_left && c.y() < client_bottom);
+                            println!("{:?} on_left: {:?}", client.identifier(), on_left);
+                            if on_left.is_none() {
+                                // client has no window on left with its top higher than current bottom
+                                next_index = Some(i);
+                                break;
+                            }
+                        }
+                    }
+                    match next_index.and_then(|i| queue.remove(i)) { 
+                        Some(next) => {
+                            println!("next: {:?}", next);
+                            sorted_clients.push(next);
+                        },
+                        None => break,
+                    }
+                }
+                
+                line_start = queue.pop_front();
+                println!("line_start: {:?}", line_start);
             }
         }
     }
