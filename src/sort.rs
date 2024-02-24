@@ -66,7 +66,7 @@ pub fn sort_clients<SC>(
                 }
             });
 
-            println!("ws_clients:      {:?}", ws_clients);
+            // println!("ws_clients:      {:?}", ws_clients);
 
             let mut clients_queue: VecDeque<SC> = VecDeque::from(ws_clients);
 
@@ -101,7 +101,7 @@ pub fn sort_clients<SC>(
                     .map(|c| c.0);
 
                 let next_first = next.and_then(|next| clients_queue.remove(next));
-                println!("next_first: {:?}", next_first);
+                // println!("next_first: {:?}", next_first);
                 let next_line_y = next_first
                     .as_ref()
                     .map(|c| c.y())

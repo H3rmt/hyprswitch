@@ -10,7 +10,8 @@ use hyprland::shared::{Address, WorkspaceId};
 use log::{debug, info};
 
 use crate::{Data, Info, MonitorData, MonitorId, WorkspaceData};
-use crate::sort::{sort_clients, SortableClient, update_clients};
+use crate::sort::{SortableClient, update_clients};
+use crate::sort_v2::{sort_clients};
 
 pub fn find_next(
     info: Info,

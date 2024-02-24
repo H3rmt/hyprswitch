@@ -60,12 +60,12 @@ pub fn sort_clients<SC>(
                     a.x().cmp(&b.x())
                 }
             });
-            println!("sorted clients: {:?}", clients);
+            // println!("sorted clients: {:?}", clients);
             let mut queue: VecDeque<SC> = VecDeque::from(clients);
 
             let mut line_start = queue.pop_front();
             while let Some(current) = line_start {
-                println!("line_start: {:?}", current);
+                // println!("line_start: {:?}", current);
                 // let mut current_top = current.y();
                 let mut current_bottom = current.y() + current.h();
                 sorted_clients.push(current);
@@ -77,23 +77,23 @@ pub fn sort_clients<SC>(
                         let client_bottom = client.y() + client.h();
                         let client_left = client.x();
 
-                        println!("{:?} current_bottom: {current_bottom}, client_top: {client_top}", client.identifier());
+                        // println!("{:?} current_bottom: {current_bottom}, client_top: {client_top}", client.identifier());
                         // if current_top <= client_top && client_top < current_bottom {
                         if client_top < current_bottom {
                             // client top is inside current row
-                            println!("{:?} inside", client.identifier());
+                            // println!("{:?} inside", client.identifier());
 
                             let on_left = queue.iter().enumerate().find(|(_i, c)| c.x() < client_left && c.y() < client_bottom);
-                            println!("{:?} on_left: {:?}", client.identifier(), on_left);
+                            // println!("{:?} on_left: {:?}", client.identifier(), on_left);
                             match on_left {
                                 Some((idx, c)) => {
                                     // current_top = c.y();
                                     current_bottom = c.y() + c.h();
-                                    println!("{:?} on_left (updating current_bottom: {current_bottom})", client.identifier());
+                                    // println!("{:?} on_left (updating current_bottom: {current_bottom})", client.identifier());
                                     next_index = Some(idx);
                                 }
                                 None => {
-                                    println!("{:?} not on_left", client.identifier());
+                                    // println!("{:?} not on_left", client.identifier());
                                     next_index = Some(i);
                                 }
                             }
@@ -102,11 +102,11 @@ pub fn sort_clients<SC>(
                     }
                     match next_index.and_then(|i| queue.remove(i)) {
                         Some(next) => {
-                            println!("next: {:?}", next);
+                            // println!("next: {:?}", next);
                             sorted_clients.push(next);
                         }
                         None => {
-                            println!("no next, line finished");
+                            // println!("no next, line finished");
                             break;
                         }
                     }
