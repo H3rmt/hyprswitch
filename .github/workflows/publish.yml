@@ -32,4 +32,4 @@ jobs:
           && ninja -C build
           && sudo ninja -C build install
           && sudo ldconfig
-      - run: cargo publish --all-features --token ${{ secrets.CRATES_TOKEN }}
+      - run: cargo publish --all-features --allow-dirty --token ${{ secrets.CRATES_TOKEN }}
