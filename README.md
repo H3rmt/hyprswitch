@@ -78,8 +78,8 @@ See [tests](/tests) for more details on how windows get sorted
 2  |  1   |  |  2   |
 3  |      |  +------+
 4  +------+  +------+
-5  +------+  |  3   |
-6  |  4   |  |      |
+5  +------+  |  4   |
+6  |  3   |  |      |
 7  +------+  +------+
    1      2  3      4
 ```
@@ -91,8 +91,8 @@ See [tests](/tests) for more details on how windows get sorted
 2  |  1   |  |  2   |   |  5   |  |  6   |
 3  |      |  |      | | |      |  +------+
 4  +------+  +------+   +------+  +------+
-5  +------+  +------+ | +------+  |  7   |
-6  |  3   |  |  4   |   |  8   |  |      |
+5  +------+  +------+ | +------+  |  8   |
+6  |  3   |  |  4   |   |  7   |  |      |
 7  +------+  +------+ | +------+  +------+
    1      2  3      4   1      2  3      4
 ```
@@ -119,38 +119,77 @@ See [tests](/tests) for more details on how windows get sorted
 This flag requires that workspaces have an offset of 10 for each monitor. (TODO, make this configurable)
 
 This means that if you have 2 monitors, the workspaces on the second monitor must start at 11 if the first workspace on
-the first monitor is 1.
+the first monitor is 1 to allow the scrip to map the correct workspaces together.
 
 this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.org/Configuring/Workspace-Rules/)
 
 
-### GUI Config
+### GUI + Keyboard Config
 ```ini
-$mainMod = SUPER
-$secondMod = ALT
-$switchKey = TAB
+$key = TAB
+$switch = ALT
+$switch_release = ALT_L
+$reverse = SHIFT
 
 # allows repeated switching with same keypress that starts the submap
-binde = $mainMod, $switchKey, exec, hyprswitch
-bind = $mainMod, $switchKey, submap, switch
+binde=$switch, $key, exec, hyprswitch --daemon --do-initial-execute
+bind=$switch, $key, submap, switch
 
 # allows repeated switching with same keypress that starts the submap
-binde = $mainMod SHIFT, $switchKey, exec, hyprswitch --reverse
-bind = $mainMod SHIFT, $switchKey, submap, switch
+binde=$switch $reverse, $key, exec, hyprswitch --daemon --do-initial-execute -r
+bind=$switch $reverse, $key, submap, switch
 
-submap = switch
+submap=switch
 # allow repeated window switching in submap (same keys as repeating while starting)
-binde = $mainMod, $switchKey, exec, hyprswitch
-binde = $mainMod SHIFT, $switchKey, exec, hyprswitch --reverse
+binde=$switch, $key, exec, hyprswitch --daemon
+binde=$switch $reverse, $key, exec, hyprswitch --daemon -r
 
 # switch to specific window offset
-bind = $mainMod, 1, exec, hyprswitch --offset 1
-bind = $mainMod, 2, exec, hyprswitch --offset 2
-bind = $mainMod, 3, exec, hyprswitch --offset 3
-bind = $mainMod, 4, exec, hyprswitch --offset 4
+bind=$switch, 1, exec, hyprswitch --daemon --offset=1
+bind=$switch, 2, exec, hyprswitch --daemon --offset=2
+bind=$switch, 3, exec, hyprswitch --daemon --offset=3
+bind=$switch, 4, exec, hyprswitch --daemon --offset=4
+bind=$switch, 5, exec, hyprswitch --daemon --offset=5
+
+bind=$switch $reverse, 1, exec, hyprswitch --daemon --offset=1 -r
+bind=$switch $reverse, 2, exec, hyprswitch --daemon --offset=2 -r
+bind=$switch $reverse, 3, exec, hyprswitch --daemon --offset=3 -r
+bind=$switch $reverse, 4, exec, hyprswitch --daemon --offset=4 -r
+bind=$switch $reverse, 5, exec, hyprswitch --daemon --offset=5 -r
+
 
 # exit submap and kill hyprswitch
-bindrt = $mainMod, SUPER_L, exec, hyprswitch --stop-daemon
-bindrt = $mainMod, SUPER_L, submap, reset
-submap = reset
+bindrt=$switch, $switch_release, exec, hyprswitch --stop-daemon
+bindrt=$switch, $switch_release, submap, reset
+
+# if it somehow doesn't close on releasing $switch_release, escape can close too
+bindr=,escape, exec, hyprswitch --stop-daemon
+bindr=,escape, submap, reset
+submap=reset
+```
+
+### GUI only Config
+```ini
+$key = TAB
+$switch = SUPER
+$switch_release = SUPER_L
+$reverse = SHIFT
+
+# open hyprswitch
+bind=$switch, $key, exec, hyprswitch --daemon
+bind=$switch $reverse, $key, exec, hyprswitch --daemon -r
+
+# close hyprswitch
+bindr=$switch, $switch_release, exec, hyprswitch --stop-daemon
+bindr=,escape, exec, hyprswitch --stop-daemon
+```
+
+### Same class cli switch Config
+```ini
+$key = TAB
+$switch = CTRL
+$reverse = SHIFT
+
+bind=$switch, $key, exec, hyprswitch -s
+bind=$switch $reverse, $key, exec, hyprswitch -s -r
 ```

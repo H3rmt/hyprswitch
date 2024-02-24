@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "hyprswitch"
-version = "0.3.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1402,9 +1402,9 @@ dependencies = [
 
 [[package]]
 name = "svg"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2198f991cd549041203080de947415bae45220eab7253c220b87e3188d19f21a"
+checksum = "583e1c5c326fd6fede8797006de3b95ad6bcd60a592952952c5ba7ddd7e84c83"
 
 [[package]]
 name = "syn"

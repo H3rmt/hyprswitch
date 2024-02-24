@@ -1,5 +1,5 @@
 use random_color::RandomColor;
-use svg::node::element::{Group, Rectangle, Text, SVG};
+use svg::node::element::{Group, Rectangle, SVG, Text};
 
 pub fn create_svg(
     rectangles: Vec<(usize, u16, u16, u16, u16, String)>,
@@ -44,7 +44,7 @@ pub fn create_svg(
                     .set("fill", "none"),
             )
             .add(
-                Text::new()
+                Text::new(format!("{i}-{identifier}"))
                     .set(
                         "x",
                         (x + width / 2) as i16
@@ -53,12 +53,11 @@ pub fn create_svg(
                     .set(
                         "y",
                         (y + height / 2) as i16
-                            + (((((stroke_width) as f32 * color[0] as f32) / 90.0) as i16)
-                                - stroke_width as i16),
+                            + ((((stroke_width as f32 * color[0] as f32) / 90.0) as i16)
+                            - stroke_width as i16),
                     )
                     .set("font-size", stroke_width * 4)
                     .set("fill", "white")
-                    .add(svg::node::Text::new(format!("{i}-{identifier}"))),
             );
 
         svg = svg.add(group);
