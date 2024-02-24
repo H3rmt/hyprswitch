@@ -36,7 +36,7 @@ jobs:
       - name: Build
         run: cargo build --release
       - name: Test
-        run: cargo test
+        run: cargo test --release
 
   clippy:
     name: Run Clippy
