@@ -1,7 +1,7 @@
 [package]
 name = "hyprswitch"
-description = "A CLI that allows switching between windows in Hyprland"
-version = "0.2.1"
+description = "A CLI/GUI that allows switching between windows in Hyprland"
+version = "0.3.1"
 edition = "2021"
 license = "MIT"
 readme = "README.md"
@@ -16,7 +16,7 @@ hyprland = { version = "0.3.13" }
 tokio = { version = "1.35.1", features = ["full"] }
 log = "0.4"
 stderrlog = "0.6.0"
-anyhow = "1.0.79"
+anyhow = "1.0.80"
 lazy_static = "1.4.0"
 
 gtk4 = { version = "0.7.3", optional = true }

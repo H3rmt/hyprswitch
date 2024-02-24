@@ -42,9 +42,9 @@ async fn run_daemon(info: Info, dry: bool, do_initial_execute: bool) -> anyhow::
         warn!("Daemon not running, starting daemon");
 
         if do_initial_execute {
-            info!("Skipping initial execution, just starting daemon");
-        } else {
             run_normal(info, dry).await?;
+        } else {
+            info!("Skipping initial execution, just starting daemon");
         }
 
         let data = handle::collect_data(info).await

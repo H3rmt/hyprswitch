@@ -4,8 +4,8 @@ use std::time::Instant;
 use hyprland::shared::WorkspaceId;
 
 use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
-use hyprswitch::sort::{update_clients};
-use hyprswitch::sort_v2::{sort_clients};
+use hyprswitch::sort::update_clients;
+use hyprswitch::sort_v2::sort_clients;
 
 use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
@@ -196,7 +196,6 @@ fn simple_5() {
     assert!(is_sorted(&clients));
 }
 
-// TODO decide on percentage?
 
 /// ```
 ///    1   2  4  5  6
@@ -334,7 +333,6 @@ fn order_3() {
         MockClient(1, 1, 4, 6, 0, 0, "1".to_string()),
         MockClient(2, 3, 2, 5, 0, 0, "2".to_string()),
         MockClient(3, 5, 3, 4, 0, 0, "3".to_string()),
-
         MockClient(7, 1, 4, 6, 0, 0, "4".to_string()),
         MockClient(8, 3, 2, 5, 0, 0, "5".to_string()),
         MockClient(9, 5, 3, 4, 0, 0, "6".to_string()),
