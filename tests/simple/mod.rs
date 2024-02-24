@@ -196,14 +196,16 @@ fn simple_5() {
     assert!(is_sorted(&clients));
 }
 
+// TODO decide on percentage?
+
 /// ```
 ///    1   2  4  5  6
 /// 1  +----+ +-----+
-/// 2  | 1  | |  3  |
+/// 2  | 1  | |  4  |
 /// 3  |   +-----+  |
-/// 4  +---|  2  |  |
+/// 4  +---|  3  |  |
 /// 5  +---|     |--+
-/// 6  | 4 +-----+
+/// 6  | 2 +-----+
 /// 7  +----+
 ///    1    3    5  6
 /// ```
@@ -211,9 +213,9 @@ fn simple_5() {
 fn float_1() {
     let clients = vec![
         MockClient(1, 1, 2, 3, 0, 0, "1".to_string()),
-        MockClient(2, 3, 3, 3, 0, 0, "2".to_string()),
-        MockClient(4, 1, 2, 4, 0, 0, "3".to_string()),
-        MockClient(1, 5, 2, 2, 0, 0, "4".to_string()),
+        MockClient(2, 3, 3, 3, 0, 0, "3".to_string()),
+        MockClient(4, 1, 2, 4, 0, 0, "4".to_string()),
+        MockClient(1, 5, 2, 2, 0, 0, "2".to_string()),
     ];
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
@@ -316,11 +318,11 @@ fn order_2() {
 /// ```
 ///    1 3     4 6  7 9     10 12
 /// 1  +--------+   +--------+ 
-/// 2  |   1    |   |   2    | 
+/// 2  |   1    |   |   4    | 
 /// 3  |+------+|   |+------+|
-/// 4  ||  3   ||   ||   4  || 
+/// 4  ||  2   ||   ||   5  || 
 /// 5  ||+-------+  ||+--------+ 
-/// 6  |||   5   |  |||    6   |
+/// 6  |||   3   |  |||    6   |
 /// 7  +||       |  +||        |
 /// 8   +|       |   +|        |
 /// 9    +-------+    +--------+
@@ -330,11 +332,11 @@ fn order_2() {
 fn order_3() {
     let clients = vec![
         MockClient(1, 1, 4, 6, 0, 0, "1".to_string()),
-        MockClient(2, 3, 2, 5, 0, 0, "3".to_string()),
-        MockClient(3, 5, 3, 4, 0, 0, "5".to_string()),
+        MockClient(2, 3, 2, 5, 0, 0, "2".to_string()),
+        MockClient(3, 5, 3, 4, 0, 0, "3".to_string()),
 
-        MockClient(7, 1, 4, 6, 0, 0, "2".to_string()),
-        MockClient(8, 3, 2, 5, 0, 0, "4".to_string()),
+        MockClient(7, 1, 4, 6, 0, 0, "4".to_string()),
+        MockClient(8, 3, 2, 5, 0, 0, "5".to_string()),
         MockClient(9, 5, 3, 4, 0, 0, "6".to_string()),
     ];
 

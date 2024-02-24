@@ -66,6 +66,7 @@ pub fn sort_clients<SC>(
 
             let mut line_start = queue.pop_front();
             while let Some(current) = line_start {
+                println!("line_start: {:?}", current);
                 let current_top = current.y();
                 let current_bottom = current.y() + current.h();
                 sorted_clients.push(current);
@@ -101,7 +102,6 @@ pub fn sort_clients<SC>(
                 }
                 
                 line_start = queue.pop_front();
-                println!("line_start: {:?}", line_start);
             }
         }
     }
