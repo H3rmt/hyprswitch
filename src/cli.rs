@@ -7,32 +7,31 @@ use hyprswitch::Info;
 #[derive(Parser, Debug, Clone, Copy)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// Reverse the order of the windows
+    /// Reverse the order of windows / switch backwards
     #[arg(short = 'r', long)]
     pub reverse: bool,
-
-    /// Restrict cycling of windows to the current workspace
-    #[arg(short = 'w', long)]
-    pub filter_current_workspace: bool,
 
     /// Switch between windows of the same class (type)
     #[arg(short = 's', long)]
     pub filter_same_class: bool,
 
+    /// Restrict cycling of windows to the current workspace
+    #[arg(short = 'w', long)]
+    pub filter_current_workspace: bool,
+
     /// Ignore workspaces and sort like one big workspace for each monitor
     #[arg(long)]
     pub ignore_workspaces: bool,
 
-    /// Ignore monitors and sort like one big monitor, workspaces must have offset of 10 for each monitor (read TODO link)
+    /// Ignore monitors and sort like one big monitor, workspaces must have offset of 10 for each monitor (https://github.com/H3rmt/hyprswitch/blob/master/README.md#ignore-monitors-flag)
     #[arg(long)]
     pub ignore_monitors: bool,
 
-    /// Offset for the chosen window, default is 1
+    /// Switch to a specific window offset
     #[arg(short = 'o', long, default_value = "1")]
     pub offset: usize,
 
-    /// Starts as the daemon, starts socket server and executes current window switch
-    /// Sends Commands to the daemon if running instead
+    /// Starts as daemon, creates socket server and gui, sends Commands to the daemon if already running
     #[arg(long)]
     #[cfg(feature = "gui")]
     pub daemon: bool,
@@ -42,16 +41,16 @@ pub struct Args {
     #[cfg(feature = "gui")]
     pub stop_daemon: bool,
 
-    /// Also execute the initial window switch when starting the daemon
-    #[arg(short, long)]
+    /// Also execute the initial command when starting the daemon
+    #[arg(long)]
     #[cfg(feature = "gui")]
     pub do_initial_execute: bool,
 
-    /// Don't execute window switch, just print next window
+    /// Print the command that would be executed
     #[arg(short = 'd', long)]
     pub dry_run: bool,
 
-    /// Enable verbose output (Increase message verbosity)
+    /// Increase the verbosity level
     #[arg(short = 'v', action = clap::ArgAction::Count)]
     pub verbose: u8,
 }
