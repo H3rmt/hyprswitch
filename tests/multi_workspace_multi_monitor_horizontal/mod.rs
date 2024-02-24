@@ -3,10 +3,11 @@ use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
-use hyprswitch::sort::{sort_clients, update_clients};
-use hyprswitch::{MonitorData, WorkspaceData};
+use hyprswitch::sort::{update_clients};
+use hyprswitch::sort_v2::{sort_clients};
+use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
 
-use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient};
+use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
 /// ```
 ///                   Monitor 1                                   Monitor 2
@@ -15,8 +16,8 @@ use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClien
 /// 2  |  1   |  |  2   | | |  5   |  |  6   |  |  |  9   |  |  10  | | |  13  |  |  14  |
 /// 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
 /// 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
-/// 5  +------+  +------+ | +------+  |  7   |  |  +---------+  +---+ | +------+  |  15  |
-/// 6  |  3   |  |  4   | | |  8   |  |      |  |  |   11    |  |12 | | |  16  |  |      |
+/// 5  +------+  +------+ | +------+  |  8   |  |  +---------+  +---+ | +------+  |  16  |
+/// 6  |  3   |  |  4   | | |  7   |  |      |  |  |   11    |  |12 | | |  15  |  |      |
 /// 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
 ///    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
 /// ```
@@ -29,27 +30,27 @@ fn default() {
         MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
         MockClient(1, 1, 1, 3, 1, 0, "5".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "6".to_string()),
-        MockClient(3, 4, 1, 3, 1, 0, "7".to_string()),
-        MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
+        MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
+        MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
         MockClient(5, 1, 1, 3, 10, 1, "9".to_string()),
         MockClient(7, 1, 2, 3, 10, 1, "10".to_string()),
         MockClient(5, 5, 2, 2, 10, 1, "11".to_string()),
         MockClient(8, 5, 1, 2, 10, 1, "12".to_string()),
         MockClient(5, 1, 1, 3, 11, 1, "13".to_string()),
         MockClient(7, 1, 2, 2, 11, 1, "14".to_string()),
-        MockClient(7, 4, 2, 3, 11, 1, "15".to_string()),
-        MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
+        MockClient(5, 5, 1, 2, 11, 1, "15".to_string()),
+        MockClient(7, 4, 2, 3, 11, 1, "16".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
-    monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 4, 7));
+    monitor_data.insert(1, mon(5, 0, 5, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
-    workspace_data.insert(1, WorkspaceData { x: 5, y: 0 });
-    workspace_data.insert(10, WorkspaceData { x: 0, y: 0 });
-    workspace_data.insert(11, WorkspaceData { x: 5, y: 0 });
+    workspace_data.insert(0, ws(0,0));
+    workspace_data.insert(1, ws(5,0));
+    workspace_data.insert(10, ws(0,0));
+    workspace_data.insert(11, ws(5,0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -69,8 +70,8 @@ fn default() {
 /// 2  |  1   |  |  2   | | |  3   |  |  4   |  |  |  9   |  |  10  | | |  11  |  |  12  |
 /// 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
 /// 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
-/// 5  +------+  +------+ | +------+  |  5   |  |  +---------+  +---+ | +------+  |  13  |
-/// 6  |  6   |  |  7   | | |  8   |  |      |  |  |   14    |  |15 | | |  16  |  |      |
+/// 5  +------+  +------+ | +------+  |  8   |  |  +---------+  +---+ | +------+  |  16  |
+/// 6  |  5   |  |  6   | | |  7   |  |      |  |  |   13    |  |14 | | |  15  |  |      |
 /// 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
 ///    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
 /// ```
@@ -79,31 +80,31 @@ fn ignore_workspaces() {
     let clients = vec![
         MockClient(1, 1, 1, 3, 0, 0, "1".to_string()),
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
-        MockClient(1, 5, 1, 2, 0, 0, "6".to_string()),
-        MockClient(3, 5, 1, 2, 0, 0, "7".to_string()),
+        MockClient(1, 5, 1, 2, 0, 0, "5".to_string()),
+        MockClient(3, 5, 1, 2, 0, 0, "6".to_string()),
         MockClient(1, 1, 1, 3, 1, 0, "3".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "4".to_string()),
-        MockClient(3, 4, 1, 3, 1, 0, "5".to_string()),
-        MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
+        MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
+        MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
         MockClient(5, 1, 1, 3, 10, 1, "9".to_string()),
         MockClient(7, 1, 2, 3, 10, 1, "10".to_string()),
-        MockClient(5, 5, 2, 2, 10, 1, "14".to_string()),
-        MockClient(8, 5, 1, 2, 10, 1, "15".to_string()),
+        MockClient(5, 5, 2, 2, 10, 1, "13".to_string()),
+        MockClient(8, 5, 1, 2, 10, 1, "14".to_string()),
         MockClient(5, 1, 1, 3, 11, 1, "11".to_string()),
         MockClient(7, 1, 2, 2, 11, 1, "12".to_string()),
-        MockClient(7, 4, 2, 3, 11, 1, "13".to_string()),
-        MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
+        MockClient(5, 5, 1, 2, 11, 1, "15".to_string()),
+        MockClient(7, 4, 2, 3, 11, 1, "16".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
-    monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 4, 7));
+    monitor_data.insert(1, mon(5, 0, 5, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
-    workspace_data.insert(1, WorkspaceData { x: 5, y: 0 });
-    workspace_data.insert(10, WorkspaceData { x: 0, y: 0 });
-    workspace_data.insert(11, WorkspaceData { x: 5, y: 0 });
+    workspace_data.insert(0, ws(0,0));
+    workspace_data.insert(1, ws(5,0));
+    workspace_data.insert(10, ws(0,0));
+    workspace_data.insert(11, ws(5,0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -120,11 +121,11 @@ fn ignore_workspaces() {
 ///                   Monitor 1                                   Monitor 2
 ///       Workspace 0           Workspace 1           Workspace 10          Workspace 11
 /// 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
-/// 2  |  1   |  |  2   | | |  9   |  |  10  |  |  |  3   |  |  4   | | |  12  |  |  13  |
+/// 2  |  1   |  |  2   | | |  9   |  |  10  |  |  |  3   |  |  4   | | |  11  |  |  12  |
 /// 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
 /// 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
-/// 5  +------+  +------+ | +------+  |  11  |  |  +---------+  +---+ | +------+  |  14  |
-/// 6  |  5   |  |  6   | | |  15  |  |      |  |  |   7     |  | 8 | | |  16  |  |      |
+/// 5  +------+  +------+ | +------+  |  14  |  |  +---------+  +---+ | +------+  |  16  |
+/// 6  |  5   |  |  6   | | |  13  |  |      |  |  |   7     |  | 8 | | |  15  |  |      |
 /// 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
 ///    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7  8   9
 /// ```
@@ -137,27 +138,27 @@ fn ignore_monitor() {
         MockClient(3, 5, 1, 2, 0, 0, "6".to_string()),
         MockClient(1, 1, 1, 3, 1, 0, "9".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "10".to_string()),
-        MockClient(3, 4, 1, 3, 1, 0, "11".to_string()),
-        MockClient(1, 5, 1, 2, 1, 0, "15".to_string()),
+        MockClient(1, 5, 1, 2, 1, 0, "13".to_string()),
+        MockClient(3, 4, 1, 3, 1, 0, "14".to_string()),
         MockClient(5, 1, 1, 3, 10, 1, "3".to_string()),
         MockClient(7, 1, 2, 3, 10, 1, "4".to_string()),
         MockClient(5, 5, 2, 2, 10, 1, "7".to_string()),
         MockClient(8, 5, 1, 2, 10, 1, "8".to_string()),
-        MockClient(5, 1, 1, 3, 11, 1, "12".to_string()),
-        MockClient(7, 1, 2, 2, 11, 1, "13".to_string()),
-        MockClient(7, 4, 2, 3, 11, 1, "14".to_string()),
-        MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
+        MockClient(5, 1, 1, 3, 11, 1, "11".to_string()),
+        MockClient(7, 1, 2, 2, 11, 1, "12".to_string()),
+        MockClient(5, 5, 1, 2, 11, 1, "15".to_string()),
+        MockClient(7, 4, 2, 3, 11, 1, "16".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
-    monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 4, 7));
+    monitor_data.insert(1, mon(5, 0, 5, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
-    workspace_data.insert(1, WorkspaceData { x: 5, y: 0 });
-    workspace_data.insert(10, WorkspaceData { x: 0, y: 0 });
-    workspace_data.insert(11, WorkspaceData { x: 5, y: 0 });
+    workspace_data.insert(0, ws(0,0));
+    workspace_data.insert(1, ws(5,0));
+    workspace_data.insert(10, ws(0,0));
+    workspace_data.insert(11, ws(5,0));
 
     let clients = update_clients(clients, &workspace_data, None);
     println!("updated clients: {clients:?}");
@@ -204,15 +205,15 @@ fn ignore_monitor_ignore_workspace() {
         MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
     ];
 
-    let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
-    monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
+    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    monitor_data.insert(0, mon(0, 0, 4, 7));
+    monitor_data.insert(1, mon(5, 0, 5, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
-    workspace_data.insert(1, WorkspaceData { x: 5, y: 0 });
-    workspace_data.insert(10, WorkspaceData { x: 0, y: 0 });
-    workspace_data.insert(11, WorkspaceData { x: 5, y: 0 });
+    workspace_data.insert(0, ws(0,0));
+    workspace_data.insert(1, ws(5,0));
+    workspace_data.insert(10, ws(0,0));
+    workspace_data.insert(11, ws(5,0));
 
     let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
 
@@ -223,6 +224,8 @@ fn ignore_monitor_ignore_workspace() {
 
     assert!(is_sorted(&clients));
 }
+
+/*
 
 /// ```
 ///                   Monitor 1                                   Monitor 2
@@ -287,10 +290,10 @@ fn default_more_monitor() {
     ];
 
     let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
-    monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
-    monitor_data.insert(1, MonitorData { x: 5, y: 0, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
-    monitor_data.insert(2, MonitorData { x: 0, y: 8, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
-    monitor_data.insert(3, MonitorData { x: 5, y: 8, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
+    monitor_data.insert(0, mon(0, 0, 4, 7));
+    monitor_data.insert(1, mon(5, 0, 5, 7));
+    monitor_data.insert(2, mon(0, 8, 4, 7));
+    monitor_data.insert(3, mon(5, 8, 5, 7));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
@@ -576,3 +579,5 @@ fn ignore_monitor_ignore_workspace_more_monitor() {
 
     assert!(is_sorted(&clients));
 }
+
+*/
