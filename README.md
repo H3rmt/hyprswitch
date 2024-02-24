@@ -4,7 +4,7 @@
 [![Docs](https://docs.rs/built/badge.svg)](https://docs.rs/hyprswitch)
 [![Tests](https://github.com/h3rmt/hyprswitch/actions/workflows/rust.yml/badge.svg)](https://github.com/h3rmt/hyprswitch/actions/workflows/rust.yml)
 
-A rust CLI/GUI to switch between windows in [Hyprland](https://github.com/https://github.com/hyprwm/Hyprland)
+A rust CLI/GUI to switch between windows in [Hyprland](https://github.com/hyprwm/Hyprland)
 
 It can cycle through windows using keyboard shortcuts or/and a GUI.
 
