@@ -34,7 +34,7 @@ jobs:
         with:
           prefix-key: rust-build
       - name: Build
-        run: cargo build --verbose --release
+        run: cargo build --release
       - name: Test
         run: cargo test
 
