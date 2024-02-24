@@ -53,7 +53,6 @@ pub fn sort_clients<SC>(
 
     for workspaces in monitors {
         for mut clients in workspaces {
-            
             clients.sort_by(|a, b| {
                 if a.x() == b.x() {
                     a.y().cmp(&b.y())
@@ -67,8 +66,8 @@ pub fn sort_clients<SC>(
             let mut line_start = queue.pop_front();
             while let Some(current) = line_start {
                 println!("line_start: {:?}", current);
-                let current_top = current.y();
-                let current_bottom = current.y() + current.h();
+                let mut current_top = current.y();
+                let mut current_bottom = current.y() + current.h();
                 sorted_clients.push(current);
 
                 loop {
@@ -78,29 +77,41 @@ pub fn sort_clients<SC>(
                         let client_bottom = client.y() + client.h();
                         let client_left = client.x();
 
-                        println!("{:?} current_top: {}, client_top: {}, client_bottom: {}", client.identifier(), current_top, client_top, client_bottom);
-                        if current_top <= client_top && client_top < current_bottom {
+                        println!("{:?} current_bottom: {current_bottom}, client_top: {client_top}", client.identifier());
+                        // if current_top <= client_top && client_top < current_bottom {
+                        if client_top < current_bottom {
                             // client top is inside current row
                             println!("{:?} inside", client.identifier());
 
-                            let on_left = queue.iter().find(|c| c.x() < client_left && c.y() < client_bottom);
+                            let on_left = queue.iter().enumerate().find(|(i, c)| c.x() < client_left && c.y() < client_bottom);
                             println!("{:?} on_left: {:?}", client.identifier(), on_left);
-                            if on_left.is_none() {
-                                // client has no window on left with its top higher than current bottom
-                                next_index = Some(i);
-                                break;
+                            match on_left {
+                                Some((idx, c)) => {
+                                    current_top = c.y();
+                                    current_bottom = c.y() + c.h();
+                                    println!("{:?} on_left (updating current_top: {current_top}, current_bottom: {current_bottom})", client.identifier());
+                                    next_index = Some(idx);
+                                }
+                                None => {
+                                    println!("{:?} not on_left", client.identifier());
+                                    next_index = Some(i);
+                                }
                             }
+                            break;
                         }
                     }
-                    match next_index.and_then(|i| queue.remove(i)) { 
+                    match next_index.and_then(|i| queue.remove(i)) {
                         Some(next) => {
                             println!("next: {:?}", next);
                             sorted_clients.push(next);
-                        },
-                        None => break,
+                        }
+                        None => {
+                            println!("no next, line finished");
+                            break;
+                        }
                     }
                 }
-                
+
                 line_start = queue.pop_front();
             }
         }

@@ -4,7 +4,8 @@ use std::time::Instant;
 use hyprland::shared::WorkspaceId;
 
 use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
-use hyprswitch::sort::{sort_clients, update_clients};
+use hyprswitch::sort::{update_clients};
+use hyprswitch::sort_v2::{sort_clients};
 
 use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
@@ -15,8 +16,8 @@ use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClien
 /// 2  |  1   |  |  2   | | |  5   |  |  6   |
 /// 3  |      |  |      | | |      |  +------+
 /// 4  +------+  +------+ | +------+  +------+
-/// 5  +------+  +------+ | +------+  |  7   |
-/// 6  |  3   |  |  4   | | |  8   |  |      |
+/// 5  +------+  +------+ | +------+  |  8   |
+/// 6  |  3   |  |  4   | | |  7   |  |      |
 /// 7  +------+  +------+ | +------+  +------+
 ///    1      2  3      4   1      2  3      4
 /// ```
@@ -29,8 +30,8 @@ fn default() {
         MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
         MockClient(1, 1, 1, 3, 1, 0, "5".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "6".to_string()),
-        MockClient(3, 4, 1, 3, 1, 0, "7".to_string()),
-        MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
+        MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
+        MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
     ];
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
@@ -58,8 +59,8 @@ fn default() {
 /// 2  |  1   |  |  2   |   |  3   |  |  4   |
 /// 3  |      |  |      | | |      |  +------+
 /// 4  +------+  +------+   +------+  +------+
-/// 5  +------+  +------+ | +------+  |  5   |
-/// 6  |  6   |  |  7   |   |  8   |  |      |
+/// 5  +------+  +------+ | +------+  |  8   |
+/// 6  |  5   |  |  6   |   |  7   |  |      |
 /// 7  +------+  +------+ | +------+  +------+
 ///    1      2  3      4   1      2  3      4
 /// ```
@@ -70,10 +71,10 @@ fn ignore_workspace() {
         MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
         MockClient(1, 1, 1, 3, 1, 0, "3".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "4".to_string()),
-        MockClient(3, 4, 1, 3, 1, 0, "5".to_string()),
-        MockClient(1, 5, 1, 2, 0, 0, "6".to_string()),
-        MockClient(3, 5, 1, 2, 0, 0, "7".to_string()),
-        MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
+        MockClient(1, 5, 1, 2, 0, 0, "5".to_string()),
+        MockClient(3, 5, 1, 2, 0, 0, "6".to_string()),
+        MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
+        MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
     ];
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
@@ -110,8 +111,8 @@ fn ignore_workspace() {
 /// 2  |  5   |  |  6   |
 /// 3  |      |  +------+      Workspace 2
 /// 4  +------+  +------+      Monitor 1
-/// 5  +------+  |      |
-/// 6  |  8   |  |  7   |
+/// 5  +------+  |  8   |
+/// 6  |  7   |  |      |
 /// 7  +------+  +------+
 /// ```
 #[test]
@@ -123,8 +124,8 @@ fn vertical() {
         MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
         MockClient(1, 1, 1, 3, 1, 0, "5".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "6".to_string()),
-        MockClient(3, 4, 1, 3, 1, 0, "7".to_string()),
-        MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
+        MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
+        MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
     ];
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
@@ -161,8 +162,8 @@ fn vertical() {
 /// 2  |  5   |  |  6   |
 /// 3  |      |  +------+      Workspace 2
 /// 4  +------+  +------+      Monitor 1
-/// 5  +------+  |      |
-/// 6  |  8   |  |  7   |
+/// 5  +------+  |  8   |
+/// 6  |  7   |  |      |
 /// 7  +------+  +------+
 /// ```
 #[test]
@@ -174,8 +175,8 @@ fn vertical_ignore_workspace() {
         MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
         MockClient(1, 1, 1, 3, 1, 0, "5".to_string()),
         MockClient(3, 1, 1, 2, 1, 0, "6".to_string()),
-        MockClient(3, 4, 1, 3, 1, 0, "7".to_string()),
-        MockClient(1, 5, 1, 2, 1, 0, "8".to_string()),
+        MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
+        MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
     ];
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();

@@ -4,7 +4,8 @@ use std::time::Instant;
 use hyprland::shared::WorkspaceId;
 
 use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
-use hyprswitch::sort::{sort_clients, update_clients};
+use hyprswitch::sort::{update_clients};
+use hyprswitch::sort_v2::{sort_clients};
 
 use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
@@ -12,11 +13,11 @@ use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClien
 ///       1       3    5   6     8   10  11  12
 ///    +----------------------------------------+
 /// 1  |  +-------+                      +---+  |
-/// 2  |  |   1   |              +---+   | 4 |  |
+/// 2  |  |   1   |              +---+   | 5 |  |
 /// 3  |  |       |    +---+     | 3 |   |   |  |
 /// 4  |  +-------+    | 2 |     +---+   |   |  |
 /// 5  |               +---+     +---+   |   |  |
-/// 6  |                         | 5 |   |   |  |
+/// 6  |                         | 4 |   |   |  |
 /// 7  |    +-------+            +---+   +---+  |
 /// 8  |    |   6   |         +----+            |
 /// 9  |    |       |         | 7  |            |
@@ -30,8 +31,8 @@ fn many_1() {
         MockClient(1, 1, 2, 3, 0, 0, "1".to_string()),
         MockClient(5, 3, 1, 2, 0, 0, "2".to_string()),
         MockClient(8, 2, 2, 2, 0, 0, "3".to_string()),
-        MockClient(11, 1, 1, 6, 0, 0, "4".to_string()),
-        MockClient(8, 5, 2, 2, 0, 0, "5".to_string()),
+        MockClient(8, 5, 2, 2, 0, 0, "4".to_string()),
+        MockClient(11, 1, 1, 6, 0, 0, "5".to_string()),
         MockClient(2, 7, 2, 4, 0, 0, "6".to_string()),
         MockClient(7, 8, 2, 2, 0, 0, "7".to_string()),
     ];
@@ -57,17 +58,17 @@ fn many_1() {
 ///       1       3    5   6     8   10  11  12
 ///    +----------------------------------------+
 /// 1  |  +-------+                      +---+  |
-/// 2  |  |   1   |              +---+   | 4 |  |
-/// 3  |  |       |    +---+     | 3 |   |   |  |
-/// 4  |  +-------+    | 2 |     +---+   |   |  |
+/// 2  |  |   2   |              +---+   | 9 |  |
+/// 3  |  |       |    +---+     | 6 |   |   |  |
+/// 4  |  +-------+    | 4 |     +---+   |   |  |
 /// 5  |    +-------+  |   |     +---+   |   |  |
 /// 6  |    |       |  +---+     | 7 |   |   |  |
-/// 7  |    |   5   |            +---+   +---+  |
+/// 7  |    |   3   |            +---+   +---+  |
 /// 8  |    |       |         +----+            |
-/// 9  |    +-------+         | 6  |            |
+/// 9  |    +-------+         | 5  |            |
 /// 10 |                      +----+            |
 /// 11 | +--+                        +-------+  |
-/// 12 | |8 |                        |   9   |  |
+/// 12 | |1 |                        |   8   |  |
 /// 13 | +--+                        +-------+  |
 ///    +----------------------------------------+
 ///      0  2       4         7    9
@@ -75,19 +76,19 @@ fn many_1() {
 #[test]
 fn many_2() {
     let clients = vec![
-        MockClient(1, 1, 2, 3, 0, 0, "1".to_string()),
-        MockClient(5, 3, 1, 3, 0, 0, "2".to_string()),
-        MockClient(8, 2, 2, 2, 0, 0, "3".to_string()),
-        MockClient(11, 1, 1, 6, 0, 0, "4".to_string()),
-        MockClient(2, 5, 2, 4, 0, 0, "5".to_string()),
-        MockClient(7, 8, 2, 2, 0, 0, "6".to_string()),
+        MockClient(0, 11, 1, 2, 0, 0, "1".to_string()),
+        MockClient(1, 1, 2, 3, 0, 0, "2".to_string()),
+        MockClient(2, 5, 2, 4, 0, 0, "3".to_string()),
+        MockClient(5, 3, 1, 3, 0, 0, "4".to_string()),
+        MockClient(7, 8, 2, 2, 0, 0, "5".to_string()),
+        MockClient(8, 2, 2, 2, 0, 0, "6".to_string()),
         MockClient(8, 5, 2, 2, 0, 0, "7".to_string()),
-        MockClient(0, 11, 1, 2, 0, 0, "8".to_string()),
-        MockClient(10, 11, 2, 2, 0, 0, "9".to_string()),
+        MockClient(10, 11, 2, 2, 0, 0, "8".to_string()),
+        MockClient(11, 1, 1, 6, 0, 0, "9".to_string()),
     ];
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
-    monitor_data.insert(0, mon(0, 0, 12, 10));
+    monitor_data.insert(0, mon(0, 0, 12, 13));
 
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));

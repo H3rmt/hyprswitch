@@ -213,9 +213,9 @@ fn simple_5() {
 fn float_1() {
     let clients = vec![
         MockClient(1, 1, 2, 3, 0, 0, "1".to_string()),
+        MockClient(1, 5, 2, 2, 0, 0, "2".to_string()),
         MockClient(2, 3, 3, 3, 0, 0, "3".to_string()),
         MockClient(4, 1, 2, 4, 0, 0, "4".to_string()),
-        MockClient(1, 5, 2, 2, 0, 0, "2".to_string()),
     ];
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
@@ -318,9 +318,9 @@ fn order_2() {
 /// ```
 ///    1 3     4 6  7 9     10 12
 /// 1  +--------+   +--------+ 
-/// 2  |   1    |   |   4    | 
+/// 2  |   1    |   |   4    |
 /// 3  |+------+|   |+------+|
-/// 4  ||  2   ||   ||   5  || 
+/// 4  ||  2   ||   ||   5  ||
 /// 5  ||+-------+  ||+--------+ 
 /// 6  |||   3   |  |||    6   |
 /// 7  +||       |  +||        |
