@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use anyhow::Context;
 use hyprland::data::{Client, Clients, Monitors, Workspaces};
 use hyprland::dispatch::{Dispatch, WindowIdentifier, WorkspaceIdentifierWithSpecial};
-use hyprland::dispatch::DispatchType::{FocusWindow, Workspace};
+use hyprland::dispatch::DispatchType::{FocusWindow, ToggleSpecialWorkspace, Workspace};
 use hyprland::prelude::*;
 use hyprland::shared;
 use hyprland::shared::{Address, WorkspaceId};
@@ -73,6 +73,7 @@ pub fn find_next(
 pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     let mut clients = Clients::get_async().await?
         .filter(|c| c.workspace.id != -1)
+        .filter(|w| !info.hide_special_workspaces || !w.workspace.id < 0)
         .collect::<Vec<_>>();
 
     let monitors = Monitors::get_async().await?;
@@ -81,7 +82,9 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     let workspaces = {
         let mut workspaces = Workspaces::get_async().await?
             .filter(|w| w.id != -1)
-            .collect::<Vec<hyprland::data::Workspace>>();
+            .filter(|w| !info.hide_special_workspaces || !w.id < 0)
+            .collect::<Vec<_>>();
+        
         workspaces.sort_by(|a, b| a.id.cmp(&b.id));
         workspaces
     };
@@ -118,7 +121,7 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
                 .for_each(|workspace| {
                     let (x, y) = (x_offset, monitor_data.y);
 
-                    debug!("workspace {:?} on monitor {} at ({}, {})", workspace.id, monitor_id, x, y);
+                    debug!("workspace {}({}) on monitor {} at ({}, {})", workspace.id, workspace.name.clone(), monitor_id, x, y);
 
                     x_offset += monitor_data.width;
                     y_offset += monitor_data.height;
@@ -165,20 +168,39 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     })
 }
 
-pub async fn switch(next_client: &Client, dry_run: bool) -> Result<(), shared::HyprError> {
+pub async fn switch_async(next_client: &Client, dry_run: bool) -> Result<(), shared::HyprError> {
     if dry_run {
-        println!("switch to next_client: {}", next_client.title);
+        #[allow(clippy::print_stdout)] {
+            println!("switch to next_client: {}", next_client.title);
+        }
     } else {
+        info!("switch to next_client: {}", next_client.title);
         Dispatch::call_async(FocusWindow(WindowIdentifier::Address(next_client.address.clone()))).await?;
     }
     Ok(())
 }
 
-pub async fn switch_workspace(workspace_id: WorkspaceId, dry_run: bool) -> Result<(), shared::HyprError> {
+pub fn switch_workspace(workspace_name: String, dry_run: bool) -> Result<(), shared::HyprError> {
     if dry_run {
-        println!("switch to workspace {workspace_id}");
+        #[allow(clippy::print_stdout)]{
+            println!("switch to workspace {workspace_name}");
+        }
     } else {
-        Dispatch::call_async(Workspace(WorkspaceIdentifierWithSpecial::Id(workspace_id))).await?;
+        info!("switch to workspace {workspace_name}");
+        Dispatch::call(Workspace(WorkspaceIdentifierWithSpecial::Name(&workspace_name)))?;
+    }
+    Ok(())
+}
+
+/// use this to toggle special workspaces
+pub fn toggle_workspace(workspace_name: String, dry_run: bool) -> Result<(), shared::HyprError> {
+    if dry_run {
+        #[allow(clippy::print_stdout)]{
+            println!("toggle workspace {workspace_name}");
+        }
+    } else {
+        info!("toggle workspace {workspace_name}");
+        Dispatch::call(ToggleSpecialWorkspace(Some(workspace_name)))?;
     }
     Ok(())
 }

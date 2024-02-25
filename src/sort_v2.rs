@@ -65,7 +65,7 @@ pub fn sort_clients<SC>(
 
             let mut line_start = queue.pop_front();
             while let Some(current) = line_start {
-                println!("line_start: {:?}", current);
+                // println!("line_start: {:?}", current);
                 // let mut current_top = current.y();
                 let mut current_bottom = current.y() + current.h();
                 sorted_clients.push(current);
@@ -91,15 +91,15 @@ pub fn sort_clients<SC>(
 
                         if client_top < current_bottom { // 1.
                             // client top is inside current row
-                            println!("{:?} inside", client.identifier());
+                            // println!("{:?} inside", client.identifier());
 
                             // 2.
                             let on_left = queue.iter().enumerate().find(|(_i, c)| c.x() < client_left && c.y() < client_bottom);
-                            println!("{:?} on_left: {:?}", client.identifier(), on_left);
+                            // println!("{:?} on_left: {:?}", client.identifier(), on_left);
 
                             // 3.
                             let on_left_2 = queue.iter().enumerate().find(|(_i, c)| c.x() < client_left && c.y() + c.h() < client_bottom);
-                            println!("{:?} on_left_2: {:?}", client.identifier(), on_left_2);
+                            // println!("{:?} on_left_2: {:?}", client.identifier(), on_left_2);
                             
                             match (on_left, on_left_2) {
                                 (Some((idx, c)), _) => {

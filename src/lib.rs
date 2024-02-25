@@ -1,3 +1,5 @@
+#![deny(clippy::print_stdout)]
+
 pub mod sort;
 pub mod sort_v2;
 pub mod handle;
@@ -35,6 +37,7 @@ pub struct Info {
     pub ignore_monitors: bool,
     pub ignore_workspaces: bool,
     pub sort_recent: bool,
+    pub hide_special_workspaces: bool,
     pub filter_current_workspace: bool,
     pub filter_same_class: bool,
 }
@@ -50,3 +53,6 @@ pub struct Data {
 
 #[cfg(feature = "gui")]
 pub type Share = std::sync::Arc<(tokio::sync::Mutex<(Info, Data)>, tokio_condvar::Condvar)>;
+
+/// global variable to store if we are in dry mode
+pub static DRY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
