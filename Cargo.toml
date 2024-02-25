@@ -5,6 +5,7 @@ version = "1.1.0"
 edition = "2021"
 license = "MIT"
 readme = "README.md"
+authors = ["h3rmt"]
 documentation = "https://docs.rs/crate/hyprswitch"
 repository = "https://github.com/h3rmt/hyprswitch/"
 keywords = ["hyprland"]
