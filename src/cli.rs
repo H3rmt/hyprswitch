@@ -30,6 +30,10 @@ pub struct Args {
     /// Switch to a specific window offset
     #[arg(short = 'o', long, default_value = "1")]
     pub offset: usize,
+    
+    /// Hide special workspaces (e.g. scratchpad)
+    #[arg(long)]
+    pub hide_special_workspaces: bool,
 
     /// Starts as daemon, creates socket server and gui, sends Commands to the daemon if already running
     #[arg(long)]
@@ -58,12 +62,13 @@ pub struct Args {
 impl From<Args> for Info {
     fn from(args: Args) -> Self {
         Self {
+            reverse: args.reverse,
+            offset: args.offset,
             ignore_monitors: args.ignore_monitors,
             ignore_workspaces: args.ignore_workspaces,
             filter_same_class: args.filter_same_class,
-            reverse: args.reverse,
             filter_current_workspace: args.filter_current_workspace,
-            offset: args.offset,
+            hide_special_workspaces: args.hide_special_workspaces,
         }
     }
 }

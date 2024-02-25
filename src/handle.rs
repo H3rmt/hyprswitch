@@ -72,6 +72,7 @@ pub fn find_next(
 pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     let mut clients = Clients::get_async().await?
         .filter(|c| c.workspace.id != -1)
+        .filter(|w| !info.hide_special_workspaces || !w.workspace.id < 0)
         .collect::<Vec<_>>();
 
     let monitors = Monitors::get_async().await?;
@@ -80,7 +81,9 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     let workspaces = {
         let mut workspaces = Workspaces::get_async().await?
             .filter(|w| w.id != -1)
-            .collect::<Vec<hyprland::data::Workspace>>();
+            .filter(|w| !info.hide_special_workspaces || !w.id < 0)
+            .collect::<Vec<_>>();
+        
         workspaces.sort_by(|a, b| a.id.cmp(&b.id));
         workspaces
     };
