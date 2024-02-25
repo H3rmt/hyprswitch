@@ -13,6 +13,8 @@ Windows are sorted by their position on the screen, and can be sorted by class o
 To use the GUI, you need to pass the `--daemon` flag to the script which will start a socket server and a GUI.
 Subsequent calls to the script (with the `--daemon` flag) will send the command to the daemon which will execute the command and update the GUI.
 
+![image.png](image.png)
+
 # Installation
 
 `
