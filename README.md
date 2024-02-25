@@ -17,11 +17,10 @@ Subsequent calls to the script (with the `--daemon` flag) will send the command 
 
 # Installation
 
-`
-cargo install hyprswitch
-`
+`cargo install hyprswitch`
 
-TODO: Add more installation methods (arch package) 
+`paru -S hyprswitch` / `yay -S hyprswitch`
+
 
 # Rust Features
 

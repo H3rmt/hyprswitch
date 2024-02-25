@@ -36,6 +36,7 @@ jobs:
 
   aur-publish:
     runs-on: ubuntu-latest
+    needs: [publish]
     steps:
       - uses: actions/checkout@v4
       - name: Check if tag is -rc or -alpha and exit if it is
@@ -53,4 +54,5 @@ jobs:
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Update AUR package
+          updpkgsums: true
           ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
