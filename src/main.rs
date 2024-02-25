@@ -1,10 +1,9 @@
 use anyhow::Context;
 use clap::Parser;
 use hyprland::data::Client;
-use hyprland::shared::WorkspaceId;
 use log::{debug, info, warn};
 
-use hyprswitch::{handle, Info};
+use hyprswitch::{DRY, handle, Info};
 
 use crate::cli::Args;
 
@@ -14,6 +13,7 @@ mod cli;
 async fn main() -> anyhow::Result<()> {
     let cli = Args::parse();
     stderrlog::new().module(module_path!()).verbosity(cli.verbose as usize + 1).init().expect("Failed to initialize logging");
+    DRY.get_or_init(|| cli.dry_run);
 
     #[cfg(feature = "gui")]
     if cli.stop_daemon {
@@ -23,16 +23,16 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "gui")]
     if cli.daemon {
-        run_daemon(cli.into(), cli.dry_run, cli.do_initial_execute).await?;
+        run_daemon(cli.into(), cli.do_initial_execute).await?;
         return Ok(());
     }
 
-    run_normal(cli.into(), cli.dry_run).await?;
+    run_normal(cli.into()).await?;
     return Ok(());
 }
 
 #[cfg(feature = "gui")]
-async fn run_daemon(info: Info, dry: bool, do_initial_execute: bool) -> anyhow::Result<()> {
+async fn run_daemon(info: Info, do_initial_execute: bool) -> anyhow::Result<()> {
     use hyprswitch::{daemon, gui, Share};
     use tokio::sync::Mutex;
     use std::sync::Arc;
@@ -42,7 +42,7 @@ async fn run_daemon(info: Info, dry: bool, do_initial_execute: bool) -> anyhow::
         warn!("Daemon not running, starting daemon");
 
         if do_initial_execute {
-            run_normal(info, dry).await?;
+            run_normal(info).await?;
         } else {
             info!("Skipping initial execution, just starting daemon");
         }
@@ -57,8 +57,8 @@ async fn run_daemon(info: Info, dry: bool, do_initial_execute: bool) -> anyhow::
         let latest_arc_clone = latest_arc.clone();
         std::thread::spawn(move || {
             let switch = move |next_client: Client, latest_data: Share| async move {
-                handle::switch(&next_client, dry).await
-                    .with_context(|| format!("Failed to execute with next_client {next_client:?} and dry {dry:?}"))?;
+                handle::switch_async(&next_client, *DRY.get().expect("DRY not set")).await
+                    .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
 
                 let data = handle::collect_data(info).await
                     .with_context(|| format!("Failed to collect data with info {info:?}"))?;
@@ -72,22 +72,7 @@ async fn run_daemon(info: Info, dry: bool, do_initial_execute: bool) -> anyhow::
                 Ok(())
             };
 
-            let switch_workspace = move |ws_id: WorkspaceId, _latest_data: Share| async move {
-                handle::switch_workspace(ws_id, dry).await
-                    .with_context(|| format!("Failed to execute switch workspace with ws_id {ws_id:?} and dry {dry:?}"))?;
-
-                // let data = handle::collect_data(info).await
-                //     .with_context(|| format!("Failed to collect data with info {info:?}"))?;
-                // debug!("collected Data: {:?}", data);
-                //
-                // let (latest, cvar) = &*latest_data;
-                // let mut ld = latest.lock().await;
-                // ld.1 = data;
-                // cvar.notify_all();
-                Ok(())
-            };
-
-            gui::start_gui(latest_arc_clone, switch, switch_workspace)
+            gui::start_gui(latest_arc_clone, switch)
                 .context("Failed to start gui")
                 .expect("Failed to start gui")
         });
@@ -100,8 +85,8 @@ async fn run_daemon(info: Info, dry: bool, do_initial_execute: bool) -> anyhow::
                 .with_context(|| format!("Failed to find next client with info {info:?}"))?;
             info!("Next client: {:?}", next_client);
 
-            handle::switch(&next_client, dry).await
-                .with_context(|| format!("Failed to execute with next_client {next_client:?} and dry {dry:?}"))?;
+            handle::switch_async(&next_client, *DRY.get().expect("DRY not set")).await
+                .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
 
             let data = handle::collect_data(info).await
                 .with_context(|| format!("Failed to collect data with info {info:?}"))?;
@@ -144,7 +129,7 @@ async fn stop_daemon() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn run_normal(info: Info, dry: bool) -> anyhow::Result<()> {
+async fn run_normal(info: Info) -> anyhow::Result<()> {
     let data = handle::collect_data(info).await
         .with_context(|| format!("Failed to collect data with info {info:?}"))?;
     debug!("collected Data: {:?}", data);
@@ -153,8 +138,8 @@ async fn run_normal(info: Info, dry: bool) -> anyhow::Result<()> {
         .with_context(|| format!("Failed to find next client with info {info:?}"))?;
     info!("Next client: {:?}", next_client);
 
-    handle::switch(&next_client, dry).await
-        .with_context(|| format!("Failed to execute with next_client {next_client:?} and dry {dry:?}"))?;
+    handle::switch_async(&next_client, *DRY.get().expect("DRY not set")).await
+        .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
 
     Ok(())
 }
