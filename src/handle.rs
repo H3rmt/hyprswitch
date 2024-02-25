@@ -23,7 +23,11 @@ pub fn find_next(
         .map(|a| (a.class, a.workspace.id, a.address))
         .map_or_else(|| {
             info!("No active client found");
-            let first = clients.first().context("No clients found")?;
+            let first = if info.reverse {
+                clients.first().context("No clients found")?
+            } else {
+                clients.last().context("No clients found")?
+            };
             Ok::<(String, WorkspaceId, Address), anyhow::Error>((first.class.clone(), first.workspace.id, first.address.clone()))
         }, Ok)?;
 
