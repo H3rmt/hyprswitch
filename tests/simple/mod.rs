@@ -28,6 +28,7 @@ fn simple_1() {
         MockClient(1, 5, 1, 2, 0, 0, "3".to_string()),
         MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -43,6 +44,7 @@ fn simple_1() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -65,6 +67,7 @@ fn simple_2() {
         MockClient(1, 5, 2, 2, 0, 0, "3".to_string()),
         MockClient(4, 5, 1, 2, 0, 0, "4".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 5, 7));
@@ -80,6 +83,7 @@ fn simple_2() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -102,6 +106,7 @@ fn simple_3() {
         MockClient(1, 5, 3, 2, 0, 0, "3".to_string()),
         MockClient(5, 5, 1, 2, 0, 0, "4".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 6, 7));
@@ -117,6 +122,7 @@ fn simple_3() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -139,6 +145,7 @@ fn simple_4() {
         MockClient(1, 5, 1, 2, 0, 0, "3".to_string()),
         MockClient(3, 4, 1, 3, 0, 0, "4".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -155,6 +162,7 @@ fn simple_4() {
     println!("sorted clients:  {clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -178,6 +186,7 @@ fn simple_5() {
         MockClient(1, 6, 1, 2, 0, 0, "3".to_string()),
         MockClient(3, 4, 1, 4, 0, 0, "4".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 8));
@@ -193,6 +202,7 @@ fn simple_5() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -200,11 +210,11 @@ fn simple_5() {
 /// ```
 ///    1   2  4  5  6
 /// 1  +----+ +-----+
-/// 2  | 1  | |  4  |
+/// 2  | 1  | |  3  |
 /// 3  |   +-----+  |
-/// 4  +---|  3  |  |
+/// 4  +---|  2  |  |
 /// 5  +---|     |--+
-/// 6  | 2 +-----+
+/// 6  | 4 +-----+
 /// 7  +----+
 ///    1    3    5  6
 /// ```
@@ -216,6 +226,7 @@ fn float_1() {
         MockClient(2, 3, 3, 3, 0, 0, "3".to_string()),
         MockClient(4, 1, 2, 4, 0, 0, "4".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 6, 7));
@@ -231,6 +242,7 @@ fn float_1() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -337,6 +349,7 @@ fn order_3() {
         MockClient(8, 3, 2, 5, 0, 0, "5".to_string()),
         MockClient(9, 5, 3, 4, 0, 0, "6".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 12, 9));
@@ -352,5 +365,6 @@ fn order_3() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }

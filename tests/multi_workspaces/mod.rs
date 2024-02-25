@@ -33,6 +33,7 @@ fn default() {
         MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -49,6 +50,7 @@ fn default() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -76,6 +78,7 @@ fn ignore_workspace() {
         MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -92,6 +95,7 @@ fn ignore_workspace() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -127,6 +131,7 @@ fn vertical() {
         MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -143,6 +148,7 @@ fn vertical() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -178,6 +184,7 @@ fn vertical_ignore_workspace() {
         MockClient(1, 5, 1, 2, 1, 0, "7".to_string()),
         MockClient(3, 4, 1, 3, 1, 0, "8".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -194,5 +201,6 @@ fn vertical_ignore_workspace() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }

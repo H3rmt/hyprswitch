@@ -65,34 +65,56 @@ pub fn sort_clients<SC>(
 
             let mut line_start = queue.pop_front();
             while let Some(current) = line_start {
-                // println!("line_start: {:?}", current);
+                println!("line_start: {:?}", current);
                 // let mut current_top = current.y();
                 let mut current_bottom = current.y() + current.h();
                 sorted_clients.push(current);
 
                 loop {
                     let mut next_index = None;
+
+                    /*
+                    1. Check If Top left of window is higher or lower than bottom left of current
+                    2. Check if any window(not taken) on left top is higher or lower than current Lower (if true take this)
+                    3. Check if any window(not taken) on left bottom is higher than current bottom (if true take this)
+                    => Take if Top higher than current Bottom and no window on left has higher Top than window Bottom
+                     */
+
                     for (i, client) in queue.iter().enumerate() {
                         let client_top = client.y();
                         let client_bottom = client.y() + client.h();
+                        // let client_half_y = client.y() + (client.h() / 2) + (client.h() / 4);
                         let client_left = client.x();
 
                         // println!("{:?} current_bottom: {current_bottom}, client_top: {client_top}", client.identifier());
                         // if current_top <= client_top && client_top < current_bottom {
-                        if client_top < current_bottom {
-                            // client top is inside current row
-                            // println!("{:?} inside", client.identifier());
 
+                        if client_top < current_bottom { // 1.
+                            // client top is inside current row
+                            println!("{:?} inside", client.identifier());
+
+                            // 2.
                             let on_left = queue.iter().enumerate().find(|(_i, c)| c.x() < client_left && c.y() < client_bottom);
-                            // println!("{:?} on_left: {:?}", client.identifier(), on_left);
-                            match on_left {
-                                Some((idx, c)) => {
+                            println!("{:?} on_left: {:?}", client.identifier(), on_left);
+
+                            // 3.
+                            let on_left_2 = queue.iter().enumerate().find(|(_i, c)| c.x() < client_left && c.y() + c.h() < client_bottom);
+                            println!("{:?} on_left_2: {:?}", client.identifier(), on_left_2);
+                            
+                            match (on_left, on_left_2) {
+                                (Some((idx, c)), _) => {
                                     // current_top = c.y();
                                     current_bottom = c.y() + c.h();
                                     // println!("{:?} on_left (updating current_bottom: {current_bottom})", client.identifier());
                                     next_index = Some(idx);
                                 }
-                                None => {
+                                (_, Some((idx, c))) => {
+                                    // current_top = c.y();
+                                    current_bottom = c.y() + c.h();
+                                    // println!("{:?} on_left_2 (updating current_bottom: {current_bottom})", client.identifier());
+                                    next_index = Some(idx);
+                                }
+                                (None, None) => {
                                     // println!("{:?} not on_left", client.identifier());
                                     next_index = Some(i);
                                 }

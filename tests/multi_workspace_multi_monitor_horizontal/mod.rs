@@ -41,6 +41,7 @@ fn default() {
         MockClient(5, 5, 1, 2, 11, 1, "15".to_string()),
         MockClient(7, 4, 2, 3, 11, 1, "16".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -60,6 +61,7 @@ fn default() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -95,6 +97,7 @@ fn ignore_workspaces() {
         MockClient(5, 5, 1, 2, 11, 1, "15".to_string()),
         MockClient(7, 4, 2, 3, 11, 1, "16".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -114,6 +117,7 @@ fn ignore_workspaces() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -149,6 +153,7 @@ fn ignore_monitor() {
         MockClient(5, 5, 1, 2, 11, 1, "15".to_string()),
         MockClient(7, 4, 2, 3, 11, 1, "16".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -168,6 +173,7 @@ fn ignore_monitor() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -204,6 +210,7 @@ fn ignore_monitor_ignore_workspace() {
         MockClient(7, 4, 2, 3, 11, 1, "10".to_string()),
         MockClient(5, 5, 1, 2, 11, 1, "16".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -222,6 +229,7 @@ fn ignore_monitor_ignore_workspace() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -288,6 +296,7 @@ fn default_more_monitor() {
         MockClient(5, 11, 1, 3, 7, 3, "31".to_string()),
         MockClient(7, 12, 2, 2, 7, 3, "32".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
@@ -312,6 +321,7 @@ fn default_more_monitor() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -376,6 +386,7 @@ fn ignore_workspaces_more_monitor() {
         MockClient(7, 12, 2, 2, 7, 3, "32".to_string()),
         MockClient(5, 11, 1, 3, 7, 3, "28".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
@@ -400,6 +411,7 @@ fn ignore_workspaces_more_monitor() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -464,6 +476,7 @@ fn ignore_monitor_more_monitor() {
         MockClient(7, 12, 2, 2, 32, 3, "32".to_string()),
         MockClient(5, 11, 1, 3, 32, 3, "29".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
@@ -488,6 +501,7 @@ fn ignore_monitor_more_monitor() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 
@@ -553,6 +567,7 @@ fn ignore_monitor_ignore_workspace_more_monitor() {
         MockClient(7, 11, 2, 3, 7, 3, "26".to_string()),
         MockClient(5, 12, 1, 2, 7, 3, "32".to_string()),
     ];
+    let len = clients.len();
 
     let mut monitor_data: HashMap<i64, MonitorData> = HashMap::new();
     monitor_data.insert(0, MonitorData { x: 0, y: 0, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
@@ -577,6 +592,7 @@ fn ignore_monitor_ignore_workspace_more_monitor() {
     println!("{clients:?} ({:?})", start.elapsed());
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
+    assert_eq!(clients.len(), len);
     assert!(is_sorted(&clients));
 }
 

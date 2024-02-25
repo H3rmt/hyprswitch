@@ -5,6 +5,7 @@ pub mod handle;
 pub mod gui;
 #[cfg(feature = "gui")]
 pub mod daemon;
+#[cfg(feature = "gui")]
 mod icons;
 
 pub type MonitorId = i128;
@@ -15,9 +16,6 @@ pub struct MonitorData {
     pub y: u16,
     pub width: u16,
     pub height: u16,
-    // pub combined_width: u16,
-    // pub combined_height: u16,
-    // pub workspaces_on_monitor: u16,
     pub connector: String,
 }
 
