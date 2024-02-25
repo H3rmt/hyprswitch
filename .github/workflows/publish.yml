@@ -33,3 +33,24 @@ jobs:
           && sudo ninja -C build install
           && sudo ldconfig
       - run: cargo publish --all-features --allow-dirty --token ${{ secrets.CRATES_TOKEN }}
+
+  aur-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if tag is -rc or -alpha and exit if it is
+        run: |
+          if [[ ${{ github.ref }} == *"-rc"* ]] || [[ ${{ github.ref }} == *"-alpha"* ]]; then
+            echo "Skipping publish for ${{ github.ref }}"
+            exit 0
+          fi
+      - name: Publish AUR package
+        uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
+        with:
+          pkgname: hyprswitch
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Update AUR package
+          ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
