@@ -35,6 +35,8 @@ The script accepts these parameters [cli](./src/cli.rs):.
 - `--same-class`/`-s` Switch between windows of same class (type)
 - `--filter-current-workspace`/`-w` Restrict cycling of windows to the current workspace
 
+- `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of the windows when the daemon was started)
+
 - `--ignore-workspaces` Ignore workspaces and sort like one big workspace per monitor
 - `--ignore-monitors` Ignore monitors and sort like one big
   monitor, [workspaces must have offset of 10 for each monitor ](#ignore-monitors-flag)

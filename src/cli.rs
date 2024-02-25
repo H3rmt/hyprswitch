@@ -19,6 +19,10 @@ pub struct Args {
     #[arg(short = 'w', long)]
     pub filter_current_workspace: bool,
 
+    /// Sort windows by most recently focused
+    #[arg(long)]
+    pub sort_recent: bool,
+
     /// Ignore workspaces and sort like one big workspace for each monitor
     #[arg(long)]
     pub ignore_workspaces: bool,
@@ -30,7 +34,7 @@ pub struct Args {
     /// Switch to a specific window offset
     #[arg(short = 'o', long, default_value = "1")]
     pub offset: usize,
-    
+
     /// Hide special workspaces (e.g. scratchpad)
     #[arg(long)]
     pub hide_special_workspaces: bool,
@@ -66,6 +70,7 @@ impl From<Args> for Info {
             offset: args.offset,
             ignore_monitors: args.ignore_monitors,
             ignore_workspaces: args.ignore_workspaces,
+            sort_recent: args.sort_recent,
             filter_same_class: args.filter_same_class,
             filter_current_workspace: args.filter_current_workspace,
             hide_special_workspaces: args.hide_special_workspaces,
