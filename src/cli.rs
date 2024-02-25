@@ -18,11 +18,11 @@ pub struct Args {
     /// Restrict cycling of windows to the current workspace
     #[arg(short = 'w', long)]
     pub filter_current_workspace: bool,
-    
+
     /// Sort windows by most recently focused
     #[arg(long)]
     pub sort_recent: bool,
-    
+
     /// Ignore workspaces and sort like one big workspace for each monitor
     #[arg(long)]
     pub ignore_workspaces: bool,
@@ -34,6 +34,10 @@ pub struct Args {
     /// Switch to a specific window offset
     #[arg(short = 'o', long, default_value = "1")]
     pub offset: usize,
+
+    /// Hide special workspaces (e.g. scratchpad)
+    #[arg(long)]
+    pub hide_special_workspaces: bool,
 
     /// Starts as daemon, creates socket server and gui, sends Commands to the daemon if already running
     #[arg(long)]
@@ -69,6 +73,7 @@ impl From<Args> for Info {
             sort_recent: args.sort_recent,
             filter_same_class: args.filter_same_class,
             filter_current_workspace: args.filter_current_workspace,
+            hide_special_workspaces: args.hide_special_workspaces,
         }
     }
 }

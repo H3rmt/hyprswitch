@@ -43,6 +43,8 @@ The script accepts these parameters [cli](./src/cli.rs):.
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
 
+- `--hide-special-workspaces` Hide special workspaces (e.g. scratchpad)
+
 - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
 - `--stop-daemon` Stops the daemon
 - `--do-initial-execute` Also execute the initial command when starting the daemon

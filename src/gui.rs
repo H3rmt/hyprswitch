@@ -11,19 +11,18 @@ use gtk4::gio::File;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
-use hyprland::shared::WorkspaceId;
 use lazy_static::lazy_static;
 use log::{debug, warn};
 use tokio::sync::MutexGuard;
 
-use crate::{Data, icons, Info, Share};
+use crate::{Data, DRY, handle, icons, Info, Share};
 
 const CSS: &str = r#"
     frame.active {
         border: 3px solid rgba(255, 0, 0, 0.4);
     }
-    frame.active-ws {
-         background-color: rgba(0, 0, 0, 0.4);
+    frame.special-ws {
+        border: 3px solid rgba(0, 255, 0, 0.4);
     }
     frame {
         border-radius: 10px;
@@ -110,9 +109,8 @@ fn client_ui(client: &Client, client_active: bool, index: i32) -> Frame {
     frame
 }
 
-fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
+fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
-    focus_workspace: impl FnOnce(WorkspaceId, Share) -> G + Sized + Send + Copy + 'static,
     app: &Application,
     monitor: &Monitor,
     data: Share,
@@ -141,14 +139,14 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Out
         let (data_mut, cvar) = &*data;
         {
             let first = data_mut.lock().await;
-            update(workspaces_box.clone(), focus_client, focus_workspace, first, window_clone.clone(), &connector, data.clone())
+            update(workspaces_box.clone(), focus_client, first, window_clone.clone(), &connector, data.clone())
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
                 .expect("Failed to update workspaces");
         }
 
         loop {
             let data_mut_unlock = cvar.wait(data_mut.lock().await).await;
-            update(workspaces_box.clone(), focus_client, focus_workspace, data_mut_unlock, window_clone.clone(), &connector, data.clone())
+            update(workspaces_box.clone(), focus_client, data_mut_unlock, window_clone.clone(), &connector, data.clone())
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
                 .expect("Failed to update workspaces");
         }
@@ -167,10 +165,9 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Out
     Ok(())
 }
 
-fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
+fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     workspaces_box: gtk4::Box,
     focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
-    focus_workspace: impl FnOnce(WorkspaceId, Share) -> G + Sized + Send + Copy + 'static,
     data: MutexGuard<(Info, Data)>,
     window: ApplicationWindow,
     connector: &str,
@@ -216,13 +213,10 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
             .child(&fixed)
             .build();
 
-        // let mut active_ws = false;
+        // let prevent_leave_on_special_ws = Arc::new(std::sync::Mutex::new(false));
+
         for (index, client) in clients {
             let client_active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
-            // if client_active {
-            //     active_ws = true;
-            // }
-
             let frame = client_ui(client, client_active, (index as i32) - (data.1.selected_index.unwrap_or(0) as i32));
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
             let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
@@ -237,9 +231,11 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
             let client_clone = client.clone();
             let window_clone = window.clone();
             let data_arc_clone = data_arc.clone();
+            // let prevent_leave_on_special_ws_clone = prevent_leave_on_special_ws.clone();
             gesture.connect_pressed(move |gesture, _, _, _| {
+                gesture.set_state(gtk4::EventSequenceState::Claimed);
+                // *(prevent_leave_on_special_ws_clone.lock().unwrap()) = true;
                 tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(async {
-                    gesture.set_state(gtk4::EventSequenceState::Claimed);
                     focus_client(client_clone.clone(), data_arc_clone.clone()).await
                         .with_context(|| format!("Failed to focus client {}", client_clone.class))
                         .expect("Failed to focus client");
@@ -254,23 +250,41 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
             });
             frame.add_controller(gesture);
         }
-        // if active_ws {
-        //     workspace_frame.add_css_class("active-ws");
-        // }
 
         let gesture_2 = gtk4::EventControllerMotion::new();
-        let workspace_copy = *workspace.0;
-        let _workspace_frame_clone = workspace_frame.clone();
-        let data_arc_clone_2 = data_arc.clone();
-        gesture_2.connect_enter(move |_, _x, _y| {
-            // workspace_frame_clone.add_css_class("active-ws");
+        if *workspace.0 < 0 { // special workspace
+            workspace_frame.add_css_class("special-ws");
+            let name_cp = workspace.1.name.clone();
+            let name = name_cp.strip_prefix("special:").unwrap_or(&name_cp).to_string();
 
-            tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(async {
-                focus_workspace(workspace_copy, data_arc_clone_2.clone()).await
-                    .with_context(|| format!("Failed to focus workspace {}", workspace_copy))
+            let name_clone = name.clone();
+            gesture_2.connect_enter(move |_, _x, _y| {
+                handle::toggle_workspace(name_clone.clone(), *DRY.get().expect("DRY not set"))
+                    .with_context(|| format!("Failed to execute toggle workspace with ws_name {name_clone}"))
                     .expect("Failed to focus client");
             });
-        });
+
+            let name_clone_clone = name.clone();
+            // let prevent_leave_on_special_ws_clone = prevent_leave_on_special_ws.clone();
+            gesture_2.connect_leave(move |_| {
+                // if *prevent_leave_on_special_ws_clone.lock().unwrap() {
+                //     println!("Prevented leave on special ws");
+                //     *(prevent_leave_on_special_ws_clone.lock().unwrap()) = false;
+                // } else {
+                    handle::toggle_workspace(name_clone_clone.clone(), *DRY.get().expect("DRY not set"))
+                        .with_context(|| format!("Failed to execute toggle workspace with ws_name {name_clone_clone}"))
+                        .expect("Failed to focus client");
+                // }
+            });
+        } else {
+            let workspace_name_copy = workspace.1.name.clone();
+            gesture_2.connect_enter(move |_, _x, _y| {
+                handle::switch_workspace(workspace_name_copy.clone(), *DRY.get().expect("DRY not set"))
+                    .with_context(|| format!("Failed to execute switch workspace with ws_name {workspace_name_copy:?}"))
+                    .expect("Failed to focus client");
+            });
+        }
+
         workspace_frame.add_controller(gesture_2);
 
         workspaces_box.append(&workspace_frame);
@@ -279,10 +293,9 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Outpu
     Ok(())
 }
 
-pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
+pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     data: Share,
     focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
-    focus_workspace: impl FnOnce(WorkspaceId, Share) -> G + Sized + Send + Copy + 'static,
 ) -> anyhow::Result<()> {
     let application = Application::builder()
         .application_id("com.github.h3rmt.hyprswitch")
@@ -306,7 +319,7 @@ pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Futur
 
         for monitor in monitors {
             let data = data.clone();
-            activate(focus_client, focus_workspace, app, &monitor, data)
+            activate(focus_client, app, &monitor, data)
                 .with_context(|| format!("Failed to activate for monitor {monitor}"))
                 .expect("Failed to activate");
         }
