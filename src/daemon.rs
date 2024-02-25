@@ -10,7 +10,7 @@ use crate::{Info, Share};
 
 const PATH: &str = "/tmp/hyprswitch.sock";
 
-const CMDLEN: usize = 7;
+const CMDLEN: usize = 8;
 
 pub async fn daemon_running() -> bool {
     // check if socket exists and socket is open
@@ -89,8 +89,9 @@ async fn handle_client<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
                     offset: buffer[2] as usize,
                     ignore_monitors: buffer[3] == 1,
                     ignore_workspaces: buffer[4] == 1,
-                    filter_current_workspace: buffer[5] == 1,
-                    filter_same_class: buffer[6] == 1,
+                    sort_recent: buffer[5] == 1,
+                    filter_current_workspace: buffer[6] == 1,
+                    filter_same_class: buffer[7] == 1,
                 };
 
                 info!("Received switch command {info:?}");
@@ -120,6 +121,7 @@ pub async fn send_command(info: Info) -> anyhow::Result<()> {
         info.offset as u8,
         info.ignore_monitors as u8,
         info.ignore_workspaces as u8,
+        info.sort_recent as u8,
         info.filter_current_workspace as u8,
         info.filter_same_class as u8,
     ];

@@ -18,7 +18,11 @@ pub struct Args {
     /// Restrict cycling of windows to the current workspace
     #[arg(short = 'w', long)]
     pub filter_current_workspace: bool,
-
+    
+    /// Sort windows by most recently focused
+    #[arg(long)]
+    pub sort_recent: bool,
+    
     /// Ignore workspaces and sort like one big workspace for each monitor
     #[arg(long)]
     pub ignore_workspaces: bool,
@@ -58,12 +62,13 @@ pub struct Args {
 impl From<Args> for Info {
     fn from(args: Args) -> Self {
         Self {
+            reverse: args.reverse,
+            offset: args.offset,
             ignore_monitors: args.ignore_monitors,
             ignore_workspaces: args.ignore_workspaces,
+            sort_recent: args.sort_recent,
             filter_same_class: args.filter_same_class,
-            reverse: args.reverse,
             filter_current_workspace: args.filter_current_workspace,
-            offset: args.offset,
         }
     }
 }

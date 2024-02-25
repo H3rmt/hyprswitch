@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use anyhow::Context;
 use hyprland::data::{Client, Clients, Monitors, Workspaces};
@@ -11,7 +12,7 @@ use log::{debug, info};
 
 use crate::{Data, Info, MonitorData, MonitorId, WorkspaceData};
 use crate::sort::{SortableClient, update_clients};
-use crate::sort_v2::{sort_clients};
+use crate::sort_v2::sort_clients;
 
 pub fn find_next(
     info: Info,
@@ -137,7 +138,14 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     }
     debug!("clients before sort: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, MonitorId, u16, u16, u16, u16, WorkspaceId, String)>>());
 
-    let clients = sort_clients(clients, info.ignore_workspaces, info.ignore_monitors);
+    if info.sort_recent {
+        static LOADER: OnceLock<HashMap<Address, i8>> = OnceLock::new();
+        let focus_map = LOADER.get_or_init(|| HashMap::from_iter(clients.iter().map(|c| (c.address.clone(), c.focus_history_id))));
+
+        clients.sort_by(|a, b| focus_map.get(&a.address).unwrap_or(&a.focus_history_id).cmp(focus_map.get(&b.address).unwrap_or(&b.focus_history_id)));
+    } else {
+        clients = sort_clients(clients, info.ignore_workspaces, info.ignore_monitors);
+    }
     debug!("clients after sort: {:?}", clients.iter().enumerate().map(|(i, c)| (i, c.monitor, c.x(), c.y(), c.w(), c.h(), c.ws(), c.identifier())).collect::<Vec<(usize, MonitorId, u16, u16, u16, u16, WorkspaceId, String)>>());
 
     let active = Client::get_active_async().await?;

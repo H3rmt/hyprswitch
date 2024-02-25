@@ -75,15 +75,6 @@ async fn run_daemon(info: Info, dry: bool, do_initial_execute: bool) -> anyhow::
             let switch_workspace = move |ws_id: WorkspaceId, _latest_data: Share| async move {
                 handle::switch_workspace(ws_id, dry).await
                     .with_context(|| format!("Failed to execute switch workspace with ws_id {ws_id:?} and dry {dry:?}"))?;
-
-                // let data = handle::collect_data(info).await
-                //     .with_context(|| format!("Failed to collect data with info {info:?}"))?;
-                // debug!("collected Data: {:?}", data);
-                //
-                // let (latest, cvar) = &*latest_data;
-                // let mut ld = latest.lock().await;
-                // ld.1 = data;
-                // cvar.notify_all();
                 Ok(())
             };
 

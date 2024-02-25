@@ -34,6 +34,7 @@ pub struct Info {
     pub offset: usize,
     pub ignore_monitors: bool,
     pub ignore_workspaces: bool,
+    pub sort_recent: bool,
     pub filter_current_workspace: bool,
     pub filter_same_class: bool,
 }
