@@ -33,7 +33,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 The script accepts these parameters [cli](./src/cli.rs):.
 
 - `--reverse`/`-r` Reverse the order of windows / switch backwards
-- `--same-class`/`-s` Switch between windows of same class (type)
+- `--filter-same-class`/`-s` Switch between windows of same class (type)
 - `--filter-current-workspace`/`-w` Restrict cycling of windows to the current workspace
 
 - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of the windows when the daemon was started)
