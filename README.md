@@ -21,11 +21,6 @@ Subsequent calls to the script (with the `--daemon` flag) will send the command 
 
 `paru -S hyprswitch` / `yay -S hyprswitch`
 
-
-# Rust Features
-
-GUI functionality is included by default, but can be disabled with `--no-default-features` or enabled with `--features gui`
-
 # Usage
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
@@ -137,6 +132,13 @@ bindr=,escape, exec, hyprswitch --stop-daemon
 bindr=,escape, submap, reset
 submap=reset
 ```
+
+
+# Rust Features
+
+GUI functionality is included by default, but can be disabled with `--no-default-features` or enabled with `--features gui` when installing via cargo
+
+if the gui should use libadwaita pass `--features libadwaita` to the cargo install command
 
 # Sorting of windows
 
