@@ -77,7 +77,8 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
     let picture = gtk4::Picture::builder()
         .paintable(&icon)
         .can_shrink(true)
-        .content_fit(gtk4::ContentFit::Contain)
+        // .content_fit(gtk4::ContentFit::Contain)  features = ["v4_8"]
+        .keep_aspect_ratio(true)
         .hexpand(true)
         .margin_end(3)
         .margin_start(3)

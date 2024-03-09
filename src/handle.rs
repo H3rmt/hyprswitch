@@ -161,7 +161,7 @@ pub async fn switch_async(next_client: &Client, dry_run: bool) -> Result<(), sha
         info!("toggle workspace {}", next_client.workspace.name);
 
         toggle_workspace(next_client.workspace.name.clone(), dry_run)?;
-        return Ok(()); // TODO switch to correct client
+        return Ok(()); // TODO switch to correct client https://github.com/H3rmt/hyprswitch/issues/18
     }
 
     if dry_run {
