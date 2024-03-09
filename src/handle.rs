@@ -29,6 +29,7 @@ pub fn find_next(
         selected_index + info.offset as usize
     };
 
+    debug!("selected_index: {}, offset: {}, index: {}", selected_index, info.offset, index);
     let next_client = enabled_clients
         .into_iter()
         .cycle()
@@ -135,15 +136,15 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
             Ok::<(String, WorkspaceId, MonitorId, Address), anyhow::Error>((first.class.clone(), first.workspace.id, first.monitor, first.address.clone()))
         }, Ok)?;
 
-    let selected_index = clients.iter().position(|c| c.address == active_address)
-        .context("Active client not found in clients")?;
-
     let enabled_clients = clients.iter()
         .filter(|c| !info.filter_same_class || c.class == active_class)
         .filter(|c| !info.filter_current_workspace || c.workspace.id == active_workspace_id)
         .filter(|c| !info.filter_current_monitor || c.monitor == active_monitor_id)
         .cloned()
         .collect::<Vec<_>>();
+    
+    let selected_index = enabled_clients.iter().position(|c| c.address == active_address)
+        .context("Active client not found in clients")?;
 
     Ok(Data {
         clients,

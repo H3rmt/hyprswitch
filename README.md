@@ -96,7 +96,8 @@ bind=$modifier, $key, exec, hyprswitch --daemon
 
 # close hyprswitch
 bindr=$modifier, $switch_release, exec, hyprswitch --stop-daemon
-bindr=,escape, exec, hyprswitch --stop-daemon
+# if it somehow doesn't close on releasing $switch_release, escape can kill
+bindr=,escape, exec, pkill hyprswitch
 ```
 
 
@@ -143,8 +144,8 @@ bind=$modifier $reverse, 5, exec, hyprswitch --daemon --offset=5 -r
 bindrt=$modifier, $modifier_release, exec, hyprswitch --stop-daemon
 bindrt=$modifier, $modifier_release, submap, reset
 
-# if it somehow doesn't close on releasing $switch_release, escape can close too
-bindr=,escape, exec, hyprswitch --stop-daemon
+# if it somehow doesn't close on releasing $switch_release, escape can kill
+bindr=,escape, exec, pkill hyprswitch
 bindr=,escape, submap, reset
 submap=reset
 ```

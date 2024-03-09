@@ -27,9 +27,10 @@ const CSS: &str = r#"
     frame {
         border-radius: 10px;
         border: 3px solid rgba(0, 0, 0, 0.4);
+        background-color: rgba(20, 20, 25, 0.85);
     }
     frame.client:hover {
-        background-color: rgba(70, 70, 70, 0.2);
+        background-color: rgba(23, 17, 20, 1);
     }
     window {
         border-radius: 15px;
@@ -85,9 +86,7 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
     if !enabled {
         let pixbuf = gtk4::gdk_pixbuf::Pixbuf::from_file(icon.file().expect("Failed to get icon file").path().expect("Failed to get icon path"))
             .expect("Failed to create Pixbuf from icon file");
-
         pixbuf.saturate_and_pixelate(&pixbuf, 0.1, false);
-
         picture.set_pixbuf(Some(&pixbuf));
     }
 
@@ -99,7 +98,7 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
         .hexpand(true)
         .build();
 
-    if index < *NEXT_INDEX_MAX && index > -(*NEXT_INDEX_MAX) {
+    if enabled && index < *NEXT_INDEX_MAX && index > -(*NEXT_INDEX_MAX) {
         let label_fake = Label::builder()
             .label(index.to_string())
             .valign(gtk4::Align::End)
@@ -121,7 +120,6 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
     } else {
         gbox.append(&picture);
     }
-
 
     let label = Label::builder()
         .overflow(gtk4::Overflow::Visible)
@@ -236,11 +234,10 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
         debug!("workspace: {:?}", workspace.1.name);
         let clients = data.1.clients
             .iter()
-            .enumerate()
-            .filter(|(_, client)| {
+            .filter(|client| {
                 client.monitor == *monitor_id && client.workspace.id == *workspace.0
             })
-            .collect::<Vec<(usize, &Client)>>();
+            .collect::<Vec<_>>();
 
         let fixed = gtk4::Fixed::builder()
             .margin_end(7)
@@ -257,9 +254,11 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
 
         // let prevent_leave_on_special_ws = Arc::new(std::sync::Mutex::new(false));1
 
-        for (index, client) in clients {
+        for client in clients {
             let client_active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
-            let frame = client_ui(client, client_active, index as i32 - data.1.selected_index as i32, data.1.enabled_clients.iter().any(|c| c.address == client.address));
+            let index = data.1.enabled_clients.iter().position(|c| c.address == client.address)
+                .map_or(0, |i| i as i32) - data.1.selected_index as i32;
+            let frame = client_ui(client, client_active, index, data.1.enabled_clients.iter().any(|c| c.address == client.address));
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
             let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
             let width = (client.size.0 / *SIZE_FACTOR) as i32;
