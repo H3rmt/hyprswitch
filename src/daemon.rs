@@ -10,7 +10,7 @@ use crate::{Info, Share};
 
 const PATH: &str = "/tmp/hyprswitch.sock";
 
-const CMDLEN: usize = 9;
+const CMDLEN: usize = 10;
 
 pub async fn daemon_running() -> bool {
     // check if socket exists and socket is open
@@ -29,9 +29,10 @@ pub async fn daemon_running() -> bool {
 }
 
 // pass function to start_daemon taking info from socket
-pub async fn start_daemon<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
+pub async fn start_daemon<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>, > + Send + 'static>(
     data: Share,
     exec: impl FnOnce(Info, Share) -> F + Copy + Send + 'static,
+    close: impl FnOnce(Share) -> G + Copy + Send + 'static,
 ) -> anyhow::Result<()> {
     // remove old PATH
     if Path::new(PATH).exists() {
@@ -47,7 +48,7 @@ pub async fn start_daemon<F: Future<Output=anyhow::Result<()>> + Send + 'static>
             Ok((stream, _)) => {
                 let data = data.clone();
                 tokio::spawn(async move {
-                    handle_client(stream, exec, data).await
+                    handle_client(stream, exec, close, data).await
                         .context("Failed to handle client")
                         .expect("Failed to handle client");
                 });
@@ -60,9 +61,10 @@ pub async fn start_daemon<F: Future<Output=anyhow::Result<()>> + Send + 'static>
 }
 
 
-async fn handle_client<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
+async fn handle_client<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>, > + Send + 'static>(
     mut stream: UnixStream,
     exec: impl FnOnce(Info, Share) -> F + Copy + Send + 'static,
+    close: impl FnOnce(Share) -> G + Copy + Send + 'static,
     data_arc: Share,
 ) -> anyhow::Result<()> {
     let mut buffer = Vec::new();
@@ -80,19 +82,21 @@ async fn handle_client<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
                 std::fs::remove_file(PATH)
                     .with_context(|| format!("Failed to remove old socket {PATH}"))?;
             }
-            std::process::exit(0);
+            close(data_arc).await
+                .with_context(|| "Failed to close daemon".to_string())?;
         }
         b's' => {
             if buffer.len() == CMDLEN {
                 let info = Info {
                     reverse: buffer[1] == 1,
-                    offset: buffer[2] as usize,
+                    offset: buffer[2],
                     ignore_monitors: buffer[3] == 1,
                     ignore_workspaces: buffer[4] == 1,
                     sort_recent: buffer[5] == 1,
                     filter_current_workspace: buffer[6] == 1,
                     filter_same_class: buffer[7] == 1,
-                    hide_special_workspaces: buffer[7] == 1,
+                    filter_current_monitor: buffer[8] == 1,
+                    hide_special_workspaces: buffer[9] == 1,
                 };
 
                 info!("Received switch command {info:?}");
@@ -119,12 +123,13 @@ pub async fn send_command(info: Info) -> anyhow::Result<()> {
     let buf: &[u8; CMDLEN] = &[
         b's',
         info.reverse as u8,
-        info.offset as u8,
+        info.offset,
         info.ignore_monitors as u8,
         info.ignore_workspaces as u8,
         info.sort_recent as u8,
         info.filter_current_workspace as u8,
         info.filter_same_class as u8,
+        info.filter_current_monitor as u8,
         info.hide_special_workspaces as u8,
     ];
 

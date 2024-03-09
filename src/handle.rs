@@ -16,59 +16,24 @@ use crate::sort_v2::sort_clients;
 
 pub fn find_next(
     info: Info,
-    active: Option<Client>,
-    clients: Vec<Client>,
+    enabled_clients: Vec<Client>,
+    selected_index: usize,
 ) -> anyhow::Result<Client> {
-    let (active_class, active_workspace_id, active_address): (String, WorkspaceId, Address) = active
-        .map(|a| (a.class, a.workspace.id, a.address))
-        .map_or_else(|| {
-            info!("No active client found");
-            let first = if info.reverse {
-                clients.first().context("No clients found")?
-            } else {
-                clients.last().context("No clients found")?
-            };
-            Ok::<(String, WorkspaceId, Address), anyhow::Error>((first.class.clone(), first.workspace.id, first.address.clone()))
-        }, Ok)?;
-
-    let mut clients = clients;
-
-    // filter clients by class
-    if info.filter_same_class {
-        clients = clients
-            .into_iter()
-            .filter(|c| c.class == active_class)
-            .collect::<Vec<_>>();
-    }
-
-    // filter clients by workspace
-    if info.filter_current_workspace {
-        clients = clients
-            .into_iter()
-            .filter(|c| c.workspace.id == active_workspace_id)
-            .collect::<Vec<_>>();
-    }
-
-    let mut current_window_index = clients
-        .iter()
-        .position(|r| r.address == active_address)
-        .expect("Active window not found?");
-
-    if info.reverse {
-        current_window_index = if current_window_index == 0 {
-            clients.len() - info.offset
+    let index = if info.reverse {
+        if selected_index == 0 {
+            enabled_clients.len() - info.offset as usize
         } else {
-            current_window_index - info.offset
-        };
+            selected_index - info.offset as usize
+        }
     } else {
-        current_window_index += info.offset;
-    }
+        selected_index + info.offset as usize
+    };
 
-    let next_client = clients
+    let next_client = enabled_clients
         .into_iter()
         .cycle()
-        .nth(current_window_index)
-        .expect("No next window?");
+        .nth(index)
+        .context("No next client found")?;
 
     Ok(next_client)
 }
@@ -76,7 +41,7 @@ pub fn find_next(
 
 pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     let mut clients = Clients::get_async().await?
-        .filter(|c| c.workspace.id != -1)
+        .filter(|c| c.workspace.id != -1) // ignore nonexistent clients
         .filter(|w| !info.hide_special_workspaces || !w.workspace.id < 0)
         .collect::<Vec<_>>();
 
@@ -85,10 +50,10 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     // get all workspaces sorted by ID
     let workspaces = {
         let mut workspaces = Workspaces::get_async().await?
-            .filter(|w| w.id != -1)
+            .filter(|w| w.id != -1) // ignore nonexistent clients
             .filter(|w| !info.hide_special_workspaces || !w.id < 0)
             .collect::<Vec<_>>();
-        
+
         workspaces.sort_by(|a, b| a.id.cmp(&b.id));
         workspaces
     };
@@ -157,14 +122,32 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
 
     let active = Client::get_active_async().await?;
 
-    let selected_index = if let Some(aa) = active.as_ref().map(|a| a.address.clone()) {
-        clients.iter().position(|c| c.address == aa)
-    } else {
-        None
-    };
+    let (active_class, active_workspace_id, active_monitor_id, active_address) = active
+        .as_ref()
+        .map(|a| (a.class.clone(), a.workspace.id, a.monitor, a.address.clone()))
+        .map_or_else(|| {
+            info!("No active client found");
+            let first = if info.reverse {
+                clients.first().context("No clients found")?
+            } else {
+                clients.last().context("No clients found")?
+            };
+            Ok::<(String, WorkspaceId, MonitorId, Address), anyhow::Error>((first.class.clone(), first.workspace.id, first.monitor, first.address.clone()))
+        }, Ok)?;
+
+    let selected_index = clients.iter().position(|c| c.address == active_address)
+        .context("Active client not found in clients")?;
+
+    let enabled_clients = clients.iter()
+        .filter(|c| !info.filter_same_class || c.class == active_class)
+        .filter(|c| !info.filter_current_workspace || c.workspace.id == active_workspace_id)
+        .filter(|c| !info.filter_current_monitor || c.monitor == active_monitor_id)
+        .cloned()
+        .collect::<Vec<_>>();
 
     Ok(Data {
         clients,
+        enabled_clients,
         selected_index,
         workspace_data,
         monitor_data,
@@ -173,14 +156,22 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
 }
 
 pub async fn switch_async(next_client: &Client, dry_run: bool) -> Result<(), shared::HyprError> {
+    if next_client.workspace.id < -1 {
+        info!("toggle workspace {}", next_client.workspace.name);
+
+        toggle_workspace(next_client.workspace.name.clone(), dry_run)?;
+        return Ok(()); // TODO switch to correct client
+    }
+
     if dry_run {
         #[allow(clippy::print_stdout)] {
             println!("switch to next_client: {}", next_client.title);
         }
     } else {
-        info!("switch to next_client: {}", next_client.title);
+        info!("switch to next_client: {}, {}", next_client.title, next_client.workspace.id);
         Dispatch::call_async(FocusWindow(WindowIdentifier::Address(next_client.address.clone()))).await?;
     }
+
     Ok(())
 }
 
@@ -198,13 +189,15 @@ pub fn switch_workspace(workspace_name: String, dry_run: bool) -> Result<(), sha
 
 /// use this to toggle special workspaces
 pub fn toggle_workspace(workspace_name: String, dry_run: bool) -> Result<(), shared::HyprError> {
+    let name = workspace_name.strip_prefix("special:").unwrap_or(&workspace_name).to_string();
+
     if dry_run {
         #[allow(clippy::print_stdout)]{
-            println!("toggle workspace {workspace_name}");
+            println!("toggle workspace {name}");
         }
     } else {
-        info!("toggle workspace {workspace_name}");
-        Dispatch::call(ToggleSpecialWorkspace(Some(workspace_name)))?;
+        info!("toggle workspace {name}");
+        Dispatch::call(ToggleSpecialWorkspace(Some(name)))?;
     }
     Ok(())
 }

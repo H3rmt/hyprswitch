@@ -23,7 +23,10 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "gui")]
     if cli.daemon {
-        run_daemon(cli.into(), cli.do_initial_execute).await?;
+        let do_initial_execute = cli.do_initial_execute;
+        let switch_ws_on_hover = cli.switch_ws_on_hover;
+        let switch_on_close = cli.switch_on_close == "true";
+        run_daemon(cli.into(), do_initial_execute, switch_ws_on_hover, switch_on_close).await?;
         return Ok(());
     }
 
@@ -32,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 #[cfg(feature = "gui")]
-async fn run_daemon(info: Info, do_initial_execute: bool) -> anyhow::Result<()> {
+async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bool, on_close: bool) -> anyhow::Result<()> {
     use hyprswitch::{daemon, gui, Share};
     use tokio::sync::Mutex;
     use std::sync::Arc;
@@ -41,17 +44,31 @@ async fn run_daemon(info: Info, do_initial_execute: bool) -> anyhow::Result<()> 
     if !daemon::daemon_running().await {
         warn!("Daemon not running, starting daemon");
 
-        if do_initial_execute {
-            run_normal(info).await?;
-        } else {
-            info!("Skipping initial execution, just starting daemon");
-        }
-
         let data = handle::collect_data(info).await
             .with_context(|| format!("Failed to collect data with info {info:?}"))?;
-
         // create arc to send to thread
         let latest_arc: Share = Arc::new((Mutex::new((info, data)), Condvar::new()));
+
+        if do_initial_execute {
+            if on_close {
+                let mut lock = latest_arc.0.lock().await;
+
+                let next_client = handle::find_next(info, lock.1.enabled_clients.clone(), lock.1.selected_index)
+                    .with_context(|| format!("Failed to find next client with info {info:?}"))?;
+                info!("Next client: {:?}", next_client);
+
+                let data = handle::collect_data(info).await
+                    .with_context(|| format!("Failed to collect data with info {info:?}"))?;
+                debug!("collected Data: {:?}", data);
+
+                lock.1 = data;
+                lock.1.active = Some(next_client);
+            } else {
+                run_normal(info).await?;
+            }
+        } else {
+            debug!("Skipping initial execution, just starting daemon");
+        }
 
         info!("Starting gui");
         let latest_arc_clone = latest_arc.clone();
@@ -72,21 +89,23 @@ async fn run_daemon(info: Info, do_initial_execute: bool) -> anyhow::Result<()> 
                 Ok(())
             };
 
-            gui::start_gui(latest_arc_clone, switch)
+            gui::start_gui(latest_arc_clone, switch, switch_ws_on_hover)
                 .context("Failed to start gui")
                 .expect("Failed to start gui")
         });
 
-        let callback = move |info: Info, latest_data: Share| async move {
+        let exec = move |info: Info, latest_data: Share| async move {
             let (latest, cvar) = &*latest_data;
             let mut ld = latest.lock().await;
 
-            let next_client = handle::find_next(info, ld.1.active.clone(), ld.1.clients.clone())
+            let next_client = handle::find_next(info, ld.1.enabled_clients.clone(), ld.1.selected_index)
                 .with_context(|| format!("Failed to find next client with info {info:?}"))?;
             info!("Next client: {:?}", next_client);
 
-            handle::switch_async(&next_client, *DRY.get().expect("DRY not set")).await
-                .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
+            if !on_close {
+                handle::switch_async(&next_client, *DRY.get().expect("DRY not set")).await
+                    .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
+            }
 
             let data = handle::collect_data(info).await
                 .with_context(|| format!("Failed to collect data with info {info:?}"))?;
@@ -94,13 +113,28 @@ async fn run_daemon(info: Info, do_initial_execute: bool) -> anyhow::Result<()> 
 
             ld.0 = info;
             ld.1 = data;
+            if on_close {
+                ld.1.active = Some(next_client);
+            }
             cvar.notify_all();
 
             Ok(())
         };
+        let close = move |latest_data: Share| async move {
+            let (latest, _cvar) = &*latest_data;
+            let ld = latest.lock().await;
+
+            if let Some(next_client) = ld.1.active.as_ref() {
+                info!("Executing on close {}", next_client.title);
+                handle::switch_async(next_client, *DRY.get().expect("DRY not set")).await
+                    .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
+            }
+
+            std::process::exit(0);
+        };
 
         info!("Starting daemon");
-        daemon::start_daemon(latest_arc, callback).await?;
+        daemon::start_daemon(latest_arc, exec, close).await?;
         return Ok(());
     } else {
         info!("Daemon already running");
@@ -134,7 +168,7 @@ async fn run_normal(info: Info) -> anyhow::Result<()> {
         .with_context(|| format!("Failed to collect data with info {info:?}"))?;
     debug!("collected Data: {:?}", data);
 
-    let next_client = handle::find_next(info, data.active, data.clients)
+    let next_client = handle::find_next(info, data.enabled_clients, data.selected_index)
         .with_context(|| format!("Failed to find next client with info {info:?}"))?;
     info!("Next client: {:?}", next_client);
 

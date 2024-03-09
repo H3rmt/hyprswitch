@@ -18,15 +18,15 @@ pub struct Args {
     /// Only show/switch between windows that are on the same workspace as the currently focused window
     #[arg(short = 'w', long)]
     pub filter_current_workspace: bool,
-    
+
     /// Only show/switch between windows that are on the same monitor as the currently focused window
     #[arg(short = 'm', long)]
     pub filter_current_monitor: bool,
-    
+
     /// Sort windows by most recently focused (when used with `--daemon` it will use the order of windows when the daemon was started)
     #[arg(long)]
     pub sort_recent: bool,
-    
+
     /// Sort all windows on every monitor like one contiguous workspace
     #[arg(long)]
     pub ignore_workspaces: bool,
@@ -59,14 +59,14 @@ pub struct Args {
     #[arg(long, default_value = "true", value_name = "bool", value_parser = clap::builder::PossibleValuesParser::new(["true", "false"]))]
     #[cfg(feature = "gui")]
     pub switch_on_close: String,
-    
+
     /// Switch to a specific window offset
     #[arg(short = 'o', long, default_value = "1")]
     pub offset: u8,
 
     /// Hide special workspaces (e.g. scratchpad) (default is true, pass false to disable)
     #[arg(long, default_value = "true", value_name = "bool", value_parser = clap::builder::PossibleValuesParser::new(["true", "false"]))]
-    pub ignore_special_workspaces: String,
+    pub hide_special_workspaces: String,
 
     /// Print the command that would be executed
     #[arg(short = 'd', long)]
@@ -88,7 +88,7 @@ impl From<Args> for Info {
             filter_same_class: args.filter_same_class,
             filter_current_workspace: args.filter_current_workspace,
             filter_current_monitor: args.filter_current_monitor,
-            ignore_special_workspaces: args.ignore_special_workspaces == "true",
+            hide_special_workspaces: args.hide_special_workspaces == "true",
         }
     }
 }

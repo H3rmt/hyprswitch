@@ -3,7 +3,7 @@ use std::future::Future;
 #[cfg(feature = "libadwaita")]
 use adw::Application;
 use anyhow::Context;
-use gtk4::{ApplicationWindow, Frame, gdk, glib, IconLookupFlags, IconPaintable, Image, Label, pango, TextDirection};
+use gtk4::{ApplicationWindow, Frame, gdk, glib, IconLookupFlags, IconPaintable, Label, pango, TextDirection};
 #[cfg(not(feature = "libadwaita"))]
 use gtk4::Application;
 use gtk4::gdk::Monitor;
@@ -39,19 +39,19 @@ const CSS: &str = r#"
 
 lazy_static! {
     static ref SIZE_FACTOR: i16 = option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
-    static ref ICON_SIZE: i32 = option_env!("ICON_SIZE").map_or(256, |s| s.parse().expect("Failed to parse ICON_SIZE"));
+    static ref ICON_SIZE: i32 = option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
-    static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(6, |s| s.parse().expect("Failed to parse ICON_SCALE"));
+    static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(4, |s| s.parse().expect("Failed to parse ICON_SCALE"));
     static ref EXIT_ON_CLICK: bool = option_env!("EXIT_ON_CLICK").map_or(true, |s| s.parse().expect("Failed to parse EXIT_ON_CLICK"));
 }
 
-fn client_ui(client: &Client, client_active: bool, index: i32) -> Frame {
+fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) -> Frame {
     let theme = gtk4::IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
         debug!("Icon found for {}", client.class);
         theme.lookup_icon(&client.class, &[], *ICON_SIZE, *ICON_SCALE, TextDirection::None, IconLookupFlags::PRELOAD)
     } else {
-        warn!("Icon not found for {}", client.class);
+        debug!("Icon not found for {}", client.class);
 
         icons::get_icon_name(&client.class)
             .map(|icon| {
@@ -66,23 +66,62 @@ fn client_ui(client: &Client, client_active: bool, index: i32) -> Frame {
                 }
             })
             .unwrap_or_else(|| {
-                warn!("No desktop file with icon found for {}", client.class);
+                warn!("No Icon and no desktop file with icon found for {}", client.class);
                 // just lookup the icon and hope for the best
                 theme.lookup_icon(&client.class, &[], *ICON_SIZE, *ICON_SCALE, TextDirection::None, IconLookupFlags::PRELOAD)
             })
     };
     debug!("{:?}\n", icon.file().expect("Failed to get icon file").path());
-    let icon = Image::from_paintable(Some(&icon));
-    icon.set_margin_start(15);
-    icon.set_margin_end(15);
-    icon.set_margin_top(15);
-    icon.set_margin_bottom(15);
 
-    let text = if index < *NEXT_INDEX_MAX && index > -(*NEXT_INDEX_MAX) {
-        format!("{} - {}", index, client.class)
+    let picture = gtk4::Picture::builder()
+        .paintable(&icon)
+        .can_shrink(true)
+        .content_fit(gtk4::ContentFit::Contain)
+        .hexpand(true)
+        .margin_end(3)
+        .margin_start(3)
+        .build();
+
+    if !enabled {
+        let pixbuf = gtk4::gdk_pixbuf::Pixbuf::from_file(icon.file().expect("Failed to get icon file").path().expect("Failed to get icon path"))
+            .expect("Failed to create Pixbuf from icon file");
+
+        pixbuf.saturate_and_pixelate(&pixbuf, 0.1, false);
+
+        picture.set_pixbuf(Some(&pixbuf));
+    }
+
+    let gbox = gtk4::Box::builder()
+        .margin_end(7)
+        .margin_start(7)
+        .margin_top(7)
+        .margin_bottom(7)
+        .hexpand(true)
+        .build();
+
+    if index < *NEXT_INDEX_MAX && index > -(*NEXT_INDEX_MAX) {
+        let label_fake = Label::builder()
+            .label(index.to_string())
+            .valign(gtk4::Align::End)
+            .opacity(0.0)
+            .margin_start(5)
+            .margin_bottom(3)
+            .build();
+
+        gbox.append(&label_fake);
+        gbox.append(&picture);
+
+        let label = Label::builder()
+            .label(index.to_string())
+            .valign(gtk4::Align::End)
+            .margin_end(5)
+            .margin_bottom(3)
+            .build();
+        gbox.append(&label);
     } else {
-        client.class.clone()
-    };
+        gbox.append(&picture);
+    }
+
 
     let label = Label::builder()
         .overflow(gtk4::Overflow::Visible)
@@ -91,7 +130,7 @@ fn client_ui(client: &Client, client_active: bool, index: i32) -> Frame {
         .margin_top(4)
         .margin_bottom(4)
         .ellipsize(pango::EllipsizeMode::End)
-        .label(text)
+        .label(client.class.clone())
         .build();
 
     let frame = Frame::builder()
@@ -99,7 +138,7 @@ fn client_ui(client: &Client, client_active: bool, index: i32) -> Frame {
         .label_widget(&label)
         .overflow(gtk4::Overflow::Hidden)
         .css_classes(vec!["client"])
-        .child(&icon)
+        .child(&gbox)
         .build();
 
     if client_active {
@@ -114,6 +153,7 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     app: &Application,
     monitor: &Monitor,
     data: Share,
+    switch_ws_on_hover: bool,
 ) -> anyhow::Result<()> {
     let workspaces_box = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
@@ -139,14 +179,14 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
         let (data_mut, cvar) = &*data;
         {
             let first = data_mut.lock().await;
-            update(workspaces_box.clone(), focus_client, first, window_clone.clone(), &connector, data.clone())
+            update(workspaces_box.clone(), focus_client, first, window_clone.clone(), &connector, data.clone(), switch_ws_on_hover)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
                 .expect("Failed to update workspaces");
         }
 
         loop {
             let data_mut_unlock = cvar.wait(data_mut.lock().await).await;
-            update(workspaces_box.clone(), focus_client, data_mut_unlock, window_clone.clone(), &connector, data.clone())
+            update(workspaces_box.clone(), focus_client, data_mut_unlock, window_clone.clone(), &connector, data.clone(), switch_ws_on_hover)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor_clone:?}"))
                 .expect("Failed to update workspaces");
         }
@@ -155,7 +195,7 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
 
     window.init_layer_shell();
     window.set_layer(Layer::Overlay);
-    window.set_opacity(0.95);
+    window.set_opacity(0.93);
     window.set_monitor(monitor);
 
     app.connect_activate(move |_| {
@@ -172,6 +212,7 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     window: ApplicationWindow,
     connector: &str,
     data_arc: Share,
+    switch_ws_on_hover: bool,
 ) -> anyhow::Result<()> {
     // remove all children
     while let Some(child) = workspaces_box.first_child() {
@@ -192,6 +233,7 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     workspaces.sort_by(|a, b| a.0.cmp(b.0));
 
     for workspace in workspaces {
+        debug!("workspace: {:?}", workspace.1.name);
         let clients = data.1.clients
             .iter()
             .enumerate()
@@ -213,11 +255,11 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
             .child(&fixed)
             .build();
 
-        // let prevent_leave_on_special_ws = Arc::new(std::sync::Mutex::new(false));
+        // let prevent_leave_on_special_ws = Arc::new(std::sync::Mutex::new(false));1
 
         for (index, client) in clients {
             let client_active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
-            let frame = client_ui(client, client_active, (index as i32) - (data.1.selected_index.unwrap_or(0) as i32));
+            let frame = client_ui(client, client_active, index as i32 - data.1.selected_index as i32, data.1.enabled_clients.iter().any(|c| c.address == client.address));
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
             let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
             let width = (client.size.0 / *SIZE_FACTOR) as i32;
@@ -251,41 +293,43 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
             frame.add_controller(gesture);
         }
 
-        let gesture_2 = gtk4::EventControllerMotion::new();
-        if *workspace.0 < 0 { // special workspace
-            workspace_frame.add_css_class("special-ws");
-            let name_cp = workspace.1.name.clone();
-            let name = name_cp.strip_prefix("special:").unwrap_or(&name_cp).to_string();
+        if switch_ws_on_hover {
+            let gesture_2 = gtk4::EventControllerMotion::new();
+            if *workspace.0 < 0 { // special workspace
+                workspace_frame.add_css_class("special-ws");
+                let name_cp = workspace.1.name.clone();
 
-            let name_clone = name.clone();
-            gesture_2.connect_enter(move |_, _x, _y| {
-                handle::toggle_workspace(name_clone.clone(), *DRY.get().expect("DRY not set"))
-                    .with_context(|| format!("Failed to execute toggle workspace with ws_name {name_clone}"))
-                    .expect("Failed to focus client");
-            });
+                let name_clone = name_cp.clone();
+                gesture_2.connect_enter(move |_, _x, _y| {
+                    handle::toggle_workspace(name_clone.clone(), *DRY.get().expect("DRY not set"))
+                        .with_context(|| format!("Failed to execute toggle workspace with ws_name {name_clone}"))
+                        .expect("Failed to focus client");
+                });
 
-            let name_clone_clone = name.clone();
-            // let prevent_leave_on_special_ws_clone = prevent_leave_on_special_ws.clone();
-            gesture_2.connect_leave(move |_| {
-                // if *prevent_leave_on_special_ws_clone.lock().unwrap() {
-                //     println!("Prevented leave on special ws");
-                //     *(prevent_leave_on_special_ws_clone.lock().unwrap()) = false;
-                // } else {
+                let name_clone_clone = name_cp.clone();
+                // let prevent_leave_on_special_ws_clone = prevent_leave_on_special_ws.clone();
+                gesture_2.connect_leave(move |_| {
+                    // if *prevent_leave_on_special_ws_clone.lock().unwrap() {
+                    //     println!("Prevented leave on special ws");
+                    //     *(prevent_leave_on_special_ws_clone.lock().unwrap()) = false;
+                    // } else {
                     handle::toggle_workspace(name_clone_clone.clone(), *DRY.get().expect("DRY not set"))
                         .with_context(|| format!("Failed to execute toggle workspace with ws_name {name_clone_clone}"))
                         .expect("Failed to focus client");
-                // }
-            });
-        } else {
-            let workspace_name_copy = workspace.1.name.clone();
-            gesture_2.connect_enter(move |_, _x, _y| {
-                handle::switch_workspace(workspace_name_copy.clone(), *DRY.get().expect("DRY not set"))
-                    .with_context(|| format!("Failed to execute switch workspace with ws_name {workspace_name_copy:?}"))
-                    .expect("Failed to focus client");
-            });
+                    // }
+                });
+            } else {
+                let workspace_name_copy = workspace.1.name.clone();
+                gesture_2.connect_enter(move |_, _x, _y| {
+                    handle::switch_workspace(workspace_name_copy.clone(), *DRY.get().expect("DRY not set"))
+                        .with_context(|| format!("Failed to execute switch workspace with ws_name {workspace_name_copy:?}"))
+                        .expect("Failed to focus client");
+                });
+            }
+            workspace_frame.add_controller(gesture_2);
+        } else if *workspace.0 < 0 { // special workspace
+            workspace_frame.add_css_class("special-ws");
         }
-
-        workspace_frame.add_controller(gesture_2);
 
         workspaces_box.append(&workspace_frame);
     }
@@ -296,6 +340,7 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
 pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     data: Share,
     focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
+    switch_ws_on_hover: bool,
 ) -> anyhow::Result<()> {
     let application = Application::builder()
         .application_id("com.github.h3rmt.hyprswitch")
@@ -319,7 +364,7 @@ pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
 
         for monitor in monitors {
             let data = data.clone();
-            activate(focus_client, app, &monitor, data)
+            activate(focus_client, app, &monitor, data, switch_ws_on_hover)
                 .with_context(|| format!("Failed to activate for monitor {monitor}"))
                 .expect("Failed to activate");
         }

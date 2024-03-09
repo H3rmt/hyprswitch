@@ -33,19 +33,21 @@ pub struct WorkspaceData {
 #[derive(Debug, Clone, Copy)]
 pub struct Info {
     pub reverse: bool,
-    pub offset: usize,
+    pub offset: u8,
     pub ignore_monitors: bool,
     pub ignore_workspaces: bool,
     pub sort_recent: bool,
-    pub hide_special_workspaces: bool,
     pub filter_current_workspace: bool,
+    pub filter_current_monitor: bool,
     pub filter_same_class: bool,
+    pub hide_special_workspaces: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct Data {
     pub clients: Vec<hyprland::data::Client>,
-    pub selected_index: Option<usize>,
+    pub enabled_clients: Vec<hyprland::data::Client>,
+    pub selected_index: usize,
     pub workspace_data: std::collections::HashMap<hyprland::shared::WorkspaceId, WorkspaceData>,
     pub monitor_data: std::collections::HashMap<MonitorId, MonitorData>,
     pub active: Option<hyprland::data::Client>,
