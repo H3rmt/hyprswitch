@@ -30,19 +30,22 @@ The script accepts these parameters [cli](./src/cli.rs):.
   - `--reverse`/`-r` Reverse the order of windows / switch backwards
   - `--filter-same-class`/`-s` Only show/switch between windows that have the same class/type as the currently focused window
   - `--filter-current-workspace`/`-w` Only show/switch between windows that are on the same workspace as the currently focused window
+  - `--filter-current-monitor`/`-m` Only show/switch between windows that are on the same monitor as the currently focused window
 
   - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows when the daemon was started)
 
-  - `--ignore-workspaces` Sort all windows on every monitor like [one contigous workspace](#--ignore-workspaces)
+  - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
   - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
 
 - GUI related
   - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
-  - `--stop-daemon` Stops the daemon
+  - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the command to switch window if `--switch-on-close` is true
   - `--do-initial-execute` Also execute the initial command when starting the daemon
-  - `--hide-special-workspaces` Hide special workspaces (e.g. scratchpad)
+  - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
+  - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every command
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
+- `--ignore-special-workspaces` Hide special workspaces (e.g. scratchpad)
 - `--dry-run`/`-d` Print the command that would be executed
 - `-v` Increase the verbosity level
 
@@ -50,7 +53,7 @@ The script accepts these parameters [cli](./src/cli.rs):.
 (Modify the $... variables to your liking)
 
 ### No-GUI Config
-Just use 2 keybinds to switch to 'next' or 'previous' window
+Just use 2 keybindings to switch to 'next' or 'previous' window
 ```ini
 $key = TAB
 $modifier = CTRL
@@ -61,7 +64,7 @@ bind=$modifier $reverse, $key, exec, hyprswitch -r
 ```
 
 ### No-GUI sort-recent Config
-Just use 1 keybind to switch to previously focused application
+Just use 1 keybinding to switch to previously focused application
 ```ini
 $key = TAB
 $modifier = CTRL
@@ -71,7 +74,7 @@ bind=$modifier, $key, exec, hyprswitch --sort-recent
 ```
 
 ### Same class No-GUI Config
-Just use 2 keybinds to switch to 'next' or 'previous' window of same class/type
+Just use 2 keybindings to switch to 'next' or 'previous' window of same class/type
 ```ini
 $key = TAB
 $modifier = CTRL
@@ -98,7 +101,7 @@ bindr=,escape, exec, hyprswitch --stop-daemon
 
 
 ### GUI + Keyboard Config
-Complex Config with submap to allow for many different keybinds when opening hyprswitch (run `hyprctl dispatch submap reset` if stuck in switch submap)
+Complex Config with submap to allow for many different keybindings when opening hyprswitch (run `hyprctl dispatch submap reset` if stuck in switch submap)
 - Press (and hold) $modifier + $key to open the GUI and switch trough window 
 - Release $key and press 3 to switch to the third next window
 - Release $key and press/hold $reverse + $key to traverse in reverse order

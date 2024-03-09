@@ -4,47 +4,43 @@ use clap::Parser;
 
 use hyprswitch::Info;
 
-#[derive(Parser, Debug, Clone, Copy)]
+#[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Reverse the order of windows / switch backwards
     #[arg(short = 'r', long)]
     pub reverse: bool,
 
-    /// Switch between windows of the same class (type)
+    /// Only show/switch between windows that have the same class/type as the currently focused window
     #[arg(short = 's', long)]
     pub filter_same_class: bool,
 
-    /// Restrict cycling of windows to the current workspace
+    /// Only show/switch between windows that are on the same workspace as the currently focused window
     #[arg(short = 'w', long)]
     pub filter_current_workspace: bool,
-
-    /// Sort windows by most recently focused
+    
+    /// Only show/switch between windows that are on the same monitor as the currently focused window
+    #[arg(short = 'm', long)]
+    pub filter_current_monitor: bool,
+    
+    /// Sort windows by most recently focused (when used with `--daemon` it will use the order of windows when the daemon was started)
     #[arg(long)]
     pub sort_recent: bool,
-
-    /// Ignore workspaces and sort like one big workspace for each monitor
+    
+    /// Sort all windows on every monitor like one contiguous workspace
     #[arg(long)]
     pub ignore_workspaces: bool,
 
-    /// Ignore monitors and sort like one big monitor, workspaces must have offset of 10 for each monitor (https://github.com/H3rmt/hyprswitch/blob/master/README.md#ignore-monitors-flag)
+    /// Sort all windows on matching workspaces on monitors like one big monitor, workspace_ids must have offset of 10 for each monitor (https://github.com/H3rmt/hyprswitch/blob/master/README.md#ignore-monitors-flag)
     #[arg(long)]
     pub ignore_monitors: bool,
 
-    /// Switch to a specific window offset
-    #[arg(short = 'o', long, default_value = "1")]
-    pub offset: usize,
-
-    /// Hide special workspaces (e.g. scratchpad)
-    #[arg(long)]
-    pub hide_special_workspaces: bool,
-
-    /// Starts as daemon, creates socket server and gui, sends Commands to the daemon if already running
+    /// Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
     #[arg(long)]
     #[cfg(feature = "gui")]
     pub daemon: bool,
 
-    /// Stops the daemon, sends stop to socket server, doesn't execute current window switch
+    /// Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the command to switch window if on_close is true
     #[arg(long)]
     #[cfg(feature = "gui")]
     pub stop_daemon: bool,
@@ -53,6 +49,24 @@ pub struct Args {
     #[arg(long)]
     #[cfg(feature = "gui")]
     pub do_initial_execute: bool,
+
+    /// Switch to workspaces when hovering over them in GUI
+    #[arg(long)]
+    #[cfg(feature = "gui")]
+    pub switch_ws_on_hover: bool,
+
+    /// Execute the command to switch windows on close of daemon instead of switching for every command (default is true, pass false to disable)
+    #[arg(long, default_value = "true", value_name = "bool", value_parser = clap::builder::PossibleValuesParser::new(["true", "false"]))]
+    #[cfg(feature = "gui")]
+    pub switch_on_close: String,
+    
+    /// Switch to a specific window offset
+    #[arg(short = 'o', long, default_value = "1")]
+    pub offset: u8,
+
+    /// Hide special workspaces (e.g. scratchpad) (default is true, pass false to disable)
+    #[arg(long, default_value = "true", value_name = "bool", value_parser = clap::builder::PossibleValuesParser::new(["true", "false"]))]
+    pub ignore_special_workspaces: String,
 
     /// Print the command that would be executed
     #[arg(short = 'd', long)]
@@ -73,7 +87,8 @@ impl From<Args> for Info {
             sort_recent: args.sort_recent,
             filter_same_class: args.filter_same_class,
             filter_current_workspace: args.filter_current_workspace,
-            hide_special_workspaces: args.hide_special_workspaces,
+            filter_current_monitor: args.filter_current_monitor,
+            ignore_special_workspaces: args.ignore_special_workspaces == "true",
         }
     }
 }
