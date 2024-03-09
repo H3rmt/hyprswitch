@@ -26,25 +26,23 @@ Subsequent calls to the script (with the `--daemon` flag) will send the command 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
 The script accepts these parameters [cli](./src/cli.rs):.
+- Sorting related
+  - `--reverse`/`-r` Reverse the order of windows / switch backwards
+  - `--filter-same-class`/`-s` Only show/switch between windows that have the same class/type as the currently focused window
+  - `--filter-current-workspace`/`-w` Only show/switch between windows that are on the same workspace as the currently focused window
 
-- `--reverse`/`-r` Reverse the order of windows / switch backwards
-- `--filter-same-class`/`-s` Switch between windows of same class (type)
-- `--filter-current-workspace`/`-w` Restrict cycling of windows to the current workspace
+  - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows when the daemon was started)
 
-- `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of the windows when the daemon was started)
+  - `--ignore-workspaces` Sort all windows on every monitor like [one contigous workspace](#--ignore-workspaces)
+  - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
 
-- `--ignore-workspaces` Ignore workspaces and sort like one big workspace per monitor
-- `--ignore-monitors` Ignore monitors and sort like one big
-  monitor, [workspaces must have offset of 10 for each monitor ](#ignore-monitors-flag)
+- GUI related
+  - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
+  - `--stop-daemon` Stops the daemon
+  - `--do-initial-execute` Also execute the initial command when starting the daemon
+  - `--hide-special-workspaces` Hide special workspaces (e.g. scratchpad)
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
-
-- `--hide-special-workspaces` Hide special workspaces (e.g. scratchpad)
-
-- `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
-- `--stop-daemon` Stops the daemon
-- `--do-initial-execute` Also execute the initial command when starting the daemon
-
 - `--dry-run`/`-d` Print the command that would be executed
 - `-v` Increase the verbosity level
 
@@ -52,6 +50,7 @@ The script accepts these parameters [cli](./src/cli.rs):.
 (Modify the $... variables to your liking)
 
 ### No-GUI Config
+Just use 2 keybinds to switch to 'next' or 'previous' window
 ```ini
 $key = TAB
 $modifier = CTRL
@@ -61,8 +60,18 @@ bind=$modifier, $key, exec, hyprswitch
 bind=$modifier $reverse, $key, exec, hyprswitch -r
 ```
 
+### No-GUI sort-recent Config
+Just use 1 keybind to switch to previously focused application
+```ini
+$key = TAB
+$modifier = CTRL
+$reverse = SHIFT
+
+bind=$modifier, $key, exec, hyprswitch --sort-recent
+```
 
 ### Same class No-GUI Config
+Just use 2 keybinds to switch to 'next' or 'previous' window of same class/type
 ```ini
 $key = TAB
 $modifier = CTRL
@@ -73,15 +82,14 @@ bind=$modifier $reverse, $key, exec, hyprswitch -s -r
 ```
 
 ### GUI Config
+Press $modifier + $key to open the GUI, use mouse to click on window
 ```ini
 $key = TAB
 $modifier = SUPER
 $switch_release = SUPER_L
-$reverse = SHIFT
 
 # open hyprswitch
 bind=$modifier, $key, exec, hyprswitch --daemon
-bind=$modifier $reverse, $key, exec, hyprswitch --daemon -r
 
 # close hyprswitch
 bindr=$modifier, $switch_release, exec, hyprswitch --stop-daemon
@@ -90,6 +98,11 @@ bindr=,escape, exec, hyprswitch --stop-daemon
 
 
 ### GUI + Keyboard Config
+Complex Config with submap to allow for many different keybinds when opening hyprswitch (run `hyprctl dispatch submap reset` if stuck in switch submap)
+- Press (and hold) $modifier + $key to open the GUI and switch trough window 
+- Release $key and press 3 to switch to the third next window
+- Release $key and press/hold $reverse + $key to traverse in reverse order
+- Release $modifier ($modifier_release) to execute the switch and close the gui
 ```ini
 $key = TAB
 $modifier = ALT
@@ -123,7 +136,7 @@ bind=$modifier $reverse, 4, exec, hyprswitch --daemon --offset=4 -r
 bind=$modifier $reverse, 5, exec, hyprswitch --daemon --offset=5 -r
 
 
-# exit submap and kill hyprswitch
+# exit submap and stop hyprswitch
 bindrt=$modifier, $modifier_release, exec, hyprswitch --stop-daemon
 bindrt=$modifier, $modifier_release, submap, reset
 
@@ -194,3 +207,59 @@ This means that if you have 2 monitors, the workspaces on the second monitor mus
 the first monitor is 1 to allow the scrip to map the correct workspaces together.
 
 this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.org/Configuring/Workspace-Rules/)
+
+### `--ignore-workspaces`
+- Order without `--ignore-workspaces` 
+```
+                   Monitor 1                                   Monitor 2
+       Workspace 0           Workspace 1           Workspace 10          Workspace 11
+ 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
+ 2  |  1   |  |  2   | | |  5   |  |  6   |  |  |  9   |  |  10  | | |  13  |  |  14  |
+ 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
+ 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
+ 5  +------+  +------+ | +------+  |  8   |  |  +---------+  +---+ | +------+  |  16  |
+ 6  |  3   |  |  4   | | |  7   |  |      |  |  |   11    |  |12 | | |  15  |  |      |
+ 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
+    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
+```
+- Order with `--ignore-workspaces` 
+```
+                   Monitor 1                                   Monitor 2
+       Workspace 0           Workspace 1           Workspace 10         Workspace 11
+ 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
+ 2  |  1   |  |  2   | | |  3   |  |  4   |  |  |  9   |  |  10  | | |  11  |  |  12  |
+ 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
+ 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
+ 5  +------+  +------+ | +------+  |  8   |  |  +---------+  +---+ | +------+  |  16  |
+ 6  |  5   |  |  6   | | |  7   |  |      |  |  |   13    |  |14 | | |  15  |  |      |
+ 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
+    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
+```
+
+### `--ignore-monitors`
+- Order without `--ignore-monitors` 
+```
+                   Monitor 1                                   Monitor 2
+       Workspace 0           Workspace 1           Workspace 10          Workspace 11
+ 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
+ 2  |  1   |  |  2   | | |  5   |  |  6   |  |  |  9   |  |  10  | | |  13  |  |  14  |
+ 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
+ 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
+ 5  +------+  +------+ | +------+  |  8   |  |  +---------+  +---+ | +------+  |  16  |
+ 6  |  3   |  |  4   | | |  7   |  |      |  |  |   11    |  |12 | | |  15  |  |      |
+ 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
+    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
+```
+- Order with `--ignore-monitors` 
+```
+                   Monitor 1                                   Monitor 2
+       Workspace 0           Workspace 1           Workspace 10          Workspace 11
+ 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
+ 2  |  1   |  |  2   | | |  9   |  |  10  |  |  |  3   |  |  4   | | |  11  |  |  12  |
+ 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
+ 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
+ 5  +------+  +------+ | +------+  |  14  |  |  +---------+  +---+ | +------+  |  16  |
+ 6  |  5   |  |  6   | | |  13  |  |      |  |  |   7     |  | 8 | | |  15  |  |      |
+ 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
+    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7  8   9
+```
