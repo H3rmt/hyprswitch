@@ -199,6 +199,8 @@ See [tests](/tests) for more details on how windows get sorted
         2       4         7    9
 ```
 
+# Other
+
 ### Ignore monitors flag
 
 This flag requires that workspaces have an offset of 10 for each monitor. (TODO, make this configurable)
