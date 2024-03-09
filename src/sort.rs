@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use hyprland::data::Client;
 use hyprland::shared::WorkspaceId;
 use lazy_static::lazy_static;
+use log::error;
 
 use crate::{MonitorData, MonitorId, WorkspaceData};
 
@@ -207,25 +208,35 @@ pub fn update_clients<SC>(clients: Vec<SC>, workspace_data: &HashMap<WorkspaceId
     where
         SC: SortableClient + Debug,
 {
-    clients.into_iter().map(|mut c| {
+    clients.into_iter().filter_map(|mut c| {
         let ws = workspace_data
             .get(&c.ws())
-            .unwrap_or_else(|| panic!("Workspace {:?} not found", c.ws()));
+            .or_else(|| {
+                error!("Workspace {:?} not found for client: {:?}", c.ws(), c);
+                None
+            });
 
-        let (md_x, md_y) = if let Some(mdt) = monitor_data {
+        let md = if let Some(mdt) = monitor_data {
             mdt.get(&c.m())
                 .map(|md| (md.x, md.y))
-                .unwrap_or_else(|| panic!("Monitor {:?} not found", c.m()))
+                .or_else(|| {
+                    error!("Monitor {:?} not found: {:?}", c.m(), c);
+                    None
+                })
         } else {
-            (0, 0)
+            Some((0, 0))
         };
 
-        // println!("c: {:?}; {}; {}", c ,ws.x, md.x);
-        // println!("c: {:?}; {}; {}", c ,ws.y, md.y);
-        c.set_x(c.x() + ws.x - md_x); // move x cord by workspace offset
-        c.set_y(c.y() + ws.y - md_y); // move y cord by workspace offset
-        // println!("c: {:?}", c);
-        c
+        if let (Some(ws), Some((md_x, md_y))) = (ws, md) {
+            // println!("c: {:?}; {}; {}", c ,ws.x, md.x);
+            // println!("c: {:?}; {}; {}", c ,ws.y, md.y);
+            c.set_x(c.x() + ws.x - md_x); // move x cord by workspace offset
+            c.set_y(c.y() + ws.y - md_y); // move y cord by workspace offset
+            // println!("c: {:?}", c);
+            Some(c)
+        } else {
+            None
+        }
     }).collect()
 }
 
