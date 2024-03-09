@@ -97,7 +97,7 @@ bind=$modifier, $key, exec, hyprswitch --daemon
 # close hyprswitch
 bindr=$modifier, $switch_release, exec, hyprswitch --stop-daemon
 # if it somehow doesn't close on releasing $switch_release, escape can kill
-bindr=,escape, exec, pkill hyprswitch
+bindrn=,escape, exec, pkill hyprswitch
 ```
 
 

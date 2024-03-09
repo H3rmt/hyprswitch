@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 #[cfg(feature = "gui")]
-async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bool, on_close: bool) -> anyhow::Result<()> {
+async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bool, switch_on_close: bool) -> anyhow::Result<()> {
     use hyprswitch::{daemon, gui, Share};
     use tokio::sync::Mutex;
     use std::sync::Arc;
@@ -50,10 +50,10 @@ async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bo
         let latest_arc: Share = Arc::new((Mutex::new((info, data)), Condvar::new()));
 
         if do_initial_execute {
-            if on_close {
+            if switch_on_close {
                 let mut lock = latest_arc.0.lock().await;
 
-                let next_client = handle::find_next(info, lock.1.enabled_clients.clone(), lock.1.selected_index)
+                let (next_client, new_index) = handle::find_next(info, lock.1.enabled_clients.clone(), lock.1.selected_index)
                     .with_context(|| format!("Failed to find next client with info {info:?}"))?;
                 info!("Next client: {:?}", next_client);
 
@@ -63,6 +63,7 @@ async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bo
 
                 lock.1 = data;
                 lock.1.active = Some(next_client);
+                lock.1.selected_index = new_index;
             } else {
                 run_normal(info).await?;
             }
@@ -98,11 +99,11 @@ async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bo
             let (latest, cvar) = &*latest_data;
             let mut ld = latest.lock().await;
 
-            let next_client = handle::find_next(info, ld.1.enabled_clients.clone(), ld.1.selected_index)
+            let (next_client, new_index) = handle::find_next(info, ld.1.enabled_clients.clone(), ld.1.selected_index)
                 .with_context(|| format!("Failed to find next client with info {info:?}"))?;
             info!("Next client: {:?}", next_client);
 
-            if !on_close {
+            if !switch_on_close {
                 handle::switch_async(&next_client, *DRY.get().expect("DRY not set")).await
                     .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
             }
@@ -113,9 +114,9 @@ async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bo
 
             ld.0 = info;
             ld.1 = data;
-            if on_close {
-                ld.1.active = Some(next_client);
-            }
+            ld.1.active = Some(next_client);
+            ld.1.selected_index = new_index;
+            
             cvar.notify_all();
 
             Ok(())
@@ -168,7 +169,7 @@ async fn run_normal(info: Info) -> anyhow::Result<()> {
         .with_context(|| format!("Failed to collect data with info {info:?}"))?;
     debug!("collected Data: {:?}", data);
 
-    let next_client = handle::find_next(info, data.enabled_clients, data.selected_index)
+    let (next_client, _) = handle::find_next(info, data.enabled_clients, data.selected_index)
         .with_context(|| format!("Failed to find next client with info {info:?}"))?;
     info!("Next client: {:?}", next_client);
 

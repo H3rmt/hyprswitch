@@ -8,7 +8,7 @@ use hyprland::dispatch::DispatchType::{FocusWindow, ToggleSpecialWorkspace, Work
 use hyprland::prelude::*;
 use hyprland::shared;
 use hyprland::shared::{Address, WorkspaceId};
-use log::{debug, info};
+use log::{debug, error, info};
 
 use crate::{Data, Info, MonitorData, MonitorId, WorkspaceData};
 use crate::sort::{SortableClient, update_clients};
@@ -18,16 +18,19 @@ pub fn find_next(
     info: Info,
     enabled_clients: Vec<Client>,
     selected_index: usize,
-) -> anyhow::Result<Client> {
-    let index = if info.reverse {
-        if selected_index == 0 {
-            enabled_clients.len() - info.offset as usize
+) -> anyhow::Result<(Client, usize)> {
+    let index =
+        if info.reverse {
+            if selected_index == 0 {
+                enabled_clients.len() - info.offset as usize
+            } else {
+                selected_index - info.offset as usize
+            }
+        } else if selected_index + info.offset as usize >= enabled_clients.len() {
+            selected_index + info.offset as usize - enabled_clients.len()
         } else {
-            selected_index - info.offset as usize
-        }
-    } else {
-        selected_index + info.offset as usize
-    };
+            selected_index + info.offset as usize
+        };
 
     debug!("selected_index: {}, offset: {}, index: {}", selected_index, info.offset, index);
     let next_client = enabled_clients
@@ -36,7 +39,7 @@ pub fn find_next(
         .nth(index)
         .context("No next client found")?;
 
-    Ok(next_client)
+    Ok((next_client, index))
 }
 
 
@@ -58,6 +61,15 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
         workspaces.sort_by(|a, b| a.id.cmp(&b.id));
         workspaces
     };
+
+    // remove clients that are not on any workspace
+    clients.retain(|c| {
+        let found = workspaces.iter().any(|w| w.id == c.workspace.id);
+        if !found {
+            error!("client {:?}({}) not found on any workspace", c, c.address);
+        }
+        found
+    });
 
     // all monitors with their data, x and y are the offset of the monitor, width and height are the size of the monitor
     // combined_width and combined_height are the combined size of all workspaces on the monitor and workspaces_on_monitor is the number of workspaces on the monitor
@@ -142,9 +154,10 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
         .filter(|c| !info.filter_current_monitor || c.monitor == active_monitor_id)
         .cloned()
         .collect::<Vec<_>>();
-    
+
     let selected_index = enabled_clients.iter().position(|c| c.address == active_address)
         .context("Active client not found in clients")?;
+    debug!("selected_index: {}", selected_index);
 
     Ok(Data {
         clients,
