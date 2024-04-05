@@ -28,9 +28,7 @@ With Nix using flakes, add `inputs.hyprswitch.packages.x86_64-linux.default` to 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
 The script accepts these parameters [cli](./src/cli.rs):.
-
 - Sorting related
-
   - `--reverse`/`-r` Reverse the order of windows / switch backwards
   - `--filter-same-class`/`-s` Only show/switch between windows that have the same class/type as the currently focused window
   - `--filter-current-workspace`/`-w` Only show/switch between windows that are on the same workspace as the currently focused window
@@ -42,7 +40,6 @@ The script accepts these parameters [cli](./src/cli.rs):.
   - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
 
 - GUI related
-
   - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
   - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the command to switch window if `--switch-on-close` is true
   - `--do-initial-execute` Also execute the initial command when starting the daemon
@@ -55,13 +52,10 @@ The script accepts these parameters [cli](./src/cli.rs):.
 - `-v` Increase the verbosity level
 
 #### Here are some examples:
-
 (Modify the $... variables to your liking)
 
 ### No-GUI Config
-
 Just use 2 keybindings to switch to 'next' or 'previous' window
-
 ```ini
 $key = TAB
 $modifier = CTRL
@@ -72,9 +66,7 @@ bind=$modifier $reverse, $key, exec, hyprswitch -r
 ```
 
 ### No-GUI sort-recent Config
-
 Just use 1 keybinding to switch to previously focused application
-
 ```ini
 $key = TAB
 $modifier = CTRL
@@ -84,9 +76,7 @@ bind=$modifier, $key, exec, hyprswitch --sort-recent
 ```
 
 ### Same class No-GUI Config
-
 Just use 2 keybindings to switch to 'next' or 'previous' window of same class/type
-
 ```ini
 $key = TAB
 $modifier = CTRL
@@ -97,9 +87,7 @@ bind=$modifier $reverse, $key, exec, hyprswitch -s -r
 ```
 
 ### GUI Config
-
 Press $modifier + $key to open the GUI, use mouse to click on window
-
 ```ini
 $key = TAB
 $modifier = SUPER
@@ -114,15 +102,13 @@ bindr=$modifier, $switch_release, exec, hyprswitch --stop-daemon
 bindrn=,escape, exec, pkill hyprswitch
 ```
 
+
 ### GUI + Keyboard Config
-
 Complex Config with submap to allow for many different keybindings when opening hyprswitch (run `hyprctl dispatch submap reset` if stuck in switch submap)
-
-- Press (and hold) $modifier + $key to open the GUI and switch trough window
+- Press (and hold) $modifier + $key to open the GUI and switch trough window 
 - Release $key and press 3 to switch to the third next window
 - Release $key and press/hold $reverse + $key to traverse in reverse order
 - Release $modifier ($modifier_release) to execute the switch and close the gui
-
 ```ini
 $key = TAB
 $modifier = ALT
@@ -165,6 +151,7 @@ bindr=,escape, exec, pkill hyprswitch
 bindr=,escape, submap, reset
 submap=reset
 ```
+
 
 # Rust Features
 
@@ -230,9 +217,7 @@ the first monitor is 1 to allow the scrip to map the correct workspaces together
 this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.org/Configuring/Workspace-Rules/)
 
 ### `--ignore-workspaces`
-
-- Order without `--ignore-workspaces`
-
+- Order without `--ignore-workspaces` 
 ```
                    Monitor 1                                   Monitor 2
        Workspace 0           Workspace 1           Workspace 10          Workspace 11
@@ -245,9 +230,7 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
  7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
     1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
 ```
-
-- Order with `--ignore-workspaces`
-
+- Order with `--ignore-workspaces` 
 ```
                    Monitor 1                                   Monitor 2
        Workspace 0           Workspace 1           Workspace 10         Workspace 11
@@ -262,9 +245,7 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
 ```
 
 ### `--ignore-monitors`
-
-- Order without `--ignore-monitors`
-
+- Order without `--ignore-monitors` 
 ```
                    Monitor 1                                   Monitor 2
        Workspace 0           Workspace 1           Workspace 10          Workspace 11
@@ -277,9 +258,7 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
  7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
     1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
 ```
-
-- Order with `--ignore-monitors`
-
+- Order with `--ignore-monitors` 
 ```
                    Monitor 1                                   Monitor 2
        Workspace 0           Workspace 1           Workspace 10          Workspace 11
