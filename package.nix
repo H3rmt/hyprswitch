@@ -5,9 +5,12 @@
   rustPlatform,
   makeWrapper,
 }:
+let
+  meta = (builtins.fromTOML ./Cargo.toml).package;
+in
 rustPlatform.buildRustPackage rec {
-  name = "hyprswitch";
-  version = "1.2.2";
+  name = meta.name;
+  version = meta.version;
 
   src = lib.cleanSource ./.;
 
@@ -29,8 +32,8 @@ rustPlatform.buildRustPackage rec {
   '';
 
   meta = with lib; {
-    description = "Graphical app switcher for hyprland";
-    homepage = "https://github.com/H3rmt/hyprswitch";
+    description = meta.description;
+    homepage = meta.repository;
     license = licenses.mit;
   };
 }
