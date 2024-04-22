@@ -30,9 +30,9 @@ in
       wrapProgram $out/bin/${name}
     '';
 
-    meta = with lib; {
+    meta = {
       description = package.description;
       homepage = package.repository;
-      license = licenses.mit;
+      license = package.license;
     };
   }
