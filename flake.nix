@@ -13,6 +13,10 @@
         default = hyprswitch;
         hyprswitch = pkgs.callPackage ./package.nix {};
       };
+      packages.aarch64-linux = rec {
+        default = hyprswitch;
+        hyprswitch = pkgs.callPackage ./package.nix {};
+      };
       # devShells.x86_64-linux = {
       #   default = pkgs.callPackage ./shell.nix {};
       # };
