@@ -1,24 +1,21 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
+    flake-parts.url = "github:hercules-ci/flake-parts";
   };
-  outputs = inputs:
-    with inputs; let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs {
-        inherit system;
-      };
-    in {
-      packages.x86_64-linux = rec {
-        default = hyprswitch;
-        hyprswitch = pkgs.callPackage ./package.nix {};
-      };
-      packages.aarch64-linux = rec {
-        default = hyprswitch;
-        hyprswitch = pkgs.callPackage ./package.nix {};
-      };
-      # devShells.x86_64-linux = {
-      #   default = pkgs.callPackage ./shell.nix {};
-      # };
+  outputs = inputs@{ flake-parts, nixpkgs, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.flake-parts.flakeModules.easyOverlay
+      ];
+      systems = nixpkgs.lib.systems.flakeExposed;
+      perSystem =
+        { config, pkgs, ... }: {
+          packages.default = pkgs.callPackage ./package.nix { };
+          overlayAttrs = {
+            inherit (config.packages) hyprswitch;
+          };
+          packages.hyprswitch = pkgs.callPackage ./package.nix { };
+        };
     };
 }
