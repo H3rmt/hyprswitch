@@ -24,7 +24,7 @@ Subsequent calls to the script (with the `--daemon` flag) will send the command 
 - `paru -S hyprswitch` / `yay -S hyprswitch`
 
 ### Nixos
-- add ``hyprswitch.url = "github:h3rmt/hyprswitch/test-nix";`` to flake inputs
+- add ``hyprswitch.url = "github:h3rmt/hyprswitch";`` to flake inputs
 - add `specialArgs = { inherit inputs; };` to `nixpkgs.lib.nixosSystem`
 - add `inputs.hyprswitch.packages.x86_64-linux.default` to your environment.systemPackages
 - availible systems: `aarch64-linux`, `i686-linux`, `riscv32-linux`, `riscv64-linux`, `x86_64-linux`
