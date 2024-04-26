@@ -28,7 +28,7 @@
         "s390-linux"
         "s390x-linux"
         "x86_64-linux"
-      ]
+      ];
       perSystem =
         { config, pkgs, ... }: {
           packages.default = pkgs.callPackage ./package.nix { };
