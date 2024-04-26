@@ -129,14 +129,12 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
     if enabled && index <= *NEXT_INDEX_MAX && index >= -(*NEXT_INDEX_MAX) {
         let label_box = gtk4::Box::builder()
             .css_classes(vec!["indexBox"])
-            .halign(gtk4::Align::Center)
-            .valign(gtk4::Align::Center)
+            .halign(gtk4::Align::End)
+            .valign(gtk4::Align::End)
             .build();
 
         let label = Label::builder()
             .label(index.to_string())
-            .halign(gtk4::Align::Center)
-            .valign(gtk4::Align::Center)
             .margin_end(9)
             .margin_start(9)
             .margin_bottom(9)
