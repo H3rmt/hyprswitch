@@ -17,11 +17,16 @@ Subsequent calls to the script (with the `--daemon` flag) will send the command 
 
 # Installation
 
-`cargo install hyprswitch`
+### From Source
+- `cargo install hyprswitch`
 
-`paru -S hyprswitch` / `yay -S hyprswitch`
+### Arch
+- `paru -S hyprswitch` / `yay -S hyprswitch`
 
-With Nix using flakes, add `inputs.hyprswitch.packages.x86_64-linux.default` to your packages list with this repo as an input.
+### Nixos
+- add ``hyprswitch.url = "github:h3rmt/hyprswitch/test-nix";`` to flake inputs
+- add `specialArgs = { inherit inputs; };` to `nixpkgs.lib.nixosSystem`
+- add `inputs.hyprswitch.packages.aarch64-linux.default` to your environment.systemPackages
 
 # Usage
 
