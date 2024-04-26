@@ -59,7 +59,7 @@ lazy_static! {
     static ref SIZE_FACTOR: i16 = option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
     static ref ICON_SIZE: i32 = option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
-    static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(6, |s| s.parse().expect("Failed to parse NEXT_INDEX_MAX"));
+    static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(5, |s| s.parse().expect("Failed to parse NEXT_INDEX_MAX"));
     static ref EXIT_ON_CLICK: bool = option_env!("EXIT_ON_CLICK").map_or(true, |s| s.parse().expect("Failed to parse EXIT_ON_CLICK"));
     static ref WORKSPACE_GAP: usize = option_env!("WORKSPACE_GAP").map_or(15, |s| s.parse().expect("Failed to parse WORKSPACE_GAP"));
 }
@@ -126,7 +126,7 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
         .child(&picture)
         .build();
 
-    if enabled && index < *NEXT_INDEX_MAX && index > -(*NEXT_INDEX_MAX) {
+    if enabled && index <= *NEXT_INDEX_MAX && index >= -(*NEXT_INDEX_MAX) {
         let label_box = gtk4::Box::builder()
             .css_classes(vec!["indexBox"])
             .halign(gtk4::Align::Center)
@@ -391,10 +391,30 @@ pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
             .expect("Failed to get all monitors");
 
         for monitor in monitors {
-            let data = data.clone();
-            activate(focus_client, app, &monitor, data, switch_ws_on_hover)
-                .with_context(|| format!("Failed to activate for monitor {monitor:?}"))
-                .unwrap_or_else(|e| warn!("{:?}", e));
+            tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(async {
+                // check if any client is on this monitor
+                let (data_mut, _cvar) = &*data;
+                let d = data_mut.lock().await;
+                let empty = {
+                    let connector = monitor.connector()
+                        .with_context(|| format!("Failed to get connector for monitor {monitor:?}"))
+                        .expect("Failed to get connector for monitor");
+                    let (monitor_id, _monitor_data) = d.1.monitor_data
+                        .iter()
+                        .find(|(_, v)|
+                            v.connector == connector
+                        )
+                        .with_context(|| format!("Failed to find monitor with connector {connector}"))
+                        .expect("Failed to find monitor with connector");
+                    !d.1.clients.iter().any(|client| client.monitor == *monitor_id)
+                };
+                if !empty {
+                    let data = data.clone();
+                    activate(focus_client, app, &monitor, data, switch_ws_on_hover)
+                        .with_context(|| format!("Failed to activate for monitor {monitor:?}"))
+                        .unwrap_or_else(|e| warn!("{:?}", e));
+                }
+            });
         }
     });
 

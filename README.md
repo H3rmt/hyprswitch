@@ -11,19 +11,23 @@ It can cycle through windows using keyboard shortcuts or/and a GUI.
 Windows are sorted by their position on the screen, and can be sorted by class or workspace.
 
 To use the GUI, you need to pass the `--daemon` flag to the script which will start a socket server and a GUI.
-Subsequent calls to the script (with the `--daemon` flag) will send the command to the daemon which will execute the command and update the GUI.
+Subsequent calls to the script (with the `--daemon` flag) will send the command to the daemon which will execute the
+command and update the GUI.
 
 ![image.png](image.png)
 
 # Installation
 
 ### From Source
+
 - `cargo install hyprswitch`
 
 ### Arch
+
 - `paru -S hyprswitch` / `yay -S hyprswitch`
 
 ### Nixos
+
 - add ``hyprswitch.url = "github:h3rmt/hyprswitch/release";`` to flake inputs
 - add `specialArgs = { inherit inputs; };` to `nixpkgs.lib.nixosSystem`
 - add `inputs.hyprswitch.packages.x86_64-linux.default` to your environment.systemPackages
@@ -34,23 +38,31 @@ Subsequent calls to the script (with the `--daemon` flag) will send the command 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
 The script accepts these parameters [cli](./src/cli.rs):.
+
 - Sorting related
-  - `--reverse`/`-r` Reverse the order of windows / switch backwards
-  - `--filter-same-class`/`-s` Only show/switch between windows that have the same class/type as the currently focused window
-  - `--filter-current-workspace`/`-w` Only show/switch between windows that are on the same workspace as the currently focused window
-  - `--filter-current-monitor`/`-m` Only show/switch between windows that are on the same monitor as the currently focused window
+    - `--reverse`/`-r` Reverse the order of windows / switch backwards
+    - `--filter-same-class`/`-s` Only show/switch between windows that have the same class/type as the currently focused
+      window
+    - `--filter-current-workspace`/`-w` Only show/switch between windows that are on the same workspace as the currently
+      focused window
+    - `--filter-current-monitor`/`-m` Only show/switch between windows that are on the same monitor as the currently
+      focused window
 
-  - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows when the daemon was started)
+    - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows
+      when the daemon was started)
 
-  - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
-  - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
+    - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
+    - `--ignore-monitors` Sort all windows on matching workspaces on monitors
+      like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
 
 - GUI related
-  - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
-  - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the command to switch window if `--switch-on-close` is true
-  - `--do-initial-execute` Also execute the initial command when starting the daemon
-  - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
-  - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every command
+    - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
+    - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the
+      command to switch window if `--switch-on-close` is true
+    - `--do-initial-execute` Also execute the initial command when starting the daemon
+    - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
+    - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every
+      command
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
 - `--ignore-special-workspaces` Hide special workspaces (e.g. scratchpad)
@@ -58,63 +70,75 @@ The script accepts these parameters [cli](./src/cli.rs):.
 - `-v` Increase the verbosity level
 
 #### Here are some examples:
+
 (Modify the $... variables to your liking)
 
 ### No-GUI Config
+
 Just use 2 keybindings to switch to 'next' or 'previous' window
+
 ```ini
 $key = TAB
 $modifier = CTRL
 $reverse = SHIFT
 
-bind=$modifier, $key, exec, hyprswitch
-bind=$modifier $reverse, $key, exec, hyprswitch -r
+bind = $modifier, $key, exec, hyprswitch
+bind = $modifier $reverse, $key, exec, hyprswitch -r
 ```
 
 ### No-GUI sort-recent Config
+
 Just use 1 keybinding to switch to previously focused application
+
 ```ini
 $key = TAB
 $modifier = CTRL
 $reverse = SHIFT
 
-bind=$modifier, $key, exec, hyprswitch --sort-recent
+bind = $modifier, $key, exec, hyprswitch --sort-recent
 ```
 
 ### Same class No-GUI Config
+
 Just use 2 keybindings to switch to 'next' or 'previous' window of same class/type
+
 ```ini
 $key = TAB
 $modifier = CTRL
 $reverse = SHIFT
 
-bind=$modifier, $key, exec, hyprswitch -s
-bind=$modifier $reverse, $key, exec, hyprswitch -s -r
+bind = $modifier, $key, exec, hyprswitch -s
+bind = $modifier $reverse, $key, exec, hyprswitch -s -r
 ```
 
 ### GUI Config
+
 Press $modifier + $key to open the GUI, use mouse to click on window
+
 ```ini
 $key = TAB
 $modifier = SUPER
 $switch_release = SUPER_L
 
 # open hyprswitch
-bind=$modifier, $key, exec, hyprswitch --daemon
+bind = $modifier, $key, exec, hyprswitch --daemon
 
 # close hyprswitch
-bindr=$modifier, $switch_release, exec, hyprswitch --stop-daemon
+bindr = $modifier, $switch_release, exec, hyprswitch --stop-daemon
 # if it somehow doesn't close on releasing $switch_release, escape can kill
-bindrn=,escape, exec, pkill hyprswitch
+bindrn = ,escape, exec, pkill hyprswitch
 ```
 
-
 ### GUI + Keyboard Config
-Complex Config with submap to allow for many different keybindings when opening hyprswitch (run `hyprctl dispatch submap reset` if stuck in switch submap)
-- Press (and hold) $modifier + $key to open the GUI and switch trough window 
+
+Complex Config with submap to allow for many different keybindings when opening hyprswitch (
+run `hyprctl dispatch submap reset` if stuck in switch submap)
+
+- Press (and hold) $modifier + $key to open the GUI and switch trough window
 - Release $key and press 3 to switch to the third next window
 - Release $key and press/hold $reverse + $key to traverse in reverse order
 - Release $modifier ($modifier_release) to execute the switch and close the gui
+
 ```ini
 $key = TAB
 $modifier = ALT
@@ -122,46 +146,46 @@ $modifier_release = ALT_L
 $reverse = SHIFT
 
 # allows repeated switching with same keypress that starts the submap
-binde=$modifier, $key, exec, hyprswitch --daemon --do-initial-execute
-bind=$modifier, $key, submap, switch
+binde = $modifier, $key, exec, hyprswitch --daemon --do-initial-execute
+bind = $modifier, $key, submap, switch
 
 # allows repeated switching with same keypress that starts the submap
-binde=$modifier $reverse, $key, exec, hyprswitch --daemon --do-initial-execute -r
-bind=$modifier $reverse, $key, submap, switch
+binde = $modifier $reverse, $key, exec, hyprswitch --daemon --do-initial-execute -r
+bind = $modifier $reverse, $key, submap, switch
 
-submap=switch
+submap = switch
 # allow repeated window switching in submap (same keys as repeating while starting)
-binde=$modifier, $key, exec, hyprswitch --daemon
-binde=$modifier $reverse, $key, exec, hyprswitch --daemon -r
+binde = $modifier, $key, exec, hyprswitch --daemon
+binde = $modifier $reverse, $key, exec, hyprswitch --daemon -r
 
 # switch to specific window offset
-bind=$modifier, 1, exec, hyprswitch --daemon --offset=1
-bind=$modifier, 2, exec, hyprswitch --daemon --offset=2
-bind=$modifier, 3, exec, hyprswitch --daemon --offset=3
-bind=$modifier, 4, exec, hyprswitch --daemon --offset=4
-bind=$modifier, 5, exec, hyprswitch --daemon --offset=5
+bind = $modifier, 1, exec, hyprswitch --daemon --offset=1
+bind = $modifier, 2, exec, hyprswitch --daemon --offset=2
+bind = $modifier, 3, exec, hyprswitch --daemon --offset=3
+bind = $modifier, 4, exec, hyprswitch --daemon --offset=4
+bind = $modifier, 5, exec, hyprswitch --daemon --offset=5
 
-bind=$modifier $reverse, 1, exec, hyprswitch --daemon --offset=1 -r
-bind=$modifier $reverse, 2, exec, hyprswitch --daemon --offset=2 -r
-bind=$modifier $reverse, 3, exec, hyprswitch --daemon --offset=3 -r
-bind=$modifier $reverse, 4, exec, hyprswitch --daemon --offset=4 -r
-bind=$modifier $reverse, 5, exec, hyprswitch --daemon --offset=5 -r
+bind = $modifier $reverse, 1, exec, hyprswitch --daemon --offset=1 -r
+bind = $modifier $reverse, 2, exec, hyprswitch --daemon --offset=2 -r
+bind = $modifier $reverse, 3, exec, hyprswitch --daemon --offset=3 -r
+bind = $modifier $reverse, 4, exec, hyprswitch --daemon --offset=4 -r
+bind = $modifier $reverse, 5, exec, hyprswitch --daemon --offset=5 -r
 
 
 # exit submap and stop hyprswitch
-bindrt=$modifier, $modifier_release, exec, hyprswitch --stop-daemon
-bindrt=$modifier, $modifier_release, submap, reset
+bindrt = $modifier, $modifier_release, exec, hyprswitch --stop-daemon
+bindrt = $modifier, $modifier_release, submap, reset
 
 # if it somehow doesn't close on releasing $switch_release, escape can kill
-bindr=,escape, exec, pkill hyprswitch
-bindr=,escape, submap, reset
-submap=reset
+bindr = ,escape, exec, pkill hyprswitch
+bindr = ,escape, submap, reset
+submap = reset
 ```
-
 
 # Rust Features
 
-GUI functionality is included by default, but can be disabled with `--no-default-features` or enabled with `--features gui` when installing via cargo
+GUI functionality is included by default, but can be disabled with `--no-default-features` or enabled
+with `--features gui` when installing via cargo
 
 if the gui should use libadwaita pass `--features libadwaita` to the cargo install command
 
@@ -223,7 +247,9 @@ the first monitor is 1 to allow the scrip to map the correct workspaces together
 this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.org/Configuring/Workspace-Rules/)
 
 ### `--ignore-workspaces`
-- Order without `--ignore-workspaces` 
+
+- Order without `--ignore-workspaces`
+
 ```
                    Monitor 1                                   Monitor 2
        Workspace 0           Workspace 1           Workspace 10          Workspace 11
@@ -236,7 +262,9 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
  7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
     1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
 ```
-- Order with `--ignore-workspaces` 
+
+- Order with `--ignore-workspaces`
+
 ```
                    Monitor 1                                   Monitor 2
        Workspace 0           Workspace 1           Workspace 10         Workspace 11
@@ -251,7 +279,9 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
 ```
 
 ### `--ignore-monitors`
-- Order without `--ignore-monitors` 
+
+- Order without `--ignore-monitors`
+
 ```
                    Monitor 1                                   Monitor 2
        Workspace 0           Workspace 1           Workspace 10          Workspace 11
@@ -264,7 +294,9 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
  7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
     1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
 ```
-- Order with `--ignore-monitors` 
+
+- Order with `--ignore-monitors`
+
 ```
                    Monitor 1                                   Monitor 2
        Workspace 0           Workspace 1           Workspace 10          Workspace 11
@@ -277,3 +309,17 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
  7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
     1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7  8   9
 ```
+
+### Experimental Environment Variables
+
+- `SIZE_FACTOR` i16 [default: 7]: Factor window and workspace size get divided by to shrink them
+- `ICON_SIZE` i32 [default: 128]: Argument passed to the theme.lookup_icon function (Determines the resolution of the
+  Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
+- `ICON_SCALE` i32 [default: 1]: Argument passed to the theme.lookup_icon function (IDK what this does, setting it to
+  anything other than 1 changes nothing)
+- `NEXT_INDEX_MAX` i32 [default: 5]: Maximum number of windows to display the next index for (can be used to show the
+  next index for the first 5 windows if you have -u bindings for the next/last 5 windows). Setting it to -1 will disable
+  the next index indicator
+- `EXIT_ON_CLICK` bool [default: true]: Exit the GUI when clicking on a window
+- `WORKSPACE_GAP` usize [default: 15]: Gap between workspaces in the GUI (cant be configured via CSS as the workspace
+  positions are calculated from the real workspace positions)
