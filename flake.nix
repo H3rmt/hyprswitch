@@ -9,7 +9,6 @@
       systems =  [
         "aarch64-linux"
         "i686-linux"
-        "riscv32-linux"
         "riscv64-linux"
         "x86_64-linux"
       ];
