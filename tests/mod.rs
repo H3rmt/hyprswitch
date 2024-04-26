@@ -73,6 +73,8 @@ pub mod common {
         WorkspaceData {
             x,
             y,
+            width: 0,  // irrelevant for tests
+            height: 0, // irrelevant for tests
             name: "test".to_string(),
             monitor: 0,
         }

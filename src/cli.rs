@@ -72,7 +72,7 @@ pub struct Args {
     #[arg(short = 'd', long)]
     pub dry_run: bool,
 
-    /// Increase the verbosity level
+    /// Increase the verbosity level (max: -vv)
     #[arg(short = 'v', action = clap::ArgAction::Count)]
     pub verbose: u8,
 }

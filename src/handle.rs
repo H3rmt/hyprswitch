@@ -107,7 +107,7 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
 
                     x_offset += monitor_data.width;
                     y_offset += monitor_data.height;
-                    wd.insert(workspace.id, WorkspaceData { x, y, name: workspace.name.clone(), monitor: *monitor_id });
+                    wd.insert(workspace.id, WorkspaceData { x, y, name: workspace.name.clone(), monitor: *monitor_id, height: monitor_data.height, width: monitor_data.width});
                 });
         });
         wd

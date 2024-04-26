@@ -25,6 +25,8 @@ pub struct MonitorData {
 pub struct WorkspaceData {
     pub x: u16,
     pub y: u16,
+    pub width: u16,
+    pub height: u16,
     pub name: String,
     pub monitor: MonitorId,
 }

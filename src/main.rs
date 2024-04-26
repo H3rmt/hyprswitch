@@ -12,7 +12,9 @@ mod cli;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Args::parse();
-    stderrlog::new().module(module_path!()).verbosity(cli.verbose as usize + 1).init().expect("Failed to initialize logging");
+    stderrlog::new().module(module_path!()).verbosity(cli.verbose as usize + 1).init()
+        .context("Failed to initialize logging")
+        .unwrap_or_else(|e| warn!("{:?}", e));
     DRY.get_or_init(|| cli.dry_run);
 
     #[cfg(feature = "gui")]
@@ -42,7 +44,7 @@ async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bo
     use tokio_condvar::Condvar;
 
     if !daemon::daemon_running().await {
-        warn!("Daemon not running, starting daemon");
+        info!("Daemon not running, starting daemon");
 
         let data = handle::collect_data(info).await
             .with_context(|| format!("Failed to collect data with info {info:?}"))?;
@@ -91,7 +93,6 @@ async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bo
             };
 
             gui::start_gui(latest_arc_clone, switch, switch_ws_on_hover)
-                .context("Failed to start gui")
                 .expect("Failed to start gui")
         });
 
@@ -116,7 +117,7 @@ async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bo
             ld.1 = data;
             ld.1.active = Some(next_client);
             ld.1.selected_index = new_index;
-            
+
             cvar.notify_all();
 
             Ok(())

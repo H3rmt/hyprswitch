@@ -50,7 +50,7 @@ pub async fn start_daemon<F: Future<Output=anyhow::Result<()>> + Send + 'static,
                 tokio::spawn(async move {
                     handle_client(stream, exec, close, data).await
                         .context("Failed to handle client")
-                        .expect("Failed to handle client");
+                        .unwrap_or_else(|e| warn!("{:?}", e));
                 });
             }
             Err(e) => {
