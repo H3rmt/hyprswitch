@@ -21,6 +21,8 @@ Subsequent calls to the script (with the `--daemon` flag) will send the command 
 
 `paru -S hyprswitch` / `yay -S hyprswitch`
 
+With Nix using flakes, add `inputs.hyprswitch.packages.x86_64-linux.default` to your packages list with this repo as an input.
+
 # Usage
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
