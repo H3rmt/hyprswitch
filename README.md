@@ -8,7 +8,7 @@ A rust CLI/GUI to switch between windows in [Hyprland](https://github.com/hyprwm
 
 It can cycle through windows using keyboard shortcuts or/and a GUI.
 
-Windows are sorted by their position on the screen, and can be sorted by class or workspace.
+Windows are sorted by their position on the screen, and can be filtered by class or workspace.
 
 To use the GUI, you need to pass the `--daemon` flag to the script which will start a socket server and a GUI.
 Subsequent calls to the script (with the `--daemon` flag) will send the command to the daemon which will execute the
@@ -30,44 +30,37 @@ command and update the GUI.
 
 - add ``hyprswitch.url = "github:h3rmt/hyprswitch/release";`` to flake inputs
 - add `specialArgs = { inherit inputs; };` to `nixpkgs.lib.nixosSystem`
-- add `inputs.hyprswitch.packages.x86_64-linux.default` to your environment.systemPackages
+- add `inputs.hyprswitch.packages.x86_64-linux.default` to your `environment.systemPackages`
 - availible systems: `aarch64-linux`, `i686-linux`, `riscv32-linux`, `riscv64-linux`, `x86_64-linux`
 
 # Usage
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
-The script accepts these parameters [cli](./src/cli.rs):.
+The script accepts these parameters:
 
 - Sorting related
     - `--reverse`/`-r` Reverse the order of windows / switch backwards
-    - `--filter-same-class`/`-s` Only show/switch between windows that have the same class/type as the currently focused
-      window
-    - `--filter-current-workspace`/`-w` Only show/switch between windows that are on the same workspace as the currently
-      focused window
-    - `--filter-current-monitor`/`-m` Only show/switch between windows that are on the same monitor as the currently
-      focused window
+    - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused window
+    - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently focused window
+    - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused window
 
-    - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows
-      when the daemon was started)
+    - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows when the daemon was started)
 
     - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
-    - `--ignore-monitors` Sort all windows on matching workspaces on monitors
-      like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
+    - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
 
 - GUI related
     - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
-    - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the
-      command to switch window if `--switch-on-close` is true
+    - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the command to switch window if `--switch-on-close` is true
     - `--do-initial-execute` Also execute the initial command when starting the daemon
     - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
-    - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every
-      command
+    - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every command
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
 - `--ignore-special-workspaces` Hide special workspaces (e.g. scratchpad)
 - `--dry-run`/`-d` Print the command that would be executed
-- `-v` Increase the verbosity level
+- `-v` Increase the verbosity level (-vv ist max)
 
 #### Here are some examples:
 
