@@ -45,6 +45,7 @@ pub fn find_next(
 
 pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     let mut clients = Clients::get_async().await?
+        .into_iter()
         .filter(|c| c.workspace.id != -1) // ignore nonexistent clients
         .filter(|w| !info.hide_special_workspaces || !w.workspace.id < 0)
         .collect::<Vec<_>>();
@@ -54,6 +55,7 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     // get all workspaces sorted by ID
     let workspaces = {
         let mut workspaces = Workspaces::get_async().await?
+            .into_iter()
             .filter(|w| w.id != -1) // ignore nonexistent clients
             .filter(|w| !info.hide_special_workspaces || !w.id < 0)
             .collect::<Vec<_>>();

@@ -1,6 +1,5 @@
 use anyhow::Context;
 use clap::Parser;
-use hyprland::data::Client;
 use log::{debug, info, warn};
 
 use hyprswitch::{DRY, handle, Info};
@@ -42,6 +41,7 @@ async fn run_daemon(info: Info, do_initial_execute: bool, switch_ws_on_hover: bo
     use tokio::sync::Mutex;
     use std::sync::Arc;
     use tokio_condvar::Condvar;
+    use hyprland::data::Client;
 
     if !daemon::daemon_running().await {
         info!("Daemon not running, starting daemon");
