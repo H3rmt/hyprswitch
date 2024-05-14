@@ -20,6 +20,7 @@ command and update the GUI.
 
 ### From Source
 
+- gtk4 and [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell) must be installed
 - `cargo install hyprswitch`
 
 ### Arch
@@ -31,7 +32,7 @@ command and update the GUI.
 - add ``hyprswitch.url = "github:h3rmt/hyprswitch/release";`` to flake inputs
 - add `specialArgs = { inherit inputs; };` to `nixpkgs.lib.nixosSystem`
 - add `inputs.hyprswitch.packages.x86_64-linux.default` to your `environment.systemPackages`
-- availible systems: `aarch64-linux`, `i686-linux`, `riscv32-linux`, `riscv64-linux`, `x86_64-linux`
+- available systems: `aarch64-linux`, `i686-linux`, `riscv32-linux`, `riscv64-linux`, `x86_64-linux`
 
 # Usage
 

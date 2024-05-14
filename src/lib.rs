@@ -47,7 +47,7 @@ pub struct Info {
     pub filter_current_workspace: bool,
     pub filter_current_monitor: bool,
     pub filter_same_class: bool,
-    pub hide_special_workspaces: bool,
+    pub show_special_workspaces: bool,
 }
 
 #[derive(Debug, Clone)]

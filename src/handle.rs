@@ -51,8 +51,8 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     let mut clients = Clients::get_async()
         .await?
         .into_iter()
-        .filter(|c| c.workspace.id != -1) // ignore nonexistent clients
-        .filter(|w| !info.hide_special_workspaces || !w.workspace.id < 0)
+        .filter(|c| c.workspace.id != -1) // ignore clients on invalid workspaces
+        .filter(|w| info.show_special_workspaces || !w.workspace.id < 0)
         .collect::<Vec<_>>();
 
     let monitors = Monitors::get_async().await?;
@@ -63,7 +63,7 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
             .await?
             .into_iter()
             .filter(|w| w.id != -1) // ignore nonexistent clients
-            .filter(|w| !info.hide_special_workspaces || !w.id < 0)
+            .filter(|w| info.show_special_workspaces || !w.id < 0)
             .collect::<Vec<_>>();
 
         workspaces.sort_by(|a, b| a.id.cmp(&b.id));

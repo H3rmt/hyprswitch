@@ -1,4 +1,5 @@
-use std::{future::Future, path::Path};
+use std::{future::Future};
+use std::path::PathBuf;
 
 #[cfg(feature = "libadwaita")]
 use adw::Application;
@@ -21,48 +22,47 @@ use tokio::sync::MutexGuard;
 use crate::{Data, DRY, handle, icons, Info, Share};
 
 const CSS: &str = r#"
-    .client-image {
-        margin: 15px;
-    }
-    .index-box {
-        margin: 6px;
-        padding: 5px;
-        font-size: 30px;
-        font-weight: bold;
-        border-radius: 15px;
-        border: 3px solid rgba(130, 130, 180, 0.4);
-        background-color: rgba(20, 20, 20, 0.99);
-    }
-    .client {
-        border-radius: 15px;
-        border: 3px solid rgba(130, 130, 180, 0.4);
-        background-color: rgba(20, 20, 25, 0.85);
-    }
-    .client:hover {
-        background-color: rgba(30, 30, 30, 0.99);
-    }
-    .client.active {
-        border: 3px solid rgba(225, 0, 0, 0.4);
-    }
-    .workspace_frame {
-        font-size: 25px;
-        font-weight: bold;
-        border-radius: 15px;
-        border: 3px solid rgba(80, 80, 80, 0.4);
-        background-color: rgba(20, 20, 25, 0.85);
-    }
-    .workspace_frame.special-ws {
-        border: 3px solid rgba(0, 255, 0, 0.4);
-    }
-    .workspaces {
-        margin: 10px;
-        background-color: orange;
-    }
-    window {
-        border-radius: 15px;
-        opacity: 0.9;
-        border: 6px solid rgba(0, 0, 0, 0.4);
-    }
+.client-image {
+    margin: 15px;
+}
+.index-box {
+    margin: 6px;
+    padding: 5px;
+    font-size: 30px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(130, 130, 180, 0.4);
+    background-color: rgba(20, 20, 20, 0.99);
+}
+.client {
+    border-radius: 15px;
+    border: 3px solid rgba(130, 130, 180, 0.4);
+    background-color: rgba(20, 20, 25, 0.85);
+}
+.client:hover {
+    background-color: rgba(30, 30, 30, 0.99);
+}
+.client_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+}
+.workspace_frame {
+    font-size: 25px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(80, 80, 80, 0.4);
+    background-color: rgba(20, 20, 25, 0.85);
+}
+.workspace_frame_special {
+    border: 3px solid rgba(0, 255, 0, 0.4);
+}
+.workspaces {
+    margin: 10px;
+}
+window {
+    border-radius: 15px;
+    opacity: 0.9;
+    border: 6px solid rgba(0, 0, 0, 0.4);
+}
 "#;
 
 lazy_static! {
@@ -160,7 +160,7 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
     let client_frame = Frame::builder().css_classes(vec!["client"]).label_xalign(0.5).label_widget(&label).child(&overlay).build();
 
     if client_active {
-        client_frame.add_css_class("active");
+        client_frame.add_css_class("client_active");
     }
 
     client_frame
@@ -204,7 +204,7 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
 
         if *workspace.0 < 0 {
             // special workspace
-            workspace_frame.add_css_class("special-ws");
+            workspace_frame.add_css_class("workspace_frame_special");
         }
         if switch_ws_on_hover {
             let gesture_2 = EventControllerMotion::new();
@@ -317,6 +317,7 @@ pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     data: Share,
     focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
     switch_ws_on_hover: bool,
+    custom_css: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     let application = Application::builder().application_id("com.github.h3rmt.hyprswitch").build();
 
@@ -329,13 +330,15 @@ pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
             STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
-        let provider_user = CssProvider::new();
-        provider_user.load_from_path(Path::new("/etc/test"));
-        style_context_add_provider_for_display(
-            &gdk::Display::default().context("Could not connect to a display.").expect("Could not connect to a display."),
-            &provider_user,
-            STYLE_PROVIDER_PRIORITY_USER,
-        );
+        if let Some(custom_css) = &custom_css {
+            let provider_user = CssProvider::new();
+            provider_user.load_from_path(custom_css);
+            style_context_add_provider_for_display(
+                &gdk::Display::default().context("Could not connect to a display.").expect("Could not connect to a display."),
+                &provider_user,
+                STYLE_PROVIDER_PRIORITY_USER,
+            );
+        }
 
         let monitors = get_all_monitors().context("Failed to get all monitors").expect("Failed to get all monitors");
 

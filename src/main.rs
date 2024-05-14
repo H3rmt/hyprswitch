@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::Context;
 use clap::Parser;
 use log::{debug, info, warn};
@@ -25,11 +27,13 @@ async fn main() -> anyhow::Result<()> {
         let do_initial_execute = cli.do_initial_execute;
         let switch_ws_on_hover = cli.switch_ws_on_hover;
         let switch_on_close = cli.switch_on_close == "true";
+        let custom_css = cli.custom_css.clone();
         run_daemon(
             cli.into(),
             do_initial_execute,
             switch_ws_on_hover,
             switch_on_close,
+            custom_css,
         ).await?;
         return Ok(());
     }
@@ -44,6 +48,7 @@ async fn run_daemon(
     do_initial_execute: bool,
     switch_ws_on_hover: bool,
     switch_on_close: bool,
+    custom_css: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     use std::sync::Arc;
 
@@ -100,7 +105,7 @@ async fn run_daemon(
                 Ok(())
             };
 
-            gui::start_gui(latest_arc_clone, switch, switch_ws_on_hover).expect("Failed to start gui")
+            gui::start_gui(latest_arc_clone, switch, switch_ws_on_hover, custom_css).expect("Failed to start gui")
         });
 
         let exec = move |daemon_info: DaemonInfo, latest_data: Share| async move {
@@ -110,13 +115,7 @@ async fn run_daemon(
             let new_info = Info {
                 reverse: daemon_info.reverse,
                 offset: daemon_info.offset,
-                ignore_monitors: false,
-                ignore_workspaces: false,
-                sort_recent: false,
-                filter_current_workspace: false,
-                filter_current_monitor: false,
-                filter_same_class: false,
-                hide_special_workspaces: false,
+                ..info
             };
             let (next_client, new_index) = handle::find_next(new_info, ld.1.enabled_clients.clone(), ld.1.selected_index).with_context(|| format!("Failed to find next client with info {info:?}"))?;
             info!("Next client: {:?}", next_client);

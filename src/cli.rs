@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::path::PathBuf;
 
 use clap::Parser;
 
@@ -55,6 +56,11 @@ pub struct Args {
     #[cfg(feature = "gui")]
     pub switch_ws_on_hover: bool,
 
+    /// Specify a path to custom css file
+    #[arg(long)]
+    #[cfg(feature = "gui")]
+    pub custom_css: Option<PathBuf>,
+
     /// Execute the command to switch windows on close of daemon instead of switching for every command (default is true, pass false to disable)
     #[arg(long, default_value = "true", value_name = "bool", value_parser = clap::builder::PossibleValuesParser::new(["true", "false"]))]
     #[cfg(feature = "gui")]
@@ -64,9 +70,9 @@ pub struct Args {
     #[arg(short = 'o', long, default_value = "1")]
     pub offset: u8,
 
-    /// Hide special workspaces (e.g., scratchpad) (default is true, pass false to disable)
-    #[arg(long, default_value = "true", value_name = "bool", value_parser = clap::builder::PossibleValuesParser::new(["true", "false"]))]
-    pub hide_special_workspaces: String,
+    /// Show special workspaces (e.g., scratchpad)
+    #[arg(long)]
+    pub show_special_workspaces: bool,
 
     /// Print the command that would be executed
     #[arg(short = 'd', long)]
@@ -88,7 +94,7 @@ impl From<Args> for Info {
             filter_same_class: args.filter_same_class,
             filter_current_workspace: args.filter_current_workspace,
             filter_current_monitor: args.filter_current_monitor,
-            hide_special_workspaces: args.hide_special_workspaces == "true",
+            show_special_workspaces: args.show_special_workspaces,
         }
     }
 }

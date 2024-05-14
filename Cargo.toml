@@ -13,7 +13,7 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "^4.5.4", features = ["derive"] }
-hyprland = { version = "0.4.0-alpha.1" }
+hyprland = { version = "0.4.0-alpha.2" }
 tokio = { version = "1.37.0", features = ["full"] }
 log = "0.4.21"
 stderrlog = "0.6.0"
