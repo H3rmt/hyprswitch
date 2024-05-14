@@ -1,8 +1,9 @@
-use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::fmt::Debug;
+use std::{
+    collections::{BTreeMap, HashMap, VecDeque},
+    fmt::Debug,
+};
 
-use hyprland::data::Client;
-use hyprland::shared::WorkspaceId;
+use hyprland::{data::Client, shared::WorkspaceId};
 use lazy_static::lazy_static;
 use log::error;
 
@@ -13,18 +14,16 @@ use crate::{MonitorData, MonitorId, WorkspaceData};
 /// * 'clients' - Vector of clients to sort
 /// * 'ignore_workspaces' - Don't split clients into workspaces (treat all clients on monitor as one workspace)
 /// * 'ignore_monitors' - Don't split clients into monitors (treat all clients as one monitor)
-pub fn sort_clients<SC>(
-    clients: Vec<SC>,
-    ignore_workspaces: bool,
-    ignore_monitors: bool,
-) -> Vec<SC>
-    where
-        SC: SortableClient + Debug,
+pub fn sort_clients<SC>(clients: Vec<SC>, ignore_workspaces: bool, ignore_monitors: bool) -> Vec<SC>
+where
+    SC: SortableClient + Debug,
 {
     // monitor -> workspace -> clients
     let monitors: Vec<Vec<Vec<SC>>> = match (ignore_workspaces, ignore_monitors) {
         (true, true) => {
-            panic!("Can't ignore workspaces and monitors at the same time (currently not implemented)");
+            panic!(
+                "Can't ignore workspaces and monitors at the same time (currently not implemented)"
+            );
             // one monitor with one workspace with every client
             // vec![vec![clients]]
         }
@@ -40,7 +39,10 @@ pub fn sort_clients<SC>(
             // monitor -> clients
             let mut workspaces: BTreeMap<WorkspaceId, Vec<SC>> = BTreeMap::new();
             for client in clients {
-                workspaces.entry(client.wsi(client.m())).or_default().push(client);
+                workspaces
+                    .entry(client.wsi(client.m()))
+                    .or_default()
+                    .push(client);
             }
             workspaces.into_values().map(|m| vec![m]).collect()
         }
@@ -48,154 +50,116 @@ pub fn sort_clients<SC>(
             // monitor -> workspace -> clients
             let mut monitors: BTreeMap<MonitorId, BTreeMap<WorkspaceId, Vec<SC>>> = BTreeMap::new();
             for client in clients {
-                monitors.entry(client.m()).or_default().entry(client.ws()).or_default().push(client);
+                monitors
+                    .entry(client.m())
+                    .or_default()
+                    .entry(client.ws())
+                    .or_default()
+                    .push(client);
             }
-            monitors.into_values().map(|m| m.into_values().collect()).collect()
+            monitors
+                .into_values()
+                .map(|m| m.into_values().collect())
+                .collect()
         }
     };
 
     let mut sorted_clients: Vec<SC> = vec![];
 
-    for ws in monitors {
-        for mut ws_clients in ws {
-            // guaranteed to be sorted by y first, x second
-            ws_clients.sort_by(|a, b| {
-                if a.y() != b.y() {
+    for workspaces in monitors {
+        for mut clients in workspaces {
+            clients.sort_by(|a, b| {
+                if a.x() == b.x() {
                     a.y().cmp(&b.y())
                 } else {
                     a.x().cmp(&b.x())
                 }
             });
+            // println!("sorted clients: {:?}", clients);
+            let mut queue: VecDeque<SC> = VecDeque::from(clients);
 
-            // println!("ws_clients:      {:?}", ws_clients);
-
-            let mut clients_queue: VecDeque<SC> = VecDeque::from(ws_clients);
-
-            // always start with the client with the lowest y and x cord (top left
-            let mut first = clients_queue.pop_front();
-            while let Some(current) = first {
-                // println!("starting new Line: current: {:?}", current);
-                // find start of next line (y > first.y()) but most on top
-
-                let rest = clients_queue
-                    .iter()
-                    .enumerate()
-                    .filter(|c| c.1.y() >= current.y() + current.h())
-                    .collect::<Vec<_>>();
-
-                let next = rest
-                    .iter()
-                    .filter(|c| {
-                        for c2 in rest.iter() {
-                            // println!("check {:?} has_window_on_left against {:?}", c.1, c2.1);
-                            if c2.1.x() < c.1.x()
-                                && c2.1.y() + c2.1.h() > c.1.y()
-                                && c2.1.y() < c.1.y() + c.1.h()
-                            {
-                                return false;
-                            }
-                        }
-                        // println!("--- {:?} no window left", c.1);
-                        true
-                    })
-                    .min_by(|a, b| a.1.y().cmp(&b.1.y()))
-                    .map(|c| c.0);
-
-                let next_first = next.and_then(|next| clients_queue.remove(next));
-                // println!("next_first: {:?}", next_first);
-                let next_line_y = next_first
-                    .as_ref()
-                    .map(|c| c.y())
-                    .unwrap_or_else(|| current.y() + current.h());
-
-                let top = current.y();
-                let mut left = current.x();
-                let mut bottom = current.y() + current.h();
-
+            let mut line_start = queue.pop_front();
+            while let Some(current) = line_start {
+                // println!("line_start: {:?}", current);
+                // let mut current_top = current.y();
+                let mut current_bottom = current.y() + current.h();
                 sorted_clients.push(current);
 
-                while let Some(index) = get_next_index(left, top, bottom, next_line_y, clients_queue.iter())
-                {
-                    let next = clients_queue
-                        .remove(index)
-                        .expect("Expected element not found?");
-                    // println!("next: {:?}", next);
-                    left = next.x();
-                    bottom = bottom.max(next.y() + next.h());
-                    sorted_clients.push(next);
+                loop {
+                    let mut next_index = None;
+
+                    /*
+                    1. Check If Top left of window is higher or lower than bottom left of current
+                    2. Check if any window(not taken) on left top is higher or lower than current Lower (if true take this)
+                    3. Check if any window(not taken) on left bottom is higher than current bottom (if true take this)
+                    => Take if Top higher than current Bottom and no window on left has higher Top than window Bottom
+                     */
+
+                    for (i, client) in queue.iter().enumerate() {
+                        let client_top = client.y();
+                        let client_bottom = client.y() + client.h();
+                        // let client_half_y = client.y() + (client.h() / 2) + (client.h() / 4);
+                        let client_left = client.x();
+
+                        // println!("{:?} current_bottom: {current_bottom}, client_top: {client_top}", client.identifier());
+                        // if current_top <= client_top && client_top < current_bottom {
+
+                        if client_top < current_bottom {
+                            // 1.
+                            // client top is inside current row
+                            // println!("{:?} inside", client.identifier());
+
+                            // 2.
+                            let on_left = queue
+                                .iter()
+                                .enumerate()
+                                .find(|(_i, c)| c.x() < client_left && c.y() < client_bottom);
+                            // println!("{:?} on_left: {:?}", client.identifier(), on_left);
+
+                            // 3.
+                            let on_left_2 = queue.iter().enumerate().find(|(_i, c)| {
+                                c.x() < client_left && c.y() + c.h() < client_bottom
+                            });
+                            // println!("{:?} on_left_2: {:?}", client.identifier(), on_left_2);
+
+                            match (on_left, on_left_2) {
+                                (Some((idx, c)), _) => {
+                                    // current_top = c.y();
+                                    current_bottom = c.y() + c.h();
+                                    // println!("{:?} on_left (updating current_bottom: {current_bottom})", client.identifier());
+                                    next_index = Some(idx);
+                                }
+                                (_, Some((idx, c))) => {
+                                    // current_top = c.y();
+                                    current_bottom = c.y() + c.h();
+                                    // println!("{:?} on_left_2 (updating current_bottom: {current_bottom})", client.identifier());
+                                    next_index = Some(idx);
+                                }
+                                (None, None) => {
+                                    // println!("{:?} not on_left", client.identifier());
+                                    next_index = Some(i);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    match next_index.and_then(|i| queue.remove(i)) {
+                        Some(next) => {
+                            // println!("next: {:?}", next);
+                            sorted_clients.push(next);
+                        }
+                        None => {
+                            // println!("no next, line finished");
+                            break;
+                        }
+                    }
                 }
-                first = next_first;
+
+                line_start = queue.pop_front();
             }
         }
     }
-
-    // println!("sorted clients: {:?}", sorted_clients);
-
     sorted_clients
-}
-
-/// find index of window right of current window that is closest to current window and higher up
-///
-/// - cur = current window (already removed from VecDeque)
-/// - ne1 = next index (1) (returned from this function)
-/// - ne2 = next index (2) (returned if [`get_next_index`] called again)
-/// - no1 = not returned, as lower that `bottom`, even after `ne2` is added and `no1` is higher that `bottom`, as it is right of `left` (left is now `ne2.x`)
-/// - no2 = not returned, as higher that `bottom`, but also lower that top_next (top of next line `no1`)
-/// - no3 = must be added later before `br`, after `ne2`
-///
-/// ```ignore
-///         left ∨
-///           +-----------------------------
-///           |  |
-///  top>     |- +---+ ---- +---+ ----------
-///           |  |cur|      |ne1|
-///           |  |   |      +---+
-///           |  |   |      +---+
-/// bottom>   |  +---+      |ne2|
-/// top_next> | +---+ ----- |   | ----------
-///           | |no1|       |   |   +---+
-///           | |   |       +---+   |no2|
-///           | +---+               +---+
-///           |  | +---+
-///           |  | |no3|     +---+
-///           |  | +---+     |no4|
-///           |  |           +---+
-///           |  |
-/// ```
-fn get_next_index<'a, SC>(
-    left: u16,
-    top: u16,
-    bottom: u16,
-    top_next: u16,
-    ve: impl Iterator<Item=&'a SC>,
-) -> Option<usize>
-    where
-        SC: SortableClient + Debug + 'a,
-{
-    let mut current_x: Option<u16> = None;
-    let mut current_y: Option<u16> = None;
-    let mut index: Option<usize> = None;
-    for (i, v) in ve.enumerate() {
-        // println!(
-        //     "{:?} checking against (left, top, bottom, top_next) {:?}",
-        //     v,
-        //     (left, top, bottom, top_next)
-        // );
-        if left <= v.x()
-            && top <= v.y()
-            && v.y() <= bottom
-            && v.y() < top_next
-            && (current_x.is_none()
-            || current_y.is_none()
-            || v.x() < current_x.unwrap()
-            || v.y() < current_y.unwrap())
-        {
-            current_x = Some(v.x());
-            current_y = Some(v.y());
-            index = Some(i);
-        }
-    }
-    index
 }
 
 /// updates clients with workspace and monitor data
@@ -204,40 +168,43 @@ fn get_next_index<'a, SC>(
 /// * 'monitor_data' - HashMap of monitor data, None if ignore_monitors
 ///
 /// removes offset by monitor, adds offset by workspace (client on monitor 1 and workspace 2 will be moved left by monitor 1 offset and right by workspace 2 offset (workspace width * 2))
-pub fn update_clients<SC>(clients: Vec<SC>, workspace_data: &HashMap<WorkspaceId, WorkspaceData>, monitor_data: Option<&HashMap<MonitorId, MonitorData>>) -> Vec<SC>
-    where
-        SC: SortableClient + Debug,
+pub fn update_clients<SC>(
+    clients: Vec<SC>,
+    workspace_data: &HashMap<WorkspaceId, WorkspaceData>,
+    monitor_data: Option<&HashMap<MonitorId, MonitorData>>,
+) -> Vec<SC>
+where
+    SC: SortableClient + Debug,
 {
-    clients.into_iter().filter_map(|mut c| {
-        let ws = workspace_data
-            .get(&c.ws())
-            .or_else(|| {
+    clients
+        .into_iter()
+        .filter_map(|mut c| {
+            let ws = workspace_data.get(&c.ws()).or_else(|| {
                 error!("Workspace {:?} not found for client: {:?}", c.ws(), c);
                 None
             });
 
-        let md = if let Some(mdt) = monitor_data {
-            mdt.get(&c.m())
-                .map(|md| (md.x, md.y))
-                .or_else(|| {
+            let md = if let Some(mdt) = monitor_data {
+                mdt.get(&c.m()).map(|md| (md.x, md.y)).or_else(|| {
                     error!("Monitor {:?} not found: {:?}", c.m(), c);
                     None
                 })
-        } else {
-            Some((0, 0))
-        };
+            } else {
+                Some((0, 0))
+            };
 
-        if let (Some(ws), Some((md_x, md_y))) = (ws, md) {
-            // println!("c: {:?}; {}; {}", c ,ws.x, md.x);
-            // println!("c: {:?}; {}; {}", c ,ws.y, md.y);
-            c.set_x(c.x() + ws.x - md_x); // move x cord by workspace offset
-            c.set_y(c.y() + ws.y - md_y); // move y cord by workspace offset
-            // println!("c: {:?}", c);
-            Some(c)
-        } else {
-            None
-        }
-    }).collect()
+            if let (Some(ws), Some((md_x, md_y))) = (ws, md) {
+                // println!("c: {:?}; {}; {}", c ,ws.x, md.x);
+                // println!("c: {:?}; {}; {}", c ,ws.y, md.y);
+                c.set_x(c.x() + ws.x - md_x); // move x cord by workspace offset
+                c.set_y(c.y() + ws.y - md_y); // move y cord by workspace offset
+                                              // println!("c: {:?}", c);
+                Some(c)
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 pub trait SortableClient {
@@ -286,7 +253,9 @@ impl SortableClient for Client {
     fn wsi(&self, monitor_index: MonitorId) -> i32 {
         self.workspace.id - (*MONITOR_WORKSPACE_INDEX_OFFSET * monitor_index as i32)
     }
-    fn m(&self) -> MonitorId { self.monitor }
+    fn m(&self) -> MonitorId {
+        self.monitor
+    }
     fn set_x(&mut self, x: u16) {
         self.at.0 = x as i16;
     }
