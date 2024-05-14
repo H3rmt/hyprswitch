@@ -2,6 +2,11 @@
     border: 3px solid rgba(14, 234, 14, 0.60);
 }
 
+.client_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+    background-color: rgba(200, 9, 9, 0.80);
+}
+
 .workspaces {
     background-color: #b80db1;
 }

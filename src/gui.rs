@@ -1,4 +1,4 @@
-use std::{future::Future};
+use std::future::Future;
 use std::path::PathBuf;
 
 #[cfg(feature = "libadwaita")]
@@ -25,7 +25,7 @@ const CSS: &str = r#"
 .client-image {
     margin: 15px;
 }
-.index-box {
+.client-index {
     margin: 6px;
     padding: 5px;
     font-size: 30px;
@@ -45,14 +45,14 @@ const CSS: &str = r#"
 .client_active {
     border: 3px solid rgba(239, 9, 9, 0.94);
 }
-.workspace_frame {
+.workspace {
     font-size: 25px;
     font-weight: bold;
     border-radius: 15px;
     border: 3px solid rgba(80, 80, 80, 0.4);
     background-color: rgba(20, 20, 25, 0.85);
 }
-.workspace_frame_special {
+.workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
 }
 .workspaces {
@@ -107,10 +107,7 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
                 )
             }
         }).unwrap_or_else(|| {
-            warn!(
-                    "No Icon and no desktop file with icon found for {}",
-                    client.class
-                );
+            warn!("No Icon and no desktop file with icon found for {}",client.class);
             // just lookup the icon and hope for the best
             theme.lookup_icon(
                 &client.class,
@@ -127,7 +124,10 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
         debug!("Icon file: {:?}", f.path());
     }
 
-    let picture = Picture::builder().css_classes(vec!["client-image"]).paintable(&icon).build();
+    let picture = Picture::builder()
+        .css_classes(vec!["client-image"])
+        .paintable(&icon)
+        .build();
 
     // create a pixelated and saturated version of the icon
     if !enabled {
@@ -147,17 +147,32 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
         }
     }
 
-    let overlay = Overlay::builder().child(&picture).build();
+    let overlay = Overlay::builder()
+        .child(&picture)
+        .build();
 
     if enabled && *NEXT_INDEX_MAX != 0 && index <= *NEXT_INDEX_MAX && index >= -(*NEXT_INDEX_MAX) {
-        let label = Label::builder().css_classes(vec!["index-box"]).label(index.to_string()).halign(Align::End).valign(Align::End).build();
-
+        let label = Label::builder()
+            .css_classes(vec!["client-index"])
+            .label(index.to_string())
+            .halign(Align::End)
+            .valign(Align::End)
+            .build();
         overlay.add_overlay(&label)
     }
 
-    let label = Label::builder().overflow(Overflow::Visible).ellipsize(pango::EllipsizeMode::End).label(&client.class).build();
+    let label = Label::builder()
+        .overflow(Overflow::Visible)
+        .ellipsize(pango::EllipsizeMode::End)
+        .label(&client.class
+        ).build();
 
-    let client_frame = Frame::builder().css_classes(vec!["client"]).label_xalign(0.5).label_widget(&label).child(&overlay).build();
+    let client_frame = Frame::builder()
+        .css_classes(vec!["client"])
+        .label_xalign(0.5)
+        .label_widget(&label)
+        .child(&overlay)
+        .build();
 
     if client_active {
         client_frame.add_css_class("client_active");
@@ -200,11 +215,11 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
 
         let workspace_fixed = Fixed::builder().width_request(width).height_request(height).build();
 
-        let workspace_frame = Frame::builder().css_classes(vec!["workspace_frame"]).label(&workspace.1.name).label_xalign(0.5).child(&workspace_fixed).build();
+        let workspace_frame = Frame::builder().css_classes(vec!["workspace"]).label(&workspace.1.name).label_xalign(0.5).child(&workspace_fixed).build();
 
         if *workspace.0 < 0 {
             // special workspace
-            workspace_frame.add_css_class("workspace_frame_special");
+            workspace_frame.add_css_class("workspace_special");
         }
         if switch_ws_on_hover {
             let gesture_2 = EventControllerMotion::new();

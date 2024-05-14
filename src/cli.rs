@@ -56,15 +56,15 @@ pub struct Args {
     #[cfg(feature = "gui")]
     pub switch_ws_on_hover: bool,
 
-    /// Specify a path to custom css file
-    #[arg(long)]
-    #[cfg(feature = "gui")]
-    pub custom_css: Option<PathBuf>,
-
     /// Execute the command to switch windows on close of daemon instead of switching for every command (default is true, pass false to disable)
     #[arg(long, default_value = "true", value_name = "bool", value_parser = clap::builder::PossibleValuesParser::new(["true", "false"]))]
     #[cfg(feature = "gui")]
     pub switch_on_close: String,
+    
+    /// Specify a path to custom css file
+    #[arg(long)]
+    #[cfg(feature = "gui")]
+    pub custom_css: Option<PathBuf>,
 
     /// Switch to a specific window offset
     #[arg(short = 'o', long, default_value = "1")]
