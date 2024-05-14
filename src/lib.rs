@@ -1,14 +1,13 @@
 #![deny(clippy::print_stdout)]
 
-pub mod sort;
-pub mod sort_v2;
-pub mod handle;
-#[cfg(feature = "gui")]
-pub mod gui;
 #[cfg(feature = "gui")]
 pub mod daemon;
 #[cfg(feature = "gui")]
+pub mod gui;
+pub mod handle;
+#[cfg(feature = "gui")]
 mod icons;
+pub mod sort;
 
 pub type MonitorId = i128;
 
@@ -31,6 +30,12 @@ pub struct WorkspaceData {
     pub monitor: MonitorId,
 }
 
+#[cfg(feature = "gui")]
+#[derive(Debug, Clone, Copy)]
+pub struct DaemonInfo {
+    pub reverse: bool,
+    pub offset: u8,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Info {

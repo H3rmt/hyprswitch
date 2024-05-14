@@ -64,7 +64,7 @@ pub struct Args {
     #[arg(short = 'o', long, default_value = "1")]
     pub offset: u8,
 
-    /// Hide special workspaces (e.g. scratchpad) (default is true, pass false to disable)
+    /// Hide special workspaces (e.g., scratchpad) (default is true, pass false to disable)
     #[arg(long, default_value = "true", value_name = "bool", value_parser = clap::builder::PossibleValuesParser::new(["true", "false"]))]
     pub hide_special_workspaces: String,
 

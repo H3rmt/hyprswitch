@@ -1,11 +1,6 @@
 #![allow(clippy::redundant_closure)]
 
-use std::collections::HashMap;
-use std::env;
-use std::fs::DirEntry;
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::{collections::HashMap, env, fs::DirEntry, ops::Deref, path::PathBuf, sync::OnceLock};
 
 use log::warn;
 
@@ -15,21 +10,20 @@ pub fn get_icon_name(icon: &str) -> Option<&str> {
     map.get(icon.to_ascii_lowercase().as_str()).map(Deref::deref)
 }
 
-
 fn find_application_dirs() -> Vec<PathBuf> {
-    let mut dirs = env::var_os("XDG_DATA_DIRS")
-        .map(|val| env::split_paths(&val).map(PathBuf::from).collect())
-        .unwrap_or_else(|| vec![PathBuf::from("/usr/local/share"), PathBuf::from("/usr/share")]);
+    let mut dirs = env::var_os("XDG_DATA_DIRS").map(|val| env::split_paths(&val).map(PathBuf::from).collect()).unwrap_or_else(|| {
+        vec![
+            PathBuf::from("/usr/local/share"),
+            PathBuf::from("/usr/share"),
+        ]
+    });
 
-    if let Some(data_home) = env::var_os("XDG_DATA_HOME").map(PathBuf::from)
-        .map_or_else(|| {
-            env::var_os("HOME")
-                .map(|p| PathBuf::from(p).join(".local/share"))
-                .or_else(|| {
-                    warn!("No XDG_DATA_HOME and HOME environment variable found");
-                    None
-                })
-        }, Some) {
+    if let Some(data_home) = env::var_os("XDG_DATA_HOME").map(PathBuf::from).map_or_else(|| {
+        env::var_os("HOME").map(|p| PathBuf::from(p).join(".local/share")).or_else(|| {
+            warn!("No XDG_DATA_HOME and HOME environment variable found");
+            None
+        })
+    }, Some) {
         dirs.push(data_home);
     }
 
@@ -48,10 +42,12 @@ fn collect_desktop_files() -> Vec<DirEntry> {
             continue;
         }
         match dir.read_dir() {
-            Ok(dir) => for entry in dir.flatten() {
-                let path = entry.path();
-                if path.is_file() && path.extension().map_or(false, |e| e == "desktop") {
-                    res.push(entry);
+            Ok(dir) => {
+                for entry in dir.flatten() {
+                    let path = entry.path();
+                    if path.is_file() && path.extension().map_or(false, |e| e == "desktop") {
+                        res.push(entry);
+                    }
                 }
             }
             Err(e) => {
@@ -70,15 +66,9 @@ fn create_desktop_file_map() -> HashMap<Box<str>, Box<str>> {
         let file = std::fs::read_to_string(entry.path());
         match file {
             Ok(file) => {
-                let name = file.lines()
-                    .find(|l| l.starts_with("Name="))
-                    .and_then(|l| l.split('=').nth(1));
-                let icon = file.lines()
-                    .find(|l| l.starts_with("Icon="))
-                    .and_then(|l| l.split('=').nth(1));
-                let startup_wm_class = file.lines()
-                    .find(|l| l.starts_with("StartupWMClass="))
-                    .and_then(|l| l.split('=').nth(1));
+                let name = file.lines().find(|l| l.starts_with("Name=")).and_then(|l| l.split('=').nth(1));
+                let icon = file.lines().find(|l| l.starts_with("Icon=")).and_then(|l| l.split('=').nth(1));
+                let startup_wm_class = file.lines().find(|l| l.starts_with("StartupWMClass=")).and_then(|l| l.split('=').nth(1));
 
                 if let (Some(name), Some(icon)) = (name, icon) {
                     let mut n: Box<str> = Box::from(name);
