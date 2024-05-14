@@ -14,12 +14,13 @@ To use the GUI, you need to pass the `--daemon` flag to the script which will st
 Subsequent calls to the script (with the `--daemon` flag) will send the command to the daemon which will execute the
 command and update the GUI.
 
-![image.png](image.png)
+![image.png](imgs/image_2.png)
 
 # Installation
 
 ### From Source
 
+- gtk4 and [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell) must be installed
 - `cargo install hyprswitch`
 
 ### Arch
@@ -31,7 +32,7 @@ command and update the GUI.
 - add ``hyprswitch.url = "github:h3rmt/hyprswitch/release";`` to flake inputs
 - add `specialArgs = { inherit inputs; };` to `nixpkgs.lib.nixosSystem`
 - add `inputs.hyprswitch.packages.x86_64-linux.default` to your `environment.systemPackages`
-- availible systems: `aarch64-linux`, `i686-linux`, `riscv32-linux`, `riscv64-linux`, `x86_64-linux`
+- available systems: `aarch64-linux`, `i686-linux`, `riscv32-linux`, `riscv64-linux`, `x86_64-linux`
 
 # Usage
 
@@ -41,21 +42,29 @@ The script accepts these parameters:
 
 - Sorting related
     - `--reverse`/`-r` Reverse the order of windows / switch backwards
-    - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused window
-    - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently focused window
-    - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused window
+    - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused
+      window
+    - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently
+      focused window
+    - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused
+      window
 
-    - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows when the daemon was started)
+    - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows
+      when the daemon was started)
 
     - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
-    - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
+    - `--ignore-monitors` Sort all windows on matching workspaces on monitors
+      like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
 
 - GUI related
     - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
-    - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the command to switch window if `--switch-on-close` is true
+    - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the
+      command to switch window if `--switch-on-close` is true
     - `--do-initial-execute` Also execute the initial command when starting the daemon
     - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
-    - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every command
+    - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every
+      command
+    - `--custom-css` Path to a css file to add [custom styles](CSS)
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
 - `--ignore-special-workspaces` Hide special workspaces (e.g. scratchpad)
@@ -226,6 +235,150 @@ See [tests](/tests) for more details on how windows get sorted
 10 |    +-------+         +----+            |
    +----------------------------------------+
         2       4         7    9
+```
+
+# CSS
+
+### Class used:
+
+- **client-image**
+  <table><tr><td>
+
+  ```css
+  .client-image {
+    margin: 15px;
+  }
+  ```
+  </td><td><img src="imgs/css_client-image.png"/> </td></tr></table>
+
+- **client-index**
+  <table><tr><td>
+
+  ```css
+  .client-index {
+    margin: 6px;
+    padding: 5px;
+    font-size: 30px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(130, 130, 180, 0.4);
+    background-color: rgba(20, 20, 20, 0.99);
+  }
+  ```
+  </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
+
+- **client** + **client_active** 
+
+  client_active is the client that is currently focused / will be focused when exiting hyprswitch
+  <table><tr><td>
+
+  ```css
+  .client {
+    border-radius: 15px;
+    border: 3px solid rgba(130, 130, 180, 0.4);
+    background-color: rgba(20, 20, 25, 0.85);
+  }
+  .client:hover {
+    background-color: rgba(30, 30, 30, 0.99);
+  }
+  .client_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+  }
+  ```
+  </td><td><img src="imgs/css_client.png"/> </td></tr></table>
+
+- **workspace_frame** + **workspace_frame_special**
+
+  workspace_frame_special is added when workspaceId is < 0 (e.g., scratchpad)
+  <table><tr><td>
+
+  ```css
+  .workspace {
+    font-size: 25px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(80, 80, 80, 0.4);
+    background-color: rgba(20, 20, 25, 0.85);
+  }
+  .workspace_special {
+    border: 3px solid rgba(0, 255, 0, 0.4);
+  }
+  ```
+  </td><td><img src="imgs/css_workspace.png"/> </td></tr></table>
+
+- **workspaces**
+  <table><tr><td>
+
+  ```css
+  .workspaces {
+    margin: 10px;
+  }
+  ```
+  </td><td><img src="imgs/css_workspaces.png"/> </td></tr></table>
+
+- **window**
+  <table><tr><td>
+
+  ```css
+  window {
+    border-radius: 15px;
+    opacity: 0.9;
+    border: 6px solid rgba(0, 0, 0, 0.4);
+  }
+  ```
+  </td><td><img src="imgs/css_window.png"/> </td></tr></table>
+
+### Complete config:
+```css
+.client-image {
+    margin: 15px;
+}
+.client-index {
+    margin: 6px;
+    padding: 5px;
+    font-size: 30px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(130, 130, 180, 0.4);
+    background-color: rgba(20, 20, 20, 0.99);
+}
+.client {
+    border-radius: 15px;
+    border: 3px solid rgba(130, 130, 180, 0.4);
+    background-color: rgba(20, 20, 25, 0.85);
+}
+.client:hover {
+    background-color: rgba(30, 30, 30, 0.99);
+}
+.client_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+}
+.workspace {
+    font-size: 25px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(80, 80, 80, 0.4);
+    background-color: rgba(20, 20, 25, 0.85);
+}
+.workspace_special {
+    border: 3px solid rgba(0, 255, 0, 0.4);
+}
+.workspaces {
+    margin: 10px;
+}
+window {
+    border-radius: 15px;
+    opacity: 0.9;
+    border: 6px solid rgba(0, 0, 0, 0.4);
+}
+```
+
+### Example:
+```css
+.client_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+    background-color: rgba(200, 9, 9, 0.80);
+}
 ```
 
 # Other
