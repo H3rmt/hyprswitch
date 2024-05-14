@@ -64,7 +64,7 @@ The script accepts these parameters:
     - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
     - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every
       command
-    - `--custom-css` Path to a css file to add [custom styles](CSS)
+    - `--custom-css` Path to a css file to add [custom styles](#CSS) `/home/user/hyprswitch.css` / `/usr/local/share/hyprswitch.css`
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
 - `--ignore-special-workspaces` Hide special workspaces (e.g. scratchpad)
@@ -378,6 +378,9 @@ window {
 .client_active {
     border: 3px solid rgba(239, 9, 9, 0.94);
     background-color: rgba(200, 9, 9, 0.80);
+}
+.client-image {
+  margin: 10px;
 }
 ```
 
