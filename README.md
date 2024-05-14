@@ -64,16 +64,17 @@ The script accepts these parameters:
     - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
     - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every
       command
-    - `--custom-css` Path to a css file to add [custom styles](#CSS) `/home/user/hyprswitch.css` / `/usr/local/share/hyprswitch.css`
+    - `--custom-css` Path to a css file to
+      add [custom styles](#CSS) `/home/user/hyprswitch.css` / `/usr/local/share/hyprswitch.css`
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
-- `--ignore-special-workspaces` Hide special workspaces (e.g. scratchpad)
+- `--show-special-workspaces` Show special workspaces (e.g., scratchpad)
 - `--dry-run`/`-d` Print the command that would be executed
 - `-v` Increase the verbosity level (-vv ist max)
 
 #### Here are some examples:
 
-(Modify the $... variables to your liking)
+(Modify the $... variables to use the keys you prefer)
 
 ### No-GUI Config
 
@@ -133,8 +134,8 @@ bindrn = ,escape, exec, pkill hyprswitch
 
 ### GUI + Keyboard Config
 
-Complex Config with submap to allow for many different keybindings when opening hyprswitch (
-run `hyprctl dispatch submap reset` if stuck in switch submap)
+Complex Config with submap to allow for many different keybindings when opening hyprswitch
+(run `hyprctl dispatch submap reset` if stuck in switch submap)
 
 - Press (and hold) $modifier + $key to open the GUI and switch trough window
 - Release $key and press 3 to switch to the third next window
@@ -267,7 +268,7 @@ See [tests](/tests) for more details on how windows get sorted
   ```
   </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
 
-- **client** + **client_active** 
+- **client** + **client_active**
 
   client_active is the client that is currently focused / will be focused when exiting hyprswitch
   <table><tr><td>
@@ -329,10 +330,12 @@ See [tests](/tests) for more details on how windows get sorted
   </td><td><img src="imgs/css_window.png"/> </td></tr></table>
 
 ### Complete config:
+
 ```css
 .client-image {
     margin: 15px;
 }
+
 .client-index {
     margin: 6px;
     padding: 5px;
@@ -342,17 +345,21 @@ See [tests](/tests) for more details on how windows get sorted
     border: 3px solid rgba(130, 130, 180, 0.4);
     background-color: rgba(20, 20, 20, 0.99);
 }
+
 .client {
     border-radius: 15px;
     border: 3px solid rgba(130, 130, 180, 0.4);
     background-color: rgba(20, 20, 25, 0.85);
 }
+
 .client:hover {
     background-color: rgba(30, 30, 30, 0.99);
 }
+
 .client_active {
     border: 3px solid rgba(239, 9, 9, 0.94);
 }
+
 .workspace {
     font-size: 25px;
     font-weight: bold;
@@ -360,12 +367,15 @@ See [tests](/tests) for more details on how windows get sorted
     border: 3px solid rgba(80, 80, 80, 0.4);
     background-color: rgba(20, 20, 25, 0.85);
 }
+
 .workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
 }
+
 .workspaces {
     margin: 10px;
 }
+
 window {
     border-radius: 15px;
     opacity: 0.9;
@@ -374,13 +384,15 @@ window {
 ```
 
 ### Example:
+
 ```css
 .client_active {
     border: 3px solid rgba(239, 9, 9, 0.94);
     background-color: rgba(200, 9, 9, 0.80);
 }
+
 .client-image {
-  margin: 10px;
+    margin: 10px;
 }
 ```
 
