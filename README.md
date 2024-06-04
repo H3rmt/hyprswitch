@@ -65,7 +65,7 @@ The script accepts these parameters:
     - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every
       command
     - `--custom-css` Path to a css file to
-      add [custom styles](#CSS) `/home/user/hyprswitch.css` / `/usr/local/share/hyprswitch.css`
+      add [custom styles](#CSS) e.g., `/home/user/hyprswitch.css` / `/usr/local/share/hyprswitch.css`
 
 - `--offset`/`-o` Switch to a specific window offset (default 1)
 - `--show-special-workspaces` Show special workspaces (e.g., scratchpad)
