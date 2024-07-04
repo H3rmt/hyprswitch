@@ -298,6 +298,8 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     let workspaces_fixed = Fixed::builder().css_classes(vec!["workspaces"]).build();
 
     let window = ApplicationWindow::builder().application(app).child(&workspaces_fixed).build();
+    // prevent space around workspace widget
+    window.set_default_size(10, 10);
 
     let connector = monitor.connector().with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
     glib::MainContext::default().spawn_local(clone!(@strong window, @strong monitor => async move {
