@@ -1,5 +1,7 @@
 use std::future::Future;
+use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 #[cfg(feature = "libadwaita")]
 use adw::Application;
@@ -16,7 +18,7 @@ use gtk4::Application;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
 use lazy_static::lazy_static;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use tokio::sync::MutexGuard;
 
 use crate::{Data, DRY, handle, icons, Info, Share};
@@ -61,7 +63,7 @@ const CSS: &str = r#"
 window {
     border-radius: 15px;
     opacity: 0.9;
-    border: 6px solid rgba(0, 0, 0, 0.4);
+    border: 6px solid rgba(4, 126, 140, 0.75);
 }
 "#;
 
@@ -181,9 +183,11 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
     client_frame
 }
 
-fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
+#[allow(clippy::too_many_arguments)]
+fn update<F: Future<Output=anyhow::Result<()>>, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
     workspaces_fixed: Fixed,
     focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
+    close: impl FnOnce(Share) -> G + Copy + Send + 'static,
     data: MutexGuard<(Info, Data)>,
     window: ApplicationWindow,
     connector: &str,
@@ -272,10 +276,10 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
                         .unwrap_or_else(|e| warn!("{:?}", e));
 
                     if *EXIT_ON_CLICK {
-                        if let Some(app) = window.application() {
-                            app.windows().iter().for_each(|w| w.close())
-                        }
-                        std::process::exit(0);
+                        info!("Exiting on click of client window");
+                        close(data_arc.clone()).await
+                            .with_context(|| "Failed to close daemon".to_string())
+                            .unwrap_or_else(|e| warn!("{:?}", e));
                     }
                 }));
             }));
@@ -288,8 +292,9 @@ fn update<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     Ok(())
 }
 
-fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
+fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
     focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
+    close: impl FnOnce(Share) -> G + Copy + Send + 'static,
     app: &Application,
     monitor: &Monitor,
     data: Share,
@@ -306,14 +311,14 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
         let (data_mut, cvar) = &*data;
         {
             let first = data_mut.lock().await;
-            update(workspaces_fixed.clone(), focus_client, first, window.clone(), &connector, data.clone(), switch_ws_on_hover)
+            update(workspaces_fixed.clone(), focus_client, close, first, window.clone(), &connector, data.clone(), switch_ws_on_hover)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor:?}"))
                 .unwrap_or_else(|e| warn!("{:?}", e));
         }
 
         loop {
             let data_mut_unlock = cvar.wait(data_mut.lock().await).await;
-            update(workspaces_fixed.clone(), focus_client, data_mut_unlock, window.clone(), &connector, data.clone(), switch_ws_on_hover)
+            update(workspaces_fixed.clone(), focus_client, close, data_mut_unlock, window.clone(), &connector, data.clone(), switch_ws_on_hover)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor:?}"))
                 .unwrap_or_else(|e| warn!("{:?}", e));
         }
@@ -330,9 +335,11 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
     Ok(())
 }
 
-pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
+
+pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
     data: Share,
     focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
+    close: impl FnOnce(Share) -> G + Copy + Send + 'static,
     switch_ws_on_hover: bool,
     custom_css: Option<PathBuf>,
 ) -> anyhow::Result<()> {
@@ -356,8 +363,9 @@ pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
                 STYLE_PROVIDER_PRIORITY_USER,
             );
         }
-
-        let monitors = get_all_monitors().context("Failed to get all monitors").expect("Failed to get all monitors");
+        let monitors = gdk::DisplayManager::get().list_displays().first()
+            .context("No Display found (Failed to get all monitor)").expect("Failed to get all monitors")
+            .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>();
 
         for monitor in monitors {
             tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(async {
@@ -375,20 +383,50 @@ pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static>(
                 };
                 if !empty {
                     let data = data.clone();
-                    activate(focus_client, app, &monitor, data, switch_ws_on_hover).with_context(|| format!("Failed to activate for monitor {monitor:?}")).unwrap_or_else(|e| warn!("{:?}", e));
+                    activate(focus_client, close, app, &monitor, data, switch_ws_on_hover)
+                        .with_context(|| format!("Failed to activate for monitor {monitor:?}"))
+                        .unwrap_or_else(|e| warn!("{:?}", e));
                 }
             });
         }
     });
+    application.windows();
+
+    APP_LOCK.with(|app_mutex|
+        *app_mutex.lock().expect("unable to lock Application Mutex") = Some(application.clone())
+    );
 
     application.run_with_args::<String>(&[]);
 
     Ok(())
 }
 
-fn get_all_monitors() -> anyhow::Result<Vec<Monitor>> {
-    let display_manager = gdk::DisplayManager::get();
-    let displays = display_manager.list_displays();
+thread_local! {
+    static APP_LOCK: Mutex<Option<Application>> = const { Mutex::new(None) };
+}
 
-    Ok(displays.first().context("No Display found")?.monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>())
+pub fn hide() {
+    glib::MainContext::default().invoke(|| {
+        // run inside GTK main loop to access thread_local APP_LOCK with Application
+        APP_LOCK.with(|app_mutex|
+            if let Some(app) = app_mutex.lock().expect("unable to lock Application Mutex").deref() {
+                app.windows().iter().for_each(|w| w.hide())
+            } else {
+                warn!("Application not found?");
+            }
+        );
+    });
+}
+
+pub fn show() {
+    glib::MainContext::default().invoke(|| {
+        // run inside GTK main loop to access thread_local APP_LOCK with Application
+        APP_LOCK.with(|app_mutex|
+            if let Some(app) = app_mutex.lock().expect("unable to lock Application Mutex").deref() {
+                app.windows().iter().for_each(|w| w.show())
+            } else {
+                warn!("Application not found?");
+            }
+        );
+    });
 }

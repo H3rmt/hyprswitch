@@ -3,7 +3,7 @@ use std::future::Future;
 use std::path::PathBuf;
 
 use anyhow::Context;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use tokio::{
     io::AsyncReadExt,
     net::{UnixListener, UnixStream},
@@ -30,7 +30,7 @@ pub async fn daemon_running() -> bool {
 }
 
 // pass function to start_daemon taking info from socket
-pub async fn start_daemon<
+pub async fn run_daemon<
     F: Future<Output=anyhow::Result<()>> + Send + 'static,
     G: Future<Output=anyhow::Result<()>> + Send + 'static,
 >(
@@ -79,25 +79,25 @@ async fn handle_client<
 
     debug!("Received command: {buffer:?}");
     match buffer[0] {
-        b'k' => {
-            info!("Received kill command");
+        b'c' => {
+            info!("Received close command");
             close(data_arc).await.with_context(|| "Failed to close daemon".to_string())?;
         }
         b's' => {
             if buffer.len() == CMDLEN {
-                let info = DaemonInfo {
+                let d_info = DaemonInfo {
                     reverse: buffer[1] == 1,
                     offset: buffer[2],
                 };
 
-                info!("Received switch command {info:?}");
-                exec(info, data_arc).await.with_context(|| format!("Failed to execute with info {info:?}"))?;
+                info!("Received switch command {d_info:?}");
+                exec(d_info, data_arc).await.with_context(|| format!("Failed to execute with d_info {d_info:?}"))?;
             } else {
                 warn!("Invalid command length");
             }
         }
         _ => {
-            warn!("Unknown command");
+            error!("Unknown command");
         }
     };
 
@@ -123,8 +123,8 @@ pub async fn send_kill_daemon() -> anyhow::Result<()> {
     let path = buf.as_path();
     let mut stream = UnixStream::connect(path).await.with_context(|| format!("Failed to connect to socket {path:?}"))?;
 
-    // send 'k' to identify as kill command
-    let buf = &[b'k'];
+    // send 'c' to identify as close command
+    let buf = &[b'c'];
 
     info!("Sending command: {buf:?}");
     stream.write_all(buf).await.with_context(|| format!("Failed to write data {buf:?} to socket {path:?}"))?;

@@ -13,6 +13,7 @@ use hyprland::{
 };
 use hyprland::shared::HyprError;
 use log::{debug, error, info};
+use tokio::sync::Mutex;
 
 use crate::{Data, Info, MonitorData, MonitorId, sort::sort_clients, WorkspaceData};
 use crate::sort::{SortableClient, update_clients};
@@ -104,15 +105,12 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
             let mut x_offset = 0;
             let mut y_offset = 0;
 
-            workspaces
-                .iter()
-                .filter(|ws| {
-                    ws.monitor == monitors.iter().find(|m| m.id == *monitor_id).unwrap().name
-                })
-                .for_each(|workspace| {
-                    let (x, y) = (x_offset, monitor_data.y);
+            workspaces.iter().filter(|ws| {
+                ws.monitor == monitors.iter().find(|m| m.id == *monitor_id).unwrap().name
+            }).for_each(|workspace| {
+                let (x, y) = (x_offset, monitor_data.y);
 
-                    debug!(
+                debug!(
                         "workspace {}({}) on monitor {} at ({}, {})",
                         workspace.id,
                         workspace.name.clone(),
@@ -121,20 +119,20 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
                         y
                     );
 
-                    x_offset += monitor_data.width;
-                    y_offset += monitor_data.height;
-                    wd.insert(
-                        workspace.id,
-                        WorkspaceData {
-                            x,
-                            y,
-                            name: workspace.name.clone(),
-                            monitor: *monitor_id,
-                            height: monitor_data.height,
-                            width: monitor_data.width,
-                        },
-                    );
-                });
+                x_offset += monitor_data.width;
+                y_offset += monitor_data.height;
+                wd.insert(
+                    workspace.id,
+                    WorkspaceData {
+                        x,
+                        y,
+                        name: workspace.name.clone(),
+                        monitor: *monitor_id,
+                        height: monitor_data.height,
+                        width: monitor_data.width,
+                    },
+                );
+            });
         });
         wd
     };
@@ -166,20 +164,12 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
     );
 
     if info.sort_recent {
-        static LOADER: OnceLock<HashMap<Address, i8>> = OnceLock::new();
-        let focus_map = LOADER.get_or_init(|| {
-            HashMap::from_iter(
-                clients
-                    .iter()
-                    .map(|c| (c.address.clone(), c.focus_history_id)),
-            )
-        });
-
+        let mut focus_map = get_recent_clients_map().lock().await;
+        if focus_map.is_empty() {
+            focus_map.extend(clients.iter().map(|c| (c.address.clone(), c.focus_history_id)));
+        };
         clients.sort_by(|a, b| {
-            focus_map
-                .get(&a.address)
-                .unwrap_or(&a.focus_history_id)
-                .cmp(focus_map.get(&b.address).unwrap_or(&b.focus_history_id))
+            focus_map.get(&a.address).unwrap_or(&a.focus_history_id).cmp(focus_map.get(&b.address).unwrap_or(&b.focus_history_id))
         });
     } else {
         clients = sort_clients(clients, info.ignore_workspaces, info.ignore_monitors);
@@ -204,46 +194,34 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
 
     let active = Client::get_active_async().await?;
 
-    let (active_class, active_workspace_id, active_monitor_id, active_address) = active
-        .as_ref()
-        .map(|a| {
-            (
-                a.class.clone(),
-                a.workspace.id,
-                a.monitor,
-                a.address.clone(),
-            )
-        })
-        .map_or_else(
-            || {
-                info!("No active client found");
-                let first = if info.reverse {
-                    clients.first().context("No clients found")?
-                } else {
-                    clients.last().context("No clients found")?
-                };
-                Ok::<(String, WorkspaceId, MonitorId, Address), anyhow::Error>((
-                    first.class.clone(),
-                    first.workspace.id,
-                    first.monitor,
-                    first.address.clone(),
-                ))
-            },
-            Ok,
-        )?;
+    let (active_class, active_workspace_id, active_monitor_id, active_address) = active.as_ref().map(|a| {
+        (
+            a.class.clone(),
+            a.workspace.id,
+            a.monitor,
+            a.address.clone(),
+        )
+    }).map_or_else(
+        || {
+            info!("No active client found");
+            let first = if info.reverse {
+                clients.first().context("No clients found")?
+            } else {
+                clients.last().context("No clients found")?
+            };
+            Ok::<(String, WorkspaceId, MonitorId, Address), anyhow::Error>((
+                first.class.clone(),
+                first.workspace.id,
+                first.monitor,
+                first.address.clone(),
+            ))
+        },
+        Ok,
+    )?;
 
-    let enabled_clients = clients
-        .iter()
-        .filter(|c| !info.filter_same_class || c.class == active_class)
-        .filter(|c| !info.filter_current_workspace || c.workspace.id == active_workspace_id)
-        .filter(|c| !info.filter_current_monitor || c.monitor == active_monitor_id)
-        .cloned()
-        .collect::<Vec<_>>();
+    let enabled_clients = clients.iter().filter(|c| !info.filter_same_class || c.class == active_class).filter(|c| !info.filter_current_workspace || c.workspace.id == active_workspace_id).filter(|c| !info.filter_current_monitor || c.monitor == active_monitor_id).cloned().collect::<Vec<_>>();
 
-    let selected_index = enabled_clients
-        .iter()
-        .position(|c| c.address == active_address)
-        .context("Active client not found in clients")?;
+    let selected_index = enabled_clients.iter().position(|c| c.address == active_address).context("Active client not found in clients")?;
     debug!("selected_index: {}", selected_index);
 
     Ok(Data {
@@ -254,6 +232,15 @@ pub async fn collect_data(info: Info) -> anyhow::Result<Data> {
         monitor_data,
         active,
     })
+}
+
+fn get_recent_clients_map() -> &'static Mutex<HashMap<Address, i8>> {
+    static MAP_LOCK: OnceLock<Mutex<HashMap<Address, i8>>> = OnceLock::new();
+    MAP_LOCK.get_or_init(|| { Mutex::new(HashMap::new()) })
+}
+
+pub async fn clear_recent_clients() {
+    get_recent_clients_map().lock().await.clear();
 }
 
 pub async fn switch_async(next_client: &Client, dry_run: bool) -> Result<(), HyprError> {
@@ -267,17 +254,13 @@ pub async fn switch_async(next_client: &Client, dry_run: bool) -> Result<(), Hyp
     if dry_run {
         #[allow(clippy::print_stdout)]
         {
-            println!("switch to next_client: {}", next_client.title);
+            println!("switch to next_client: {} ({})", next_client.title, next_client.class);
         }
     } else {
-        info!(
-            "switch to next_client: {}, {}",
-            next_client.title, next_client.workspace.id
-        );
+        info!("switch to next_client: {} ({})", next_client.title, next_client.class);
         Dispatch::call_async(FocusWindow(WindowIdentifier::Address(
             next_client.address.clone(),
-        )))
-            .await?;
+        ))).await?;
     }
 
     Ok(())
@@ -300,10 +283,7 @@ pub fn switch_workspace(workspace_name: &str, dry_run: bool) -> Result<(), HyprE
 
 /// use this to toggle special workspaces
 pub fn toggle_workspace(workspace_name: &str, dry_run: bool) -> Result<(), HyprError> {
-    let name = workspace_name
-        .strip_prefix("special:")
-        .unwrap_or(workspace_name)
-        .to_string();
+    let name = workspace_name.strip_prefix("special:").unwrap_or(workspace_name).to_string();
 
     if dry_run {
         #[allow(clippy::print_stdout)]
