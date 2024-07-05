@@ -34,16 +34,16 @@ const CSS: &str = r#"
     font-size: 30px;
     font-weight: bold;
     border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 20, 0.99);
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(20, 20, 20, 1);
 }
 .client {
     border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(25, 25, 25, 0.90);
 }
 .client:hover {
-    background-color: rgba(30, 30, 30, 0.99);
+    background-color: rgba(40, 40, 50, 1);
 }
 .client_active {
     border: 3px solid rgba(239, 9, 9, 0.94);
@@ -52,8 +52,8 @@ const CSS: &str = r#"
     font-size: 25px;
     font-weight: bold;
     border-radius: 15px;
-    border: 3px solid rgba(80, 80, 80, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
+    border: 3px solid rgba(70, 80, 90, 0.80);
+    background-color: rgba(20, 20, 25, 0.90);
 }
 .workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
@@ -63,8 +63,8 @@ const CSS: &str = r#"
 }
 window {
     border-radius: 15px;
-    opacity: 0.9;
-    border: 6px solid rgba(4, 126, 140, 0.75);
+    opacity: 0.85;
+    border: 6px solid rgba(15, 170, 190, 0.85);
 }
 "#;
 
@@ -73,7 +73,6 @@ lazy_static! {
     static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
     static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(5, |s| s.parse().expect("Failed to parse NEXT_INDEX_MAX"));
-    static ref EXIT_ON_CLICK: bool = option_env!("EXIT_ON_CLICK").map_or(true, |s| s.parse().expect("Failed to parse EXIT_ON_CLICK"));
     static ref WORKSPACE_GAP: usize = option_env!("WORKSPACE_GAP").map_or(15, |s| s.parse().expect("Failed to parse WORKSPACE_GAP"));
 }
 
@@ -169,6 +168,7 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
 fn update(
     share: Share,
     switch_ws_on_hover: bool,
+    stay_open_on_close: bool,
     workspaces_fixed: Fixed,
     data: MutexGuard<(Config, ClientsData, Option<Address>)>,
     window: ApplicationWindow,
@@ -231,16 +231,17 @@ fn update(
             workspace_frame.add_controller(gesture_2);
         }
 
+        // index of selected client (offset for selecting)
+        let selected_index = data.2.as_ref().and_then(|addr| data.1.enabled_clients.iter().position(|c| c.address == *addr));
         for client in clients {
             let client_active = data.2.as_ref().map_or(false, |addr| *addr == client.address);
-            let selected_index = data.1.enabled_clients.iter().position(|c| c.address == client.address);
             let index = data.1.enabled_clients.iter()
                 .position(|c| c.address == client.address)
-                .map_or(0, |i| i as i32) - selected_index.unwrap_or(0) as i32;
+                .map_or(0, |i| i as i32);
             let frame = client_ui(
                 client,
                 client_active,
-                index,
+                index - selected_index.unwrap_or(0) as i32,
                 data.1.enabled_clients.iter().any(|c| c.address == client.address),
             );
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
@@ -258,7 +259,7 @@ fn update(
                         .with_context(|| format!("Failed to focus client {}", client.class))
                         .map_err(|e| warn!("{:?}", e));
 
-                    if *EXIT_ON_CLICK {
+                    if !stay_open_on_close {
                         info!("Exiting on click of client window");
                         let _ = close(share.clone(), false).await
                             .with_context(|| "Failed to close daemon".to_string())
@@ -275,7 +276,7 @@ fn update(
     Ok(())
 }
 
-fn activate(share: Share, switch_ws_on_hover: bool, app: &Application, monitor: &Monitor) -> anyhow::Result<()> {
+fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, app: &Application, monitor: &Monitor) -> anyhow::Result<()> {
     let workspaces_fixed = Fixed::builder().css_classes(vec!["workspaces"]).build();
 
     let window = ApplicationWindow::builder().application(app).child(&workspaces_fixed).build();
@@ -287,14 +288,14 @@ fn activate(share: Share, switch_ws_on_hover: bool, app: &Application, monitor: 
         let (data_mut, cvar) = &*share;
         {
             let share_unlocked = data_mut.lock().await;
-            let _ = update(share.clone(), switch_ws_on_hover, workspaces_fixed.clone(), share_unlocked, window.clone(), &connector)
+            let _ = update(share.clone(), switch_ws_on_hover, stay_open_on_close, workspaces_fixed.clone(), share_unlocked, window.clone(), &connector)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor:?}"))
                 .map_err(|e| warn!("{:?}", e));
         }
 
         loop {
             let share_unlocked = cvar.wait(data_mut.lock().await).await;
-            let _ = update(share.clone(), switch_ws_on_hover, workspaces_fixed.clone(), share_unlocked, window.clone(), &connector)
+            let _ = update(share.clone(), switch_ws_on_hover, stay_open_on_close, workspaces_fixed.clone(), share_unlocked, window.clone(), &connector)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor:?}"))
                 .map_err(|e| warn!("{:?}", e));
         }
@@ -313,8 +314,7 @@ fn activate(share: Share, switch_ws_on_hover: bool, app: &Application, monitor: 
 }
 
 
-pub fn start_gui(share: Share, switch_ws_on_hover: bool, custom_css: Option<PathBuf>,
-) -> anyhow::Result<()> {
+pub fn start_gui(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, custom_css: Option<PathBuf>) -> anyhow::Result<()> {
     let application = Application::builder().application_id("com.github.h3rmt.hyprswitch").build();
 
     application.connect_startup(move |app| {
@@ -353,7 +353,7 @@ pub fn start_gui(share: Share, switch_ws_on_hover: bool, custom_css: Option<Path
                 };
                 if !empty {
                     let arc_share = share.clone();
-                    let _ = activate(arc_share, switch_ws_on_hover, app, &monitor).with_context(|| format!("Failed to activate for monitor {monitor:?}"))
+                    let _ = activate(arc_share, switch_ws_on_hover, stay_open_on_close, app, &monitor).with_context(|| format!("Failed to activate for monitor {monitor:?}"))
                         .map_err(|e| warn!("{:?}", e));
                 }
             });

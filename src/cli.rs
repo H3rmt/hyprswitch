@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug, Clone)]
-#[command(author, version, about, long_about = None, propagate_version = true)]
+#[command(author, version, about, long_about = None)]
 pub struct App {
     #[clap(flatten)]
     pub global_opts: GlobalOpts,
@@ -20,6 +20,10 @@ pub enum Command {
         /// Switch to workspaces when hovering over them in GUI
         #[arg(long)]
         switch_ws_on_hover: bool,
+
+        /// Don't close GUI when clicking on client
+        #[arg(long)]
+        stay_open_on_close: bool,
 
         /// Specify a path to custom css file
         #[arg(long)]
@@ -50,11 +54,11 @@ pub enum Command {
 #[derive(Args, Debug, Clone)]
 pub struct GlobalOpts {
     /// Print the command that would be executed
-    #[arg(short = 'd', long, global = true)]
+    #[arg(short = 'd', long)]
     pub dry_run: bool,
 
     /// Increase the verbosity level (max: -vv)
-    #[arg(short = 'v', global = true, action = clap::ArgAction::Count)]
+    #[arg(short = 'v', action = clap::ArgAction::Count)]
     pub verbose: u8,
 }
 

@@ -262,8 +262,8 @@ See [tests](/tests) for more details on how windows get sorted
     font-size: 30px;
     font-weight: bold;
     border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 20, 0.99);
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(20, 20, 20, 1);
   }
   ```
   </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
@@ -276,11 +276,11 @@ See [tests](/tests) for more details on how windows get sorted
   ```css
   .client {
     border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(25, 25, 25, 0.90);
   }
   .client:hover {
-    background-color: rgba(30, 30, 30, 0.99);
+    background-color: rgba(40, 40, 50, 1);
   }
   .client_active {
     border: 3px solid rgba(239, 9, 9, 0.94);
@@ -298,8 +298,8 @@ See [tests](/tests) for more details on how windows get sorted
     font-size: 25px;
     font-weight: bold;
     border-radius: 15px;
-    border: 3px solid rgba(80, 80, 80, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
+    border: 3px solid rgba(70, 80, 90, 0.80);
+    background-color: rgba(20, 20, 25, 0.90);
   }
   .workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
@@ -323,8 +323,8 @@ See [tests](/tests) for more details on how windows get sorted
   ```css
   window {
     border-radius: 15px;
-    opacity: 0.9;
-    border: 6px solid rgba(0, 0, 0, 0.4);
+    opacity: 0.85;
+    border: 6px solid rgba(15, 170, 190, 0.85);
   }
   ```
   </td><td><img src="imgs/css_window.png"/> </td></tr></table>
@@ -333,53 +333,53 @@ See [tests](/tests) for more details on how windows get sorted
 
 ```css
 .client-image {
-    margin: 15px;
+  margin: 15px;
 }
 
 .client-index {
-    margin: 6px;
-    padding: 5px;
-    font-size: 30px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 20, 0.99);
+  margin: 6px;
+  padding: 5px;
+  font-size: 30px;
+  font-weight: bold;
+  border-radius: 15px;
+  border: 3px solid rgba(80, 90, 120, 0.80);
+  background-color: rgba(20, 20, 20, 1);
 }
 
 .client {
-    border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
+  border-radius: 15px;
+  border: 3px solid rgba(80, 90, 120, 0.80);
+  background-color: rgba(25, 25, 25, 0.90);
 }
 
 .client:hover {
-    background-color: rgba(30, 30, 30, 0.99);
+  background-color: rgba(40, 40, 50, 1);
 }
 
 .client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
+  border: 3px solid rgba(239, 9, 9, 0.94);
 }
 
 .workspace {
-    font-size: 25px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(80, 80, 80, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
+  font-size: 25px;
+  font-weight: bold;
+  border-radius: 15px;
+  border: 3px solid rgba(70, 80, 90, 0.80);
+  background-color: rgba(20, 20, 25, 0.90);
 }
 
 .workspace_special {
-    border: 3px solid rgba(0, 255, 0, 0.4);
+  border: 3px solid rgba(0, 255, 0, 0.4);
 }
 
 .workspaces {
-    margin: 10px;
+  margin: 10px;
 }
 
 window {
-    border-radius: 15px;
-    opacity: 0.9;
-    border: 6px solid rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  opacity: 0.85;
+  border: 6px solid rgba(17, 171, 192, 0.85);
 }
 ```
 
@@ -387,12 +387,17 @@ window {
 
 ```css
 .client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
-    background-color: rgba(200, 9, 9, 0.80);
+  border: 3px solid rgba(239, 9, 9, 0.94);
+  background-color: rgba(200, 9, 9, 0.80);
 }
 
 .client-image {
-    margin: 10px;
+  margin: 10px;
+}
+
+window {
+  opacity: 1;
+  border: 6px solid rgba(0, 0, 0, 0.85);
 }
 ```
 

@@ -12,7 +12,7 @@ use hyprland::{
     shared::{Address, WorkspaceId},
 };
 use hyprland::shared::HyprError;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use tokio::sync::Mutex;
 
 use crate::{ClientsData, Command, Config, MonitorData, MonitorId, sort::sort_clients, WorkspaceData};
@@ -20,22 +20,32 @@ use crate::sort::update_clients;
 
 pub fn find_next_client<'a>(
     command: Command,
-    enabled_clients: &'a Vec<Client>,
-    selected_index: Option<&Address>,
+    enabled_clients: &'a [Client],
+    selected_addr: Option<&Address>,
 ) -> anyhow::Result<(&'a Client, usize)> {
-    let index = match selected_index {
+    let index = match selected_addr {
         Some(add) => {
-            let si = enabled_clients.iter().position(|c| c.address == *add).context("Selected client not found")?;
-            if command.reverse {
-                if si == 0 {
-                    enabled_clients.len() - command.offset as usize
+            let ind = enabled_clients.iter().position(|c| c.address == *add);
+            match ind {
+                Some(si) => if command.reverse {
+                    if si == 0 {
+                        enabled_clients.len() - command.offset as usize
+                    } else {
+                        si - command.offset as usize
+                    }
+                } else if si + command.offset as usize >= enabled_clients.len() {
+                    si + command.offset as usize - enabled_clients.len()
                 } else {
-                    si - command.offset as usize
+                    si + command.offset as usize
+                },
+                None => {
+                    warn!("selected client not found");
+                    if command.reverse {
+                        enabled_clients.len() - command.offset as usize
+                    } else {
+                        command.offset as usize
+                    }
                 }
-            } else if si + command.offset as usize >= enabled_clients.len() {
-                si + command.offset as usize - enabled_clients.len()
-            } else {
-                si + command.offset as usize
             }
         }
         None => {
@@ -48,7 +58,7 @@ pub fn find_next_client<'a>(
     };
 
     let next_client = enabled_clients
-        .into_iter()
+        .iter()
         .cycle()
         .nth(index)
         .context("No next client found")?;
@@ -114,7 +124,6 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
             workspaces.iter().filter(|ws| {
                 ws.monitor == monitors.iter().find(|m| m.id == *monitor_id).unwrap().name
             }).for_each(|workspace| {
-                x_offset += monitor_data.width;
                 wd.insert(
                     workspace.id,
                     WorkspaceData {
@@ -126,6 +135,7 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
                         width: monitor_data.width,
                     },
                 );
+                x_offset += monitor_data.width;
             });
         });
         wd
@@ -214,7 +224,7 @@ pub fn switch_workspace(workspace_name: &str, dry_run: bool) -> Result<(), HyprE
             println!("switch to workspace {workspace_name}");
         }
     } else {
-        info!("switch to workspace {workspace_name}");
+        debug!("switch to workspace {workspace_name}");
         Dispatch::call(Workspace(WorkspaceIdentifierWithSpecial::Name(
             workspace_name,
         )))?;
@@ -232,7 +242,7 @@ pub fn toggle_workspace(workspace_name: &str, dry_run: bool) -> Result<(), HyprE
             println!("toggle workspace {name}");
         }
     } else {
-        info!("toggle workspace {name}");
+        debug!("toggle workspace {name}");
         Dispatch::call(ToggleSpecialWorkspace(Some(name)))?;
     }
     Ok(())

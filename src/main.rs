@@ -21,13 +21,13 @@ async fn main() -> anyhow::Result<()> {
         hyprswitch::cli::Command::Simple { simple_opts } => {
             run_normal(simple_opts).await?;
         }
-        hyprswitch::cli::Command::Init { switch_ws_on_hover, custom_css } => {
+        hyprswitch::cli::Command::Init { switch_ws_on_hover, stay_open_on_close, custom_css } => {
             if hyprswitch::daemon::daemon_running().await {
                 warn!("Daemon already running");
                 return Ok(());
             }
             info!("Starting daemon");
-            start_daemon(switch_ws_on_hover, custom_css).await
+            start_daemon(switch_ws_on_hover, stay_open_on_close, custom_css).await
                 .context("Failed to run daemon")?;
             return Ok(());
         }

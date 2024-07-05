@@ -11,10 +11,7 @@ use crate::{Config, handle, Share};
 use crate::daemon::{get_socket_path_buff, gui};
 use crate::daemon::handle::handle_client;
 
-pub async fn start_daemon(
-    switch_ws_on_hover: bool,
-    custom_css: Option<PathBuf>,
-) -> anyhow::Result<()> {
+pub async fn start_daemon(switch_ws_on_hover: bool, stay_open_on_close: bool, custom_css: Option<PathBuf>) -> anyhow::Result<()> {
     // we don't have any config here, so we just create a default one with no filtering
     let config = Config::default();
     let (clients_data, active_address) = handle::collect_data(config).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
@@ -25,7 +22,7 @@ pub async fn start_daemon(
     info!("Starting gui");
     let arc_share = share.clone();
     std::thread::spawn(move || {
-        gui::start_gui(arc_share, switch_ws_on_hover, custom_css).expect("Failed to start gui")
+        gui::start_gui(arc_share, switch_ws_on_hover, stay_open_on_close, custom_css).expect("Failed to start gui")
     });
 
     info!("Starting daemon");
