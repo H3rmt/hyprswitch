@@ -6,7 +6,7 @@ use tokio::net::UnixStream;
 
 pub mod start;
 pub mod send;
-mod daemon;
+mod handle;
 mod gui;
 mod funcs;
 

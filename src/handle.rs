@@ -15,16 +15,17 @@ use hyprland::shared::HyprError;
 use log::{debug, error, info};
 use tokio::sync::Mutex;
 
-use crate::{Command, Config, Data, MonitorData, MonitorId, sort::sort_clients, WorkspaceData};
+use crate::{ClientsData, Command, Config, MonitorData, MonitorId, sort::sort_clients, WorkspaceData};
 use crate::sort::update_clients;
 
-pub fn find_next_client(
+pub fn find_next_client<'a>(
     command: Command,
-    enabled_clients: Vec<Client>,
-    selected_index: Option<usize>,
-) -> anyhow::Result<(Client, usize)> {
+    enabled_clients: &'a Vec<Client>,
+    selected_index: Option<&Address>,
+) -> anyhow::Result<(&'a Client, usize)> {
     let index = match selected_index {
-        Some(si) => {
+        Some(add) => {
+            let si = enabled_clients.iter().position(|c| c.address == *add).context("Selected client not found")?;
             if command.reverse {
                 if si == 0 {
                     enabled_clients.len() - command.offset as usize
@@ -46,7 +47,6 @@ pub fn find_next_client(
         }
     };
 
-    debug!("selected_index: {:?}, offset: {}, reverse: {}, index: {}",selected_index, command.offset, command.reverse, index);
     let next_client = enabled_clients
         .into_iter()
         .cycle()
@@ -56,12 +56,12 @@ pub fn find_next_client(
     Ok((next_client, index))
 }
 
-pub async fn collect_data(config: Config) -> anyhow::Result<Data> {
+pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option<Address>)> {
     let mut clients = Clients::get_async()
         .await?
         .into_iter()
         .filter(|c| c.workspace.id != -1) // ignore clients on invalid workspaces
-        .filter(|w| config.show_special_workspaces || !w.workspace.id < 0)
+        .filter(|w| config.include_special_workspaces || !w.workspace.id < 0)
         .collect::<Vec<_>>();
 
     let monitors = Monitors::get_async().await?;
@@ -72,7 +72,7 @@ pub async fn collect_data(config: Config) -> anyhow::Result<Data> {
             .await?
             .into_iter()
             .filter(|w| w.id != -1) // ignore nonexistent clients
-            .filter(|w| config.show_special_workspaces || !w.id < 0)
+            .filter(|w| config.include_special_workspaces || !w.id < 0)
             .collect::<Vec<_>>();
 
         workspaces.sort_by(|a, b| a.id.cmp(&b.id));
@@ -167,19 +167,12 @@ pub async fn collect_data(config: Config) -> anyhow::Result<Data> {
         .filter(|c| !config.filter_current_monitor || active_monitor_id.map_or(true, |m| c.monitor == m))
         .cloned().collect::<Vec<_>>();
 
-    let selected_index = active_address.map_or(Ok(None), |ad|
-        enabled_clients.iter().position(|c| c.address == ad).context("Active client not found in clients").map(Some),
-    )?;
-    debug!("selected_index: {:?}", selected_index);
-
-    Ok(Data {
+    Ok((ClientsData {
         clients,
         enabled_clients,
         workspace_data,
         monitor_data,
-        selected_index,
-        active,
-    })
+    }, active_address))
 }
 
 fn get_recent_clients_map() -> &'static Mutex<HashMap<Address, i8>> {

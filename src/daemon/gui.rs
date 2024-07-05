@@ -16,11 +16,12 @@ use gtk4::{
 use gtk4::Application;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
+use hyprland::shared::Address;
 use lazy_static::lazy_static;
-use log::{debug, info, warn};
+use log::{info, warn};
 use tokio::sync::MutexGuard;
 
-use crate::{Config, Data, DRY, handle, icons, Share};
+use crate::{ClientsData, Config, DRY, handle, icons, Share};
 use crate::daemon::funcs::{close, switch_gui};
 
 const CSS: &str = r#"
@@ -79,7 +80,7 @@ lazy_static! {
 fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) -> Frame {
     let theme = IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
-        debug!("Icon found for {}", client.class);
+        // debug!("Icon found for {}", client.class);
         theme.lookup_icon(
             &client.class,
             &[],
@@ -89,10 +90,10 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
             IconLookupFlags::PRELOAD,
         )
     } else {
-        debug!("Icon not found for {}", client.class);
+        // debug!("Icon not found for {}", client.class);
 
         icons::get_icon_name(&client.class).map(|icon| {
-            debug!("desktop file found for {}: {icon}", client.class);
+            // debug!("desktop file found for {}: {icon}", client.class);
 
             // check if icon is a path or name
             if icon.contains('/') {
@@ -122,9 +123,9 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
         })
     };
 
-    if let Some(f) = icon.file() {
-        debug!("Icon file: {:?}", f.path());
-    }
+    // if let Some(f) = icon.file() {
+    //     debug!("Icon file: {:?}", f.path());
+    // }
 
     let picture = Picture::builder().css_classes(vec!["client-image"]).paintable(&icon).build();
 
@@ -169,7 +170,7 @@ fn update(
     share: Share,
     switch_ws_on_hover: bool,
     workspaces_fixed: Fixed,
-    data: MutexGuard<(Config, Data)>,
+    data: MutexGuard<(Config, ClientsData, Option<Address>)>,
     window: ApplicationWindow,
     connector: &str,
 ) -> anyhow::Result<()> {
@@ -189,10 +190,10 @@ fn update(
         let y = workspace.1.y as f64 / *SIZE_FACTOR as f64;
         let width = (workspace.1.width / *SIZE_FACTOR as u16) as i32;
         let height = (workspace.1.height / *SIZE_FACTOR as u16) as i32;
-        debug!(
-            "Rendering workspace {} at {x}, {y} with size {width}, {height}",
-            workspace.1.name
-        );
+        // debug!(
+        //     "Rendering workspace {} at {x}, {y} with size {width}, {height}",
+        //     workspace.1.name
+        // );
 
         let clients = data.1.clients.iter().filter(|client| client.monitor == *monitor_id && client.workspace.id == *workspace.0).collect::<Vec<_>>();
 
@@ -231,10 +232,11 @@ fn update(
         }
 
         for client in clients {
-            let client_active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
+            let client_active = data.2.as_ref().map_or(false, |addr| *addr == client.address);
+            let selected_index = data.1.enabled_clients.iter().position(|c| c.address == client.address);
             let index = data.1.enabled_clients.iter()
                 .position(|c| c.address == client.address)
-                .map_or(0, |i| i as i32) - data.1.selected_index.unwrap_or(0) as i32; // TODO improve no index window
+                .map_or(0, |i| i as i32) - selected_index.unwrap_or(0) as i32;
             let frame = client_ui(
                 client,
                 client_active,
@@ -252,13 +254,13 @@ fn update(
             gesture.connect_pressed(clone!(@strong client, @strong window, @strong share => move |gesture, _, _, _| {
                 gesture.set_state(EventSequenceState::Claimed);
                 tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(clone!(@strong client, @strong window, @strong share => async move {
-                    let _ = switch_gui(share.clone(), client.clone(), 213).await // TODO add index
+                    let _ = switch_gui(share.clone(), client.clone()).await
                         .with_context(|| format!("Failed to focus client {}", client.class))
                         .map_err(|e| warn!("{:?}", e));
 
                     if *EXIT_ON_CLICK {
                         info!("Exiting on click of client window");
-                        let _ = close(share.clone()).await
+                        let _ = close(share.clone(), false).await
                             .with_context(|| "Failed to close daemon".to_string())
                             .map_err(|e| warn!("{:?}", e));
                     }

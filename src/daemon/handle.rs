@@ -1,47 +1,14 @@
 use anyhow::Context;
 use log::{debug, error, info, warn};
-use tokio::{
-    io::AsyncReadExt,
-    net::UnixListener,
-};
+use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 
 use crate::{ACTIVE, Command, Config, Share};
-use crate::daemon::{get_socket_path_buff, INIT_COMMAND_LEN, SWITCH_COMMAND_LEN};
+use crate::daemon::{INIT_COMMAND_LEN, SWITCH_COMMAND_LEN};
 use crate::daemon::funcs::{close, init, switch};
 
-// Share, Command
-pub async fn start(
-    share: Share,
-) -> anyhow::Result<()> {
-    let buf = get_socket_path_buff();
-    let path = buf.as_path();
-    // remove old PATH
-    if path.exists() {
-        std::fs::remove_file(path).with_context(|| format!("Failed to remove old socket {path:?}"))?;
-    }
-    let listener = UnixListener::bind(path).with_context(|| format!("Failed to bind to socket {path:?}"))?;
-
-    info!("Starting listener on {path:?}");
-    loop {
-        match listener.accept().await {
-            Ok((stream, _)) => {
-                debug!("Accepted client");
-                let share = share.clone();
-                tokio::spawn(async move {
-                    handle_client(stream, share).await
-                        .context("Failed to handle client").unwrap_or_else(|e| warn!("{:?}", e));
-                });
-            }
-            Err(e) => {
-                warn!("Failed to accept client: {}", e);
-            }
-        }
-    }
-}
-
-async fn handle_client(
+pub async fn handle_client(
     mut stream: UnixStream, share: Share,
 ) -> anyhow::Result<()> {
     let mut buffer = Vec::new();
@@ -73,7 +40,7 @@ async fn handle_client(
                     sort_recent: buffer[4] == 1,
                     ignore_workspaces: buffer[5] == 1,
                     ignore_monitors: buffer[6] == 1,
-                    show_special_workspaces: buffer[7] == 1,
+                    include_special_workspaces: buffer[7] == 1,
                 };
                 info!("Received init command {config:?}");
                 init(share, config).await.with_context(|| format!("Failed to execute with d_info {config:?}"))?;
@@ -85,7 +52,7 @@ async fn handle_client(
         b'c' => {
             if *ACTIVE.get().expect("ACTIVE not set").lock().await {
                 info!("Received close command");
-                close(share).await.with_context(|| "Failed to close daemon".to_string())?;
+                close(share, buffer[1] == 1).await.with_context(|| "Failed to close daemon".to_string())?;
             }
         }
         b's' => {
