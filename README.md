@@ -38,87 +38,51 @@ command and update the GUI.
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
-The script has the following commands:
-- `hyprswitch` Switch to the next window
-
-
-- Sorting related
-    - `--reverse`/`-r` Reverse the order of windows / switch backwards
-    - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused
-      window
-    - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently
-      focused window
-    - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused
-      window
-
-    - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows
-      when the daemon was started)
-
-    - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
-    - `--ignore-monitors` Sort all windows on matching workspaces on monitors
-      like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
-
-- GUI related
-    - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
-    - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the
-      command to switch window if `--switch-on-close` is true
-    - `--do-initial-execute` Also execute the initial command when starting the daemon
-    - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
-    - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every
-      command
-    - `--custom-css` Path to a css file to
-      add [custom styles](#CSS) e.g., `/home/user/hyprswitch.css` / `/usr/local/share/hyprswitch.css`
-
-- `--offset`/`-o` Switch to a specific window offset (default 1)
-- `--show-special-workspaces` Show special workspaces (e.g., scratchpad)
-- `--dry-run`/`-d` Print the command that would be executed
-- `-v` Increase the verbosity level (-vv ist max)
-
-#### Here are some examples:
+## Examples:
 
 (Modify the $... variables to use the keys you prefer)
 
-### No-GUI Config
+### Simple (No GUI)
 
-Just use 2 keybindings to switch to 'next' or 'previous' window
+#### Next Previous
 
 ```ini
+# 2 Keybindings to switch to 'next' or 'previous' window
 $key = TAB
 $modifier = CTRL
 $reverse = SHIFT
 
-bind = $modifier, $key, exec, hyprswitch
-bind = $modifier $reverse, $key, exec, hyprswitch -r
+bind = $modifier, $key, exec, hyprswitch simple
+bind = $modifier $reverse, $key, exec, hyprswitch simple -r
 ```
 
-### No-GUI sort-recent Config
-
-Just use 1 keybinding to switch to previously focused application
+#### Last Focused
 
 ```ini
+# 1 Keybinding to switch to previously focused application
+$key = TAB
+$modifier = CTRL
+
+bind = $modifier, $key, exec, hyprswitch simple --sort-recent
+```
+
+#### Same class/type
+
+```ini
+# 2 Keybindings to switch to next' or 'previous' window of same class/type
 $key = TAB
 $modifier = CTRL
 $reverse = SHIFT
 
-bind = $modifier, $key, exec, hyprswitch --sort-recent
+bind = $modifier, $key, exec, hyprswitch simple -s
+bind = $modifier $reverse, $key, exec, hyprswitch simple -s -r
 ```
 
-### Same class No-GUI Config
+### GUI
 
-Just use 2 keybindings to switch to 'next' or 'previous' window of same class/type
+**Add ``exec-once = hyprswitch init &`` to your `~/.config/hypr/hyprland.conf` to start the daemon on startup**
 
-```ini
-$key = TAB
-$modifier = CTRL
-$reverse = SHIFT
-
-bind = $modifier, $key, exec, hyprswitch -s
-bind = $modifier $reverse, $key, exec, hyprswitch -s -r
-```
-
-### GUI Config
-
-Press $modifier + $key to open the GUI, use mouse to click on window
+#### Press $modifier + $key to open the GUI, use mouse to click on window
 
 ```ini
 $key = TAB
@@ -126,12 +90,12 @@ $modifier = SUPER
 $switch_release = SUPER_L
 
 # open hyprswitch
-bind = $modifier, $key, exec, hyprswitch --daemon
+bind = $modifier, $key, exec, hyprswitch gui
 
 # close hyprswitch
-bindr = $modifier, $switch_release, exec, hyprswitch --stop-daemon
-# if it somehow doesn't close on releasing $switch_release, escape can kill
-bindrn = ,escape, exec, pkill hyprswitch
+bindr = $modifier, $switch_release, exec, hyprswitch close
+# if it somehow doesn't close on releasing $switch_release, escape can kill (doesnt switch)
+bindrn = ,escape, exec, hyprswitch close --kill
 ```
 
 ### GUI + Keyboard Config
@@ -139,7 +103,7 @@ bindrn = ,escape, exec, pkill hyprswitch
 Complex Config with submap to allow for many different keybindings when opening hyprswitch
 (run `hyprctl dispatch submap reset` if stuck in switch submap)
 
-- Press (and hold) $modifier + $key to open the GUI and switch trough window
+- Press (and hold) $modifier + $key to open the GUI and switch trough windows
 - Release $key and press 3 to switch to the third next window
 - Release $key and press/hold $reverse + $key to traverse in reverse order
 - Release $modifier ($modifier_release) to execute the switch and close the gui
@@ -151,38 +115,38 @@ $modifier_release = ALT_L
 $reverse = SHIFT
 
 # allows repeated switching with same keypress that starts the submap
-binde = $modifier, $key, exec, hyprswitch --daemon --do-initial-execute
+binde = $modifier, $key, exec, hyprswitch gui --do-initial-execute
 bind = $modifier, $key, submap, switch
 
 # allows repeated switching with same keypress that starts the submap
-binde = $modifier $reverse, $key, exec, hyprswitch --daemon --do-initial-execute -r
+binde = $modifier $reverse, $key, exec, hyprswitch gui --do-initial-execute -r
 bind = $modifier $reverse, $key, submap, switch
 
 submap = switch
 # allow repeated window switching in submap (same keys as repeating while starting)
-binde = $modifier, $key, exec, hyprswitch --daemon
-binde = $modifier $reverse, $key, exec, hyprswitch --daemon -r
+binde = $modifier, $key, exec, hyprswitch gui
+binde = $modifier $reverse, $key, exec, hyprswitch gui -r
 
-# switch to specific window offset
-bind = $modifier, 1, exec, hyprswitch --daemon --offset=1
-bind = $modifier, 2, exec, hyprswitch --daemon --offset=2
-bind = $modifier, 3, exec, hyprswitch --daemon --offset=3
-bind = $modifier, 4, exec, hyprswitch --daemon --offset=4
-bind = $modifier, 5, exec, hyprswitch --daemon --offset=5
+# switch to specific window offset (TODO replace with a more dynamic solution)
+bind = $modifier, 1, exec, hyprswitch gui --offset=1
+bind = $modifier, 2, exec, hyprswitch gui --offset=2
+bind = $modifier, 3, exec, hyprswitch gui --offset=3
+bind = $modifier, 4, exec, hyprswitch gui --offset=4
+bind = $modifier, 5, exec, hyprswitch gui --offset=5
 
-bind = $modifier $reverse, 1, exec, hyprswitch --daemon --offset=1 -r
-bind = $modifier $reverse, 2, exec, hyprswitch --daemon --offset=2 -r
-bind = $modifier $reverse, 3, exec, hyprswitch --daemon --offset=3 -r
-bind = $modifier $reverse, 4, exec, hyprswitch --daemon --offset=4 -r
-bind = $modifier $reverse, 5, exec, hyprswitch --daemon --offset=5 -r
+bind = $modifier $reverse, 1, exec, hyprswitch gui --offset=1 -r
+bind = $modifier $reverse, 2, exec, hyprswitch gui --offset=2 -r
+bind = $modifier $reverse, 3, exec, hyprswitch gui --offset=3 -r
+bind = $modifier $reverse, 4, exec, hyprswitch gui --offset=4 -r
+bind = $modifier $reverse, 5, exec, hyprswitch gui --offset=5 -r
 
 
 # exit submap and stop hyprswitch
-bindrt = $modifier, $modifier_release, exec, hyprswitch --stop-daemon
+bindrt = $modifier, $modifier_release, exec, hyprswitch close
 bindrt = $modifier, $modifier_release, submap, reset
 
-# if it somehow doesn't close on releasing $switch_release, escape can kill
-bindr = ,escape, exec, pkill hyprswitch
+# if it somehow doesn't close on releasing $switch_release, escape can kill (doesnt switch)
+bindr = ,escape, exec, hyprswitch close --kill
 bindr = ,escape, submap, reset
 submap = reset
 ```
@@ -335,53 +299,53 @@ See [tests](/tests) for more details on how windows get sorted
 
 ```css
 .client-image {
-  margin: 15px;
+    margin: 15px;
 }
 
 .client-index {
-  margin: 6px;
-  padding: 5px;
-  font-size: 30px;
-  font-weight: bold;
-  border-radius: 15px;
-  border: 3px solid rgba(80, 90, 120, 0.80);
-  background-color: rgba(20, 20, 20, 1);
+    margin: 6px;
+    padding: 5px;
+    font-size: 30px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(20, 20, 20, 1);
 }
 
 .client {
-  border-radius: 15px;
-  border: 3px solid rgba(80, 90, 120, 0.80);
-  background-color: rgba(25, 25, 25, 0.90);
+    border-radius: 15px;
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(25, 25, 25, 0.90);
 }
 
 .client:hover {
-  background-color: rgba(40, 40, 50, 1);
+    background-color: rgba(40, 40, 50, 1);
 }
 
 .client_active {
-  border: 3px solid rgba(239, 9, 9, 0.94);
+    border: 3px solid rgba(239, 9, 9, 0.94);
 }
 
 .workspace {
-  font-size: 25px;
-  font-weight: bold;
-  border-radius: 15px;
-  border: 3px solid rgba(70, 80, 90, 0.80);
-  background-color: rgba(20, 20, 25, 0.90);
+    font-size: 25px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(70, 80, 90, 0.80);
+    background-color: rgba(20, 20, 25, 0.90);
 }
 
 .workspace_special {
-  border: 3px solid rgba(0, 255, 0, 0.4);
+    border: 3px solid rgba(0, 255, 0, 0.4);
 }
 
 .workspaces {
-  margin: 10px;
+    margin: 10px;
 }
 
 window {
-  border-radius: 15px;
-  opacity: 0.85;
-  border: 6px solid rgba(17, 171, 192, 0.85);
+    border-radius: 15px;
+    opacity: 0.85;
+    border: 6px solid rgba(17, 171, 192, 0.85);
 }
 ```
 
@@ -389,17 +353,17 @@ window {
 
 ```css
 .client_active {
-  border: 3px solid rgba(239, 9, 9, 0.94);
-  background-color: rgba(200, 9, 9, 0.80);
+    border: 3px solid rgba(239, 9, 9, 0.94);
+    background-color: rgba(200, 9, 9, 0.80);
 }
 
 .client-image {
-  margin: 10px;
+    margin: 10px;
 }
 
 window {
-  opacity: 1;
-  border: 6px solid rgba(0, 0, 0, 0.85);
+    opacity: 1;
+    border: 6px solid rgba(0, 0, 0, 0.85);
 }
 ```
 

@@ -1,6 +1,6 @@
 use anyhow::Context;
 use clap::Parser;
-use log::{info, warn};
+use log::{debug, info, warn};
 use notify_rust::Notification;
 use tokio::sync::Mutex;
 
@@ -84,7 +84,8 @@ async fn stop_daemon(kill: bool) -> anyhow::Result<()> {
 async fn run_normal(opts: SimpleOpts) -> anyhow::Result<()> {
     let config = Config::from(opts.clone());
     let (clients_data, active_address) = handle::collect_data(config).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
-
+    debug!("Clients data: {:?}", clients_data);
+    
     let command = Command::from(opts);
     let (next_client, _) = handle::find_next_client(command, &clients_data.enabled_clients, active_address.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
     info!("Next client: {:?}", next_client.class);

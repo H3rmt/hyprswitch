@@ -1,6 +1,6 @@
 use anyhow::Context;
 use hyprland::data::Client;
-use log::info;
+use log::{debug, info};
 
 use crate::{ACTIVE, Command, Config, DRY, handle, Share};
 use crate::daemon::gui;
@@ -14,7 +14,8 @@ pub async fn switch_gui(share: Share, next_client: Client) -> anyhow::Result<()>
     let mut lock = latest.lock().await;
 
     let (clients_data, _) = handle::collect_data(lock.0).await.with_context(|| format!("Failed to collect data with config {:?}", lock.0))?;
-
+    debug!("Clients data: {:?}", clients_data);
+    
     lock.1 = clients_data;
     lock.2 = Some(next_client.address.clone());
 
@@ -35,6 +36,7 @@ pub async fn switch(share: Share, command: Command) -> anyhow::Result<()> {
     };
 
     let (clients_data, _) = handle::collect_data(lock.0).await.with_context(|| format!("Failed to collect data with config {:?}", lock.0))?;
+    debug!("Clients data: {:?}", clients_data);
     lock.1 = clients_data;
     lock.2 = Some(next_client_address);
 
@@ -68,7 +70,8 @@ pub async fn close(share: Share, kill: bool) -> anyhow::Result<()> {
 
 pub async fn init(share: Share, config: Config) -> anyhow::Result<()> {
     let (clients_data, active_address) = handle::collect_data(config).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
-
+    debug!("Clients data: {:?}", clients_data);
+    
     let (latest, cvar) = &*share;
     let mut lock = latest.lock().await;
 
