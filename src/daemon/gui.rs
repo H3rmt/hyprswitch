@@ -343,17 +343,18 @@ pub fn start_gui(share: Share, switch_ws_on_hover: bool, stay_open_on_close: boo
         for monitor in monitors {
             tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(async {
                 // check if any client is on this monitor
-                let (latest, _cvar) = &*share;
-                let lock = latest.lock().await;
-                let empty = {
-                    let connector = monitor.connector().with_context(|| {
-                        format!("Failed to get connector for monitor {monitor:?}")
-                    }).expect("Failed to get connector for monitor");
-                    let (monitor_id, _monitor_data) = lock.1.monitor_data.iter().find(|(_, v)| v.connector == connector).with_context(|| {
-                        format!("Failed to find monitor with connector {connector}")
-                    }).expect("Failed to find monitor with connector");
-                    !lock.1.clients.iter().any(|client| client.monitor == *monitor_id)
-                };
+                // let (latest, _cvar) = &*share;
+                // let lock = latest.lock().await;
+                // let empty = {
+                //     let connector = monitor.connector().with_context(|| {
+                //         format!("Failed to get connector for monitor {monitor:?}")
+                //     }).expect("Failed to get connector for monitor");
+                //     let (monitor_id, _monitor_data) = lock.1.monitor_data.iter().find(|(_, v)| v.connector == connector).with_context(|| {
+                //         format!("Failed to find monitor with connector {connector}")
+                //     }).expect("Failed to find monitor with connector");
+                //     !lock.1.clients.iter().any(|client| client.monitor == *monitor_id)
+                // };
+                let empty = false; // temporary fix for empty monitor
                 if !empty {
                     let arc_share = share.clone();
                     let _ = activate(arc_share, switch_ws_on_hover, stay_open_on_close, app, &monitor).with_context(|| format!("Failed to activate for monitor {monitor:?}"))
