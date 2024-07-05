@@ -1,17 +1,16 @@
 #![deny(clippy::print_stdout)]
 
-#[cfg(feature = "gui")]
-pub mod daemon;
-#[cfg(feature = "gui")]
-pub mod gui;
+use crate::cli::Args;
+
 pub mod handle;
-#[cfg(feature = "gui")]
-mod icons;
+pub mod icons;
 pub mod sort;
+pub mod daemon;
+pub mod cli;
 
 pub type MonitorId = i128;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MonitorData {
     pub x: u16,
     pub y: u16,
@@ -20,7 +19,7 @@ pub struct MonitorData {
     pub connector: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct WorkspaceData {
     pub x: u16,
     pub y: u16,
@@ -30,17 +29,15 @@ pub struct WorkspaceData {
     pub monitor: MonitorId,
 }
 
-#[cfg(feature = "gui")]
+
 #[derive(Debug, Clone, Copy)]
-pub struct DaemonInfo {
+pub struct Command {
     pub reverse: bool,
     pub offset: u8,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Info {
-    pub reverse: bool,
-    pub offset: u8,
+pub struct Config {
     pub ignore_monitors: bool,
     pub ignore_workspaces: bool,
     pub sort_recent: bool,
@@ -50,18 +47,47 @@ pub struct Info {
     pub show_special_workspaces: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Data {
     pub clients: Vec<hyprland::data::Client>,
     pub enabled_clients: Vec<hyprland::data::Client>,
-    pub selected_index: usize,
     pub workspace_data: std::collections::HashMap<hyprland::shared::WorkspaceId, WorkspaceData>,
     pub monitor_data: std::collections::HashMap<MonitorId, MonitorData>,
+    pub selected_index: Option<usize>,
     pub active: Option<hyprland::data::Client>,
 }
 
-#[cfg(feature = "gui")]
-pub type Share = std::sync::Arc<(tokio::sync::Mutex<(Info, Data)>, tokio_condvar::Condvar)>;
+pub type Share = std::sync::Arc<(tokio::sync::Mutex<(Config, Data)>, tokio_condvar::Condvar)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+
+/// global variable to store if daemon is active (displaying GUI)
+pub static ACTIVE: std::sync::OnceLock<tokio::sync::Mutex<bool>> = std::sync::OnceLock::new();
+
+impl From<Args> for Config {
+    fn from(args: Args) -> Self {
+        Self {
+            filter_same_class: args.filter_same_class,
+            filter_current_workspace: args.filter_current_workspace,
+            filter_current_monitor: args.filter_current_monitor,
+            sort_recent: args.sort_recent,
+            ignore_monitors: args.ignore_monitors,
+            ignore_workspaces: args.ignore_workspaces,
+            show_special_workspaces: args.show_special_workspaces,
+        }
+    }
+}
+
+impl From<Args> for Command {
+    fn from(args: Args) -> Self {
+        Self {
+            reverse: args.reverse,
+            offset: args.offset,
+        }
+    }
+}
+
+// trait FUTURE: Future<Output=anyhow::Result<()>> + Send + 'static {}
+// trait AsyncFN<F: FUTURE, Args: Any>: Copy + Send + 'static + FnOnce(Args) -> F {}
