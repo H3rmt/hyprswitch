@@ -18,7 +18,7 @@ use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
 use hyprland::shared::Address;
 use lazy_static::lazy_static;
-use log::{info, warn};
+use log::{debug, info, warn};
 use tokio::sync::MutexGuard;
 
 use crate::{ClientsData, Config, DRY, handle, icons, Share};
@@ -235,6 +235,8 @@ fn update(
         let selected_index = data.2.as_ref().and_then(|addr| data.1.enabled_clients.iter().position(|c| c.address == *addr));
         for client in clients {
             let client_active = data.2.as_ref().map_or(false, |addr| *addr == client.address);
+            // debug!("Rendering client {}", client.class);
+            // debug!("Client active: {}", client_active);
             let index = data.1.enabled_clients.iter()
                 .position(|c| c.address == client.address)
                 .map_or(0, |i| i as i32);
@@ -295,6 +297,7 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, ap
 
         loop {
             let share_unlocked = cvar.wait(data_mut.lock().await).await;
+            debug!("Updating workspaces...");
             let _ = update(share.clone(), switch_ws_on_hover, stay_open_on_close, workspaces_fixed.clone(), share_unlocked, window.clone(), &connector)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor:?}"))
                 .map_err(|e| warn!("{:?}", e));

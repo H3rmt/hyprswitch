@@ -43,8 +43,17 @@ pub async fn handle_client(
                     include_special_workspaces: buffer[7] == 1,
                 };
                 info!("Received init command {config:?}");
-                init(share, config).await.with_context(|| format!("Failed to execute with d_info {config:?}"))?;
-                debug!("Daemon initialised");
+
+                match init(share, config).await.with_context(|| format!("Failed to init with config {config:?}")) {
+                    Ok(_) => {
+                        debug!("Daemon initialised");
+                        stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                    }
+                    Err(e) => {
+                        error!("{:?}", e);
+                        stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                    }
+                };
             } else {
                 warn!("Invalid command length");
             }
@@ -52,7 +61,15 @@ pub async fn handle_client(
         b'c' => {
             if *ACTIVE.get().expect("ACTIVE not set").lock().await {
                 info!("Received close command");
-                close(share, buffer[1] == 1).await.with_context(|| "Failed to close daemon".to_string())?;
+                match close(share, buffer[1] == 1).await.with_context(|| format!("Failed to close gui  kill:{}", buffer[1] == 1)) {
+                    Ok(_) => {
+                        stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                    }
+                    Err(e) => {
+                        error!("{:?}", e);
+                        stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                    }
+                };
             }
         }
         b's' => {
@@ -63,7 +80,15 @@ pub async fn handle_client(
                         offset: buffer[2],
                     };
                     info!("Received switch command {command:?}");
-                    switch(share, command).await.with_context(|| format!("Failed to execute with command {command:?}"))?;
+                    match switch(share, command).await.with_context(|| format!("Failed to execute with command {command:?}")) {
+                        Ok(_) => {
+                            stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                        }
+                        Err(e) => {
+                            error!("{:?}", e);
+                            stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                        }
+                    };
                 } else {
                     warn!("Invalid command length");
                 }

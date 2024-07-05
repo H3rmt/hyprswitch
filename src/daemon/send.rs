@@ -9,36 +9,42 @@ use crate::daemon::{get_socket_path_buff, INIT_COMMAND_LEN, SWITCH_COMMAND_LEN};
 pub async fn send_check_command() -> anyhow::Result<bool> {
     // send 's' to identify as switch command
     let buf = &[b'r'];
-    let mut check = send(buf).await.with_context(|| format!("Failed to send switch command {buf:?}"))?;
+    let mut stream = send(buf).await.with_context(|| format!("Failed to send switch command {buf:?}"))?;
     let mut buffer = Vec::new();
-    check.read_buf(&mut buffer).await.context("Failed to read data from buffer")?;
+    stream.read_buf(&mut buffer).await.context("Failed to read data from buffer")?;
     Ok(buffer[0] == b'1')
 }
 
 
-pub async fn send_switch_command(command: Command) -> anyhow::Result<()> {
+pub async fn send_switch_command(command: Command) -> anyhow::Result<bool> {
     // send 's' to identify as switch command
     let buf: &[u8; SWITCH_COMMAND_LEN] = &[b's', command.reverse as u8, command.offset];
-    send(buf).await.with_context(|| format!("Failed to send switch command {buf:?}"))?;
-    Ok(())
+    let mut stream = send(buf).await.with_context(|| format!("Failed to send switch command {buf:?}"))?;
+    let mut buffer = Vec::new();
+    stream.read_buf(&mut buffer).await.context("Failed to read data from buffer")?;
+    Ok(buffer[0] == b'1')
 }
 
-pub async fn send_init_command(config: Config) -> anyhow::Result<()> {
+pub async fn send_init_command(config: Config) -> anyhow::Result<bool> {
     // send 'i' to identify as init command
     let buf: &[u8; INIT_COMMAND_LEN] = &[b'i',
         config.filter_same_class as u8, config.filter_current_workspace as u8,
         config.filter_current_monitor as u8, config.sort_recent as u8,
         config.ignore_workspaces as u8, config.ignore_monitors as u8, config.include_special_workspaces as u8
     ];
-    send(buf).await.with_context(|| format!("Failed to send init command {buf:?}"))?;
-    Ok(())
+    let mut stream = send(buf).await.with_context(|| format!("Failed to send init command {buf:?}"))?;
+    let mut buffer = Vec::new();
+    stream.read_buf(&mut buffer).await.context("Failed to read data from buffer")?;
+    Ok(buffer[0] == b'1')
 }
 
-pub async fn send_kill_daemon(kill: bool) -> anyhow::Result<()> {
+pub async fn send_kill_daemon(kill: bool) -> anyhow::Result<bool> {
     // send 'c' to identify as close command
     let buf = &[b'c', kill as u8];
-    send(buf).await.with_context(|| format!("Failed to send close command {buf:?}"))?;
-    Ok(())
+    let mut stream = send(buf).await.with_context(|| format!("Failed to send close command {buf:?}"))?;
+    let mut buffer = Vec::new();
+    stream.read_buf(&mut buffer).await.context("Failed to read data from buffer")?;
+    Ok(buffer[0] == b'1')
 }
 
 async fn send(buffer: &[u8]) -> anyhow::Result<UnixStream> {
