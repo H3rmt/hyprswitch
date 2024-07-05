@@ -1,6 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use log::{info, warn};
+use notify_rust::Notification;
 use tokio::sync::Mutex;
 
 use hyprswitch::{ACTIVE, Command, Config, DRY, handle};
@@ -10,7 +11,15 @@ use hyprswitch::daemon::start::start_daemon;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let cli = App::parse();
+    let cli = App::try_parse()
+        .with_context(|| "Failed to parse command line arguments")
+        .map_err(|e| {
+            let _ = Notification::new()
+                .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+                .body(&format!("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch to see config) {:?}", e))
+                .show();
+            e
+        })?;
     stderrlog::new().module(module_path!()).verbosity(cli.global_opts.verbose as usize + 1).init()
         .context("Failed to initialize logging").unwrap_or_else(|e| warn!("{:?}", e));
 

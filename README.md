@@ -38,7 +38,9 @@ command and update the GUI.
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
-The script accepts these parameters:
+The script has the following commands:
+- `hyprswitch` Switch to the next window
+
 
 - Sorting related
     - `--reverse`/`-r` Reverse the order of windows / switch backwards
