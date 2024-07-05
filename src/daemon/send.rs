@@ -1,5 +1,5 @@
 use anyhow::Context;
-use log::{debug, info};
+use log::info;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
