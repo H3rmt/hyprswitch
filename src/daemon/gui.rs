@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -17,11 +16,13 @@ use gtk4::{
 use gtk4::Application;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
+use hyprland::shared::Address;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
 use tokio::sync::MutexGuard;
 
-use crate::{Data, DRY, handle, icons, Info, Share};
+use crate::{ClientsData, Config, DRY, handle, icons, Share};
+use crate::daemon::funcs::{close, switch_gui};
 
 const CSS: &str = r#"
 .client-image {
@@ -33,16 +34,16 @@ const CSS: &str = r#"
     font-size: 30px;
     font-weight: bold;
     border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 20, 0.99);
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(20, 20, 20, 1);
 }
 .client {
     border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(25, 25, 25, 0.90);
 }
 .client:hover {
-    background-color: rgba(30, 30, 30, 0.99);
+    background-color: rgba(40, 40, 50, 1);
 }
 .client_active {
     border: 3px solid rgba(239, 9, 9, 0.94);
@@ -51,8 +52,8 @@ const CSS: &str = r#"
     font-size: 25px;
     font-weight: bold;
     border-radius: 15px;
-    border: 3px solid rgba(80, 80, 80, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
+    border: 3px solid rgba(70, 80, 90, 0.80);
+    background-color: rgba(20, 20, 25, 0.90);
 }
 .workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
@@ -62,8 +63,8 @@ const CSS: &str = r#"
 }
 window {
     border-radius: 15px;
-    opacity: 0.9;
-    border: 6px solid rgba(4, 126, 140, 0.75);
+    opacity: 0.85;
+    border: 6px solid rgba(15, 170, 190, 0.85);
 }
 "#;
 
@@ -72,14 +73,13 @@ lazy_static! {
     static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
     static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(5, |s| s.parse().expect("Failed to parse NEXT_INDEX_MAX"));
-    static ref EXIT_ON_CLICK: bool = option_env!("EXIT_ON_CLICK").map_or(true, |s| s.parse().expect("Failed to parse EXIT_ON_CLICK"));
     static ref WORKSPACE_GAP: usize = option_env!("WORKSPACE_GAP").map_or(15, |s| s.parse().expect("Failed to parse WORKSPACE_GAP"));
 }
 
 fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) -> Frame {
     let theme = IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
-        debug!("Icon found for {}", client.class);
+        // debug!("Icon found for {}", client.class);
         theme.lookup_icon(
             &client.class,
             &[],
@@ -89,10 +89,10 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
             IconLookupFlags::PRELOAD,
         )
     } else {
-        debug!("Icon not found for {}", client.class);
+        // debug!("Icon not found for {}", client.class);
 
         icons::get_icon_name(&client.class).map(|icon| {
-            debug!("desktop file found for {}: {icon}", client.class);
+            // debug!("desktop file found for {}: {icon}", client.class);
 
             // check if icon is a path or name
             if icon.contains('/') {
@@ -122,14 +122,11 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
         })
     };
 
-    if let Some(f) = icon.file() {
-        debug!("Icon file: {:?}", f.path());
-    }
+    // if let Some(f) = icon.file() {
+    //     debug!("Icon file: {:?}", f.path());
+    // }
 
-    let picture = Picture::builder()
-        .css_classes(vec!["client-image"])
-        .paintable(&icon)
-        .build();
+    let picture = Picture::builder().css_classes(vec!["client-image"]).paintable(&icon).build();
 
     // create a pixelated and saturated version of the icon
     if !enabled {
@@ -149,32 +146,17 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
         }
     }
 
-    let overlay = Overlay::builder()
-        .child(&picture)
-        .build();
+    let overlay = Overlay::builder().child(&picture).build();
 
     if enabled && *NEXT_INDEX_MAX != 0 && index <= *NEXT_INDEX_MAX && index >= -(*NEXT_INDEX_MAX) {
-        let label = Label::builder()
-            .css_classes(vec!["client-index"])
-            .label(index.to_string())
-            .halign(Align::End)
-            .valign(Align::End)
-            .build();
+        let label = Label::builder().css_classes(vec!["client-index"]).label(index.to_string()).halign(Align::End).valign(Align::End).build();
         overlay.add_overlay(&label)
     }
 
-    let label = Label::builder()
-        .overflow(Overflow::Visible)
-        .ellipsize(pango::EllipsizeMode::End)
-        .label(&client.class
-        ).build();
+    let label = Label::builder().overflow(Overflow::Visible).ellipsize(pango::EllipsizeMode::End).label(&client.class
+    ).build();
 
-    let client_frame = Frame::builder()
-        .css_classes(vec!["client"])
-        .label_xalign(0.5)
-        .label_widget(&label)
-        .child(&overlay)
-        .build();
+    let client_frame = Frame::builder().css_classes(vec!["client"]).label_xalign(0.5).label_widget(&label).child(&overlay).build();
 
     if client_active {
         client_frame.add_css_class("client_active");
@@ -183,16 +165,14 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
     client_frame
 }
 
-#[allow(clippy::too_many_arguments)]
-fn update<F: Future<Output=anyhow::Result<()>>, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
+fn update(
+    share: Share,
+    switch_ws_on_hover: bool,
+    stay_open_on_close: bool,
     workspaces_fixed: Fixed,
-    focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
-    close: impl FnOnce(Share) -> G + Copy + Send + 'static,
-    data: MutexGuard<(Info, Data)>,
+    data: MutexGuard<(Config, ClientsData, Option<Address>)>,
     window: ApplicationWindow,
     connector: &str,
-    data_arc: Share,
-    switch_ws_on_hover: bool,
 ) -> anyhow::Result<()> {
     // remove all children
     while let Some(child) = workspaces_fixed.first_child() {
@@ -210,10 +190,10 @@ fn update<F: Future<Output=anyhow::Result<()>>, G: Future<Output=anyhow::Result<
         let y = workspace.1.y as f64 / *SIZE_FACTOR as f64;
         let width = (workspace.1.width / *SIZE_FACTOR as u16) as i32;
         let height = (workspace.1.height / *SIZE_FACTOR as u16) as i32;
-        debug!(
-            "Rendering workspace {} at {x}, {y} with size {width}, {height}",
-            workspace.1.name
-        );
+        // debug!(
+        //     "Rendering workspace {} at {x}, {y} with size {width}, {height}",
+        //     workspace.1.name
+        // );
 
         let clients = data.1.clients.iter().filter(|client| client.monitor == *monitor_id && client.workspace.id == *workspace.0).collect::<Vec<_>>();
 
@@ -231,33 +211,39 @@ fn update<F: Future<Output=anyhow::Result<()>>, G: Future<Output=anyhow::Result<
             if *workspace.0 < 0 {
                 // special workspace
                 gesture_2.connect_enter(clone!(@strong name => move |_, _x, _y| {
-                    handle::toggle_workspace(&name, *DRY.get().expect("DRY not set"))
+                    let _ = handle::toggle_workspace(&name, *DRY.get().expect("DRY not set"))
                         .with_context(|| format!("Failed to execute toggle workspace with ws_name {name}"))
-                        .unwrap_or_else(|e| warn!("{:?}", e));
+                        .map_err(|e| warn!("{:?}", e));
                 }));
 
                 gesture_2.connect_leave(clone!(@strong name => move |_| {
-                    handle::toggle_workspace(&name, *DRY.get().expect("DRY not set"))
+                    let _ = handle::toggle_workspace(&name, *DRY.get().expect("DRY not set"))
                         .with_context(|| format!("Failed to execute toggle workspace with ws_name {name}"))
-                        .unwrap_or_else(|e| warn!("{:?}", e));
+                        .map_err(|e| warn!("{:?}", e));
                 }));
             } else {
                 gesture_2.connect_enter(clone!(@strong name => move |_, _x, _y| {
-                    handle::switch_workspace(&name, *DRY.get().expect("DRY not set"))
+                    let _ = handle::switch_workspace(&name, *DRY.get().expect("DRY not set"))
                         .with_context(|| format!("Failed to execute switch workspace with ws_name {name:?}"))
-                        .unwrap_or_else(|e| warn!("{:?}", e));
+                        .map_err(|e| warn!("{:?}", e));
                 }));
             }
             workspace_frame.add_controller(gesture_2);
         }
 
+        // index of selected client (offset for selecting)
+        let selected_index = data.2.as_ref().and_then(|addr| data.1.enabled_clients.iter().position(|c| c.address == *addr));
         for client in clients {
-            let client_active = data.1.active.as_ref().map_or(false, |active| active.address == client.address);
-            let index = data.1.enabled_clients.iter().position(|c| c.address == client.address).map_or(0, |i| i as i32) - data.1.selected_index as i32;
+            let client_active = data.2.as_ref().map_or(false, |addr| *addr == client.address);
+            // debug!("Rendering client {}", client.class);
+            // debug!("Client active: {}", client_active);
+            let index = data.1.enabled_clients.iter()
+                .position(|c| c.address == client.address)
+                .map_or(0, |i| i as i32);
             let frame = client_ui(
                 client,
                 client_active,
-                index,
+                index - selected_index.unwrap_or(0) as i32,
                 data.1.enabled_clients.iter().any(|c| c.address == client.address),
             );
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
@@ -268,18 +254,18 @@ fn update<F: Future<Output=anyhow::Result<()>>, G: Future<Output=anyhow::Result<
             workspace_fixed.put(&frame, x, y);
 
             let gesture = GestureClick::new();
-            gesture.connect_pressed(clone!(@strong client, @strong window, @strong data_arc => move |gesture, _, _, _| {
+            gesture.connect_pressed(clone!(@strong client, @strong window, @strong share => move |gesture, _, _, _| {
                 gesture.set_state(EventSequenceState::Claimed);
-                tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(clone!(@strong client, @strong window, @strong data_arc => async move {
-                    focus_client(client.clone(), data_arc.clone()).await
+                tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(clone!(@strong client, @strong window, @strong share => async move {
+                    let _ = switch_gui(share.clone(), client.clone()).await
                         .with_context(|| format!("Failed to focus client {}", client.class))
-                        .unwrap_or_else(|e| warn!("{:?}", e));
+                        .map_err(|e| warn!("{:?}", e));
 
-                    if *EXIT_ON_CLICK {
+                    if !stay_open_on_close {
                         info!("Exiting on click of client window");
-                        close(data_arc.clone()).await
+                        let _ = close(share.clone(), false).await
                             .with_context(|| "Failed to close daemon".to_string())
-                            .unwrap_or_else(|e| warn!("{:?}", e));
+                            .map_err(|e| warn!("{:?}", e));
                     }
                 }));
             }));
@@ -292,14 +278,7 @@ fn update<F: Future<Output=anyhow::Result<()>>, G: Future<Output=anyhow::Result<
     Ok(())
 }
 
-fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
-    focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
-    close: impl FnOnce(Share) -> G + Copy + Send + 'static,
-    app: &Application,
-    monitor: &Monitor,
-    data: Share,
-    switch_ws_on_hover: bool,
-) -> anyhow::Result<()> {
+fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, app: &Application, monitor: &Monitor) -> anyhow::Result<()> {
     let workspaces_fixed = Fixed::builder().css_classes(vec!["workspaces"]).build();
 
     let window = ApplicationWindow::builder().application(app).child(&workspaces_fixed).build();
@@ -308,19 +287,20 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Out
 
     let connector = monitor.connector().with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
     glib::MainContext::default().spawn_local(clone!(@strong window, @strong monitor => async move {
-        let (data_mut, cvar) = &*data;
+        let (data_mut, cvar) = &*share;
         {
-            let first = data_mut.lock().await;
-            update(workspaces_fixed.clone(), focus_client, close, first, window.clone(), &connector, data.clone(), switch_ws_on_hover)
+            let share_unlocked = data_mut.lock().await;
+            let _ = update(share.clone(), switch_ws_on_hover, stay_open_on_close, workspaces_fixed.clone(), share_unlocked, window.clone(), &connector)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor:?}"))
-                .unwrap_or_else(|e| warn!("{:?}", e));
+                .map_err(|e| warn!("{:?}", e));
         }
 
         loop {
-            let data_mut_unlock = cvar.wait(data_mut.lock().await).await;
-            update(workspaces_fixed.clone(), focus_client, close, data_mut_unlock, window.clone(), &connector, data.clone(), switch_ws_on_hover)
+            let share_unlocked = cvar.wait(data_mut.lock().await).await;
+            debug!("Updating workspaces...");
+            let _ = update(share.clone(), switch_ws_on_hover, stay_open_on_close, workspaces_fixed.clone(), share_unlocked, window.clone(), &connector)
                 .with_context(|| format!("Failed to update workspaces for monitor {monitor:?}"))
-                .unwrap_or_else(|e| warn!("{:?}", e));
+                .map_err(|e| warn!("{:?}", e));
         }
     }));
 
@@ -330,19 +310,14 @@ fn activate<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Out
 
     app.connect_activate(move |_| {
         window.present();
+        window.hide();
     });
 
     Ok(())
 }
 
 
-pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Future<Output=anyhow::Result<()>> + Send + 'static>(
-    data: Share,
-    focus_client: impl FnOnce(Client, Share) -> F + Copy + Send + 'static,
-    close: impl FnOnce(Share) -> G + Copy + Send + 'static,
-    switch_ws_on_hover: bool,
-    custom_css: Option<PathBuf>,
-) -> anyhow::Result<()> {
+pub fn start_gui(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, custom_css: Option<PathBuf>) -> anyhow::Result<()> {
     let application = Application::builder().application_id("com.github.h3rmt.hyprswitch").build();
 
     application.connect_startup(move |app| {
@@ -363,29 +338,27 @@ pub fn start_gui<F: Future<Output=anyhow::Result<()>> + Send + 'static, G: Futur
                 STYLE_PROVIDER_PRIORITY_USER,
             );
         }
-        let monitors = gdk::DisplayManager::get().list_displays().first()
-            .context("No Display found (Failed to get all monitor)").expect("Failed to get all monitors")
-            .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>();
+        let monitors = gdk::DisplayManager::get().list_displays().first().context("No Display found (Failed to get all monitor)").expect("Failed to get all monitors").monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>();
 
         for monitor in monitors {
             tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(async {
                 // check if any client is on this monitor
-                let (data_mut, _cvar) = &*data;
-                let d = data_mut.lock().await;
-                let empty = {
-                    let connector = monitor.connector().with_context(|| {
-                        format!("Failed to get connector for monitor {monitor:?}")
-                    }).expect("Failed to get connector for monitor");
-                    let (monitor_id, _monitor_data) = d.1.monitor_data.iter().find(|(_, v)| v.connector == connector).with_context(|| {
-                        format!("Failed to find monitor with connector {connector}")
-                    }).expect("Failed to find monitor with connector");
-                    !d.1.clients.iter().any(|client| client.monitor == *monitor_id)
-                };
+                // let (latest, _cvar) = &*share;
+                // let lock = latest.lock().await;
+                // let empty = {
+                //     let connector = monitor.connector().with_context(|| {
+                //         format!("Failed to get connector for monitor {monitor:?}")
+                //     }).expect("Failed to get connector for monitor");
+                //     let (monitor_id, _monitor_data) = lock.1.monitor_data.iter().find(|(_, v)| v.connector == connector).with_context(|| {
+                //         format!("Failed to find monitor with connector {connector}")
+                //     }).expect("Failed to find monitor with connector");
+                //     !lock.1.clients.iter().any(|client| client.monitor == *monitor_id)
+                // };
+                let empty = false; // temporary fix for empty monitor
                 if !empty {
-                    let data = data.clone();
-                    activate(focus_client, close, app, &monitor, data, switch_ws_on_hover)
-                        .with_context(|| format!("Failed to activate for monitor {monitor:?}"))
-                        .unwrap_or_else(|e| warn!("{:?}", e));
+                    let arc_share = share.clone();
+                    let _ = activate(arc_share, switch_ws_on_hover, stay_open_on_close, app, &monitor).with_context(|| format!("Failed to activate for monitor {monitor:?}"))
+                        .map_err(|e| warn!("{:?}", e));
                 }
             });
         }

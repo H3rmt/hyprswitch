@@ -10,7 +10,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-  RUSTFLAGS: "-Dwarnings"
 
 jobs:
   build:
@@ -60,3 +59,5 @@ jobs:
           prefix-key: rust-build
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
+        env:
+          RUSTFLAGS: "-Dwarnings"
