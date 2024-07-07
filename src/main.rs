@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use log::{debug, info, warn};
-use notify_rust::Notification;
+use notify_rust::{Notification, Urgency};
 use tokio::sync::Mutex;
 
 use hyprswitch::{ACTIVE, Command, Config, DRY, handle};
@@ -14,9 +14,11 @@ async fn main() -> anyhow::Result<()> {
     let cli = App::try_parse()
         .with_context(|| "Failed to parse command line arguments")
         .map_err(|e| {
-            let _ = Notification::new()
+            let _ = Notification::new() // TODO switch to main branch
                 .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                .body(&format!("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch to see config) {:?}", e))
+                .body(&format!("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/dev/README.md to see config) {:?}", e))
+                .timeout(10000)
+                .hint(notify_rust::Hint::Urgency(Urgency::Critical))
                 .show();
             e
         })?;
@@ -42,6 +44,16 @@ async fn main() -> anyhow::Result<()> {
         }
         hyprswitch::cli::Command::Gui { simple_opts, do_initial_execute } => {
             info!("Daemon already running, Sending command to daemon");
+            if !hyprswitch::daemon::daemon_running().await {
+                let _ = Notification::new() // TODO switch to main branch
+                    .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+                    .body("Daemon not running (add ``exec-once = hyprswitch init &``) to your Hyprland config\n(visit https://github.com/H3rmt/hyprswitch/blob/dev/README.md to see GUI configs)")
+                    .timeout(10000)
+                    .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+                    .show();
+                return Err(anyhow::anyhow!("Daemon not running"));
+            }
+
             if send_check_command().await? {
                 // Daemon is running
                 let command = Command::from(simple_opts);
@@ -85,7 +97,7 @@ async fn run_normal(opts: SimpleOpts) -> anyhow::Result<()> {
     let config = Config::from(opts.clone());
     let (clients_data, active_address) = handle::collect_data(config).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
     debug!("Clients data: {:?}", clients_data);
-    
+
     let command = Command::from(opts);
     let (next_client, _) = handle::find_next_client(command, &clients_data.enabled_clients, active_address.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
     info!("Next client: {:?}", next_client.class);
