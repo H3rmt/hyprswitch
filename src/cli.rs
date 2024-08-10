@@ -21,7 +21,7 @@ pub enum Command {
         #[arg(long)]
         switch_ws_on_hover: bool,
 
-        /// Don't close GUI when clicking on client
+        /// Don't close GUI when clicking on client (only close with `hyprswitch close`)
         #[arg(long)]
         stay_open_on_close: bool,
 
@@ -34,7 +34,7 @@ pub enum Command {
         #[clap(flatten)]
         simple_opts: SimpleOpts,
 
-        /// Also execute the initial command when opening the GUI
+        /// If the GUI isn't open, execute the command immediately, otherwise just open the GUI
         #[arg(long)]
         do_initial_execute: bool,
     },
@@ -80,7 +80,7 @@ pub struct SimpleOpts {
     #[arg(long)]
     pub ignore_workspaces: bool,
 
-    /// Sort all windows on matching workspaces on monitors like one big monitor, workspace_ids must have offset of 10 for each monitor (https://github.com/H3rmt/hyprswitch/blob/master/README.md#ignore-monitors-flag)
+    /// Sort all windows on matching workspaces on monitors like one big monitor
     #[arg(long)]
     pub ignore_monitors: bool,
 

@@ -124,6 +124,7 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
             workspaces.iter().filter(|ws| {
                 ws.monitor == monitors.iter().find(|m| m.id == *monitor_id).unwrap().name
             }).for_each(|workspace| {
+                // debug!("workspace: {:?}", workspace);
                 wd.insert(
                     workspace.id,
                     WorkspaceData {
@@ -156,11 +157,23 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
             focus_map.extend(clients.iter().map(|c| (c.address.clone(), c.focus_history_id)));
         };
         clients.sort_by(|a, b| {
-            focus_map.get(&a.address).unwrap_or(&a.focus_history_id).cmp(focus_map.get(&b.address).unwrap_or(&b.focus_history_id))
+            let a_focus_id = focus_map.get(&a.address);
+            let b_focus_id = focus_map.get(&b.address);
+            if a_focus_id.is_none() && b_focus_id.is_none() {
+                a.focus_history_id.cmp(&b.focus_history_id) // both none -> sort by focus_history_id
+            } else if a_focus_id.is_none() {
+                std::cmp::Ordering::Greater
+            } else if b_focus_id.is_none() {
+                std::cmp::Ordering::Less
+            } else {
+                #[allow(clippy::unnecessary_unwrap)]
+                a_focus_id.unwrap().cmp(b_focus_id.unwrap())
+            }
         });
     } else {
         clients = sort_clients(clients, config.ignore_workspaces, config.ignore_monitors);
     }
+    
 
     let active = Client::get_active_async().await?;
 

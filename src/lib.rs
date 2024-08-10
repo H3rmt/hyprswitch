@@ -69,7 +69,8 @@ pub struct ClientsData {
     pub monitor_data: std::collections::HashMap<MonitorId, MonitorData>,
 }
 
-pub type Share = std::sync::Arc<(tokio::sync::Mutex<(Config, ClientsData, Option<hyprland::shared::Address>)>, tokio_condvar::Condvar)>;
+// config, clients, selected-client, gui-show
+pub type Share = std::sync::Arc<(tokio::sync::Mutex<(Config, ClientsData, Option<hyprland::shared::Address>, bool)>, tokio::sync::Notify)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();

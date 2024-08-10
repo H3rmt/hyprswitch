@@ -4,8 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use log::{debug, info, warn};
 use tokio::net::UnixListener;
-use tokio::sync::Mutex;
-use tokio_condvar::Condvar;
+use tokio::sync::{Mutex, Notify};
 
 use crate::{Config, handle, Share};
 use crate::daemon::{get_socket_path_buff, gui};
@@ -17,13 +16,10 @@ pub async fn start_daemon(switch_ws_on_hover: bool, stay_open_on_close: bool, cu
     let (clients_data, active_address) = handle::collect_data(config).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
 
     // create arc to send to threads containing the config the daemon was initialised with and the data (clients, etc.)
-    let share: Share = Arc::new((Mutex::new((config, clients_data, active_address)), Condvar::new()));
+    let share: Share = Arc::new((Mutex::new((config, clients_data, active_address, false)), Notify::new()));
 
     info!("Starting gui");
-    let arc_share = share.clone();
-    std::thread::spawn(move || {
-        gui::start_gui(arc_share, switch_ws_on_hover, stay_open_on_close, custom_css).expect("Failed to start gui")
-    });
+    gui::start_gui(&share, switch_ws_on_hover, stay_open_on_close, custom_css).expect("Failed to start gui");
 
     info!("Starting daemon");
     let buf = get_socket_path_buff();

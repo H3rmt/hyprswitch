@@ -151,59 +151,6 @@ bindr = ,escape, submap, reset
 submap = reset
 ```
 
-# Rust Features
-
-GUI functionality is included by default, but can be disabled with `--no-default-features` or enabled
-with `--features gui` when installing via cargo
-
-if the gui should use libadwaita pass `--features libadwaita` to the cargo install command
-
-# Sorting of windows
-
-See [tests](/tests) for more details on how windows get sorted
-
-```
-   1      2  3      4
-1  +------+  +------+
-2  |  1   |  |  2   |
-3  |      |  +------+
-4  +------+  +------+
-5  +------+  |  4   |
-6  |  3   |  |      |
-7  +------+  +------+
-   1      2  3      4
-```
-
-```
-                  Monitor 1
-      Workspace 1           Workspace 2
-1  +------+  +------+ | +------+  +------+
-2  |  1   |  |  2   |   |  5   |  |  6   |
-3  |      |  |      | | |      |  +------+
-4  +------+  +------+   +------+  +------+
-5  +------+  +------+ | +------+  |  8   |
-6  |  3   |  |  4   |   |  7   |  |      |
-7  +------+  +------+ | +------+  +------+
-   1      2  3      4   1      2  3      4
-```
-
-```
-      1       3    5   6     8   10  11  12
-   +----------------------------------------+
-1  |  +-------+                      +---+  |
-2  |  |   1   |              +---+   | 5 |  |
-3  |  |       |    +---+     | 3 |   |   |  |
-4  |  +-------+    | 2 |     +---+   |   |  |
-5  |               +---+     +---+   |   |  |
-6  |                         | 4 |   |   |  |
-7  |    +-------+            +---+   +---+  |
-8  |    |   6   |         +----+            |
-9  |    |       |         | 7  |            |
-10 |    +-------+         +----+            |
-   +----------------------------------------+
-        2       4         7    9
-```
-
 # CSS
 
 ### Class used:
@@ -369,6 +316,58 @@ window {
 
 # Other
 
+### Rust Features
+
+if the gui should use libadwaita pass `--features libadwaita` to the cargo install command
+
+
+### Sorting of windows
+
+See [tests](/tests) for more details on how windows get sorted
+
+```
+   1      2  3      4
+1  +------+  +------+
+2  |  1   |  |  2   |
+3  |      |  +------+
+4  +------+  +------+
+5  +------+  |  4   |
+6  |  3   |  |      |
+7  +------+  +------+
+   1      2  3      4
+```
+
+```
+                  Monitor 1
+      Workspace 1           Workspace 2
+1  +------+  +------+ | +------+  +------+
+2  |  1   |  |  2   |   |  5   |  |  6   |
+3  |      |  |      | | |      |  +------+
+4  +------+  +------+   +------+  +------+
+5  +------+  +------+ | +------+  |  8   |
+6  |  3   |  |  4   |   |  7   |  |      |
+7  +------+  +------+ | +------+  +------+
+   1      2  3      4   1      2  3      4
+```
+
+```
+      1       3    5   6     8   10  11  12
+   +----------------------------------------+
+1  |  +-------+                      +---+  |
+2  |  |   1   |              +---+   | 5 |  |
+3  |  |       |    +---+     | 3 |   |   |  |
+4  |  +-------+    | 2 |     +---+   |   |  |
+5  |               +---+     +---+   |   |  |
+6  |                         | 4 |   |   |  |
+7  |    +-------+            +---+   +---+  |
+8  |    |   6   |         +----+            |
+9  |    |       |         | 7  |            |
+10 |    +-------+         +----+            |
+   +----------------------------------------+
+        2       4         7    9
+```
+
+
 ### Ignore monitors flag
 
 This flag requires that workspaces have an offset of 10 for each monitor. (TODO, make this configurable)
@@ -452,6 +451,5 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
 - `NEXT_INDEX_MAX` i32 [default: 5]: Maximum number of windows to display the next index for (can be used to show the
   next index for the first 5 windows if you have -u bindings for the next/last 5 windows). Setting it to -1 will disable
   the next index indicator
-- `EXIT_ON_CLICK` bool [default: true]: Exit the GUI when clicking on a window
 - `WORKSPACE_GAP` usize [default: 15]: Gap between workspaces in the GUI (cant be configured via CSS as the workspace
   positions are calculated from the real workspace positions)

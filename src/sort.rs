@@ -4,8 +4,7 @@ use std::{
 };
 
 use hyprland::{data::Client, shared::WorkspaceId};
-use lazy_static::lazy_static;
-use log::error;
+use log::{debug, error};
 
 use crate::{MonitorData, MonitorId, WorkspaceData};
 
@@ -36,15 +35,50 @@ where
             monitors.into_values().map(|m| vec![m]).collect()
         }
         (false, true) => {
-            // monitor -> clients
-            let mut workspaces: BTreeMap<WorkspaceId, Vec<SC>> = BTreeMap::new();
-            for client in clients {
+            // monitor -> workspaces
+            let mut workspaces: BTreeMap<MonitorId, Vec<WorkspaceId>> = BTreeMap::new();
+            for client in clients.iter() {
                 workspaces
-                    .entry(client.wsi(client.m()))
+                    .entry(client.m())
+                    .or_default()
+                    .push(client.ws());
+            }
+            // sort workspaces on monitor (and remove duplicates)
+            for (_, ws) in workspaces.iter_mut() {
+                ws.sort();
+                ws.dedup();
+                ws.reverse();
+            }
+
+            // old (real) workspaceId -> new workspaceId
+            let mut workspaces_map: BTreeMap<WorkspaceId, WorkspaceId> = BTreeMap::new();
+            loop {
+                let mut current_workspaces = vec![];
+                // get one workspace from each monitor
+                for (_, ws) in workspaces.iter_mut() {
+                    if let Some(workspace) = ws.pop() {
+                        current_workspaces.push(workspace);
+                    }
+                }
+                if current_workspaces.is_empty() {
+                    break;
+                }
+                let new_workspace_id = current_workspaces[0];
+                debug!("current_workspaces: {:?}, new_workspace_id: {}", current_workspaces, new_workspace_id);
+                for wss in current_workspaces {
+                    workspaces_map.insert(wss, new_workspace_id);
+                }
+            }
+
+            let mut new_workspaces: BTreeMap<WorkspaceId, Vec<SC>> = BTreeMap::new();
+            for client in clients {
+                new_workspaces
+                    .entry(*workspaces_map.get(&client.ws()).expect("Workspace for client not found"))
                     .or_default()
                     .push(client);
             }
-            workspaces.into_values().map(|m| vec![m]).collect()
+
+            new_workspaces.into_values().map(|m| vec![m]).collect()
         }
         (false, false) => {
             // monitor -> workspace -> clients
@@ -94,7 +128,6 @@ where
                     3. Check if any window(not taken) on left bottom is higher than current bottom (if true take this)
                     => Take if Top higher than current Bottom and no window on left has higher Top than window Bottom
                      */
-
                     for (i, client) in queue.iter().enumerate() {
                         let client_top = client.y();
                         let client_bottom = client.y() + client.h();
@@ -194,11 +227,10 @@ where
             };
 
             if let (Some(ws), Some((md_x, md_y))) = (ws, md) {
-                // println!("c: {:?}; {}; {}", c ,ws.x, md.x);
-                // println!("c: {:?}; {}; {}", c ,ws.y, md.y);
+                // info!("c: {:?}; {}x{}; {}x{}", c.identifier() ,ws.x,ws.y, md_x, md_y);
                 c.set_x(c.x() + ws.x - md_x); // move x cord by workspace offset
                 c.set_y(c.y() + ws.y - md_y); // move y cord by workspace offset
-                                              // println!("c: {:?}", c);
+                // println!("c: {:?}", c);
                 Some(c)
             } else {
                 None
@@ -218,20 +250,11 @@ pub trait SortableClient {
     fn h(&self) -> u16;
     /// workspace
     fn ws(&self) -> WorkspaceId;
-    /// workspace-Identifier (if ignore-monitors to map 2 workspaces on different monitors together)
-    fn wsi(&self, monitor_index: MonitorId) -> i32;
     /// monitor
     fn m(&self) -> MonitorId;
     fn set_x(&mut self, x: u16);
     fn set_y(&mut self, y: u16);
     fn identifier(&self) -> String;
-}
-
-lazy_static! {
-    /// allows for mapping 2 workspaces on different monitors together
-    /// e.g. if you have 2 monitors with 2 workspaces each, you can map the 2 workspaces on the second monitor to the 2 workspaces on the first monitor
-    /// MONITOR_WORKSPACE_INDEX_OFFSET gets multiplied by the number of monitors to get the workspace id of the second monitor, so 10 means 10 workspaces per monitor
-    pub static ref MONITOR_WORKSPACE_INDEX_OFFSET: i32 = option_env!("MONITOR_WORKSPACE_INDEX_OFFSET").map_or(10, |s| s.parse().expect("Failed to parse MONITOR_WORKSPACE_INDEX_OFFSET"));
 }
 
 impl SortableClient for Client {
@@ -249,9 +272,6 @@ impl SortableClient for Client {
     }
     fn ws(&self) -> WorkspaceId {
         self.workspace.id
-    }
-    fn wsi(&self, monitor_index: MonitorId) -> i32 {
-        self.workspace.id - (*MONITOR_WORKSPACE_INDEX_OFFSET * monitor_index as i32)
     }
     fn m(&self) -> MonitorId {
         self.monitor
