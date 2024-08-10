@@ -28,6 +28,10 @@ pub enum Command {
         /// Specify a path to custom css file
         #[arg(long)]
         custom_css: Option<PathBuf>,
+
+        /// Show the window title in the GUI (fallback to class if title is empty)
+        #[arg(long)]
+        show_title: bool,
     },
     /// Starts/Opens the GUI + sends the command to daemon of GUI is already opened
     Gui {

@@ -65,7 +65,7 @@ lazy_static! {
     static ref WORKSPACE_GAP: usize = option_env!("WORKSPACE_GAP").map_or(15, |s| s.parse().expect("Failed to parse WORKSPACE_GAP"));
 }
 
-fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) -> Frame {
+fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32, enabled: bool) -> Frame {
     let theme = IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
         // debug!("Icon found for {}", client.class);
@@ -142,8 +142,8 @@ fn client_ui(client: &Client, client_active: bool, index: i32, enabled: bool) ->
         overlay.add_overlay(&label)
     }
 
-    let label = Label::builder().overflow(Overflow::Visible).ellipsize(pango::EllipsizeMode::End).label(&client.class
-    ).build();
+    let title = if show_title && !client.title.trim().is_empty() { &client.title } else { &client.class };
+    let label = Label::builder().overflow(Overflow::Visible).margin_start(6).ellipsize(pango::EllipsizeMode::End).label(title).build();
 
     let client_frame = Frame::builder().css_classes(vec!["client"]).label_xalign(0.5).label_widget(&label).child(&overlay).build();
 
@@ -158,6 +158,7 @@ fn update(
     share: Share,
     switch_ws_on_hover: bool,
     stay_open_on_close: bool,
+    show_title: bool,
     workspaces_fixed: Fixed,
     data: &MutexGuard<(Config, ClientsData, Option<Address>, bool)>,
     connector: &str,
@@ -228,7 +229,7 @@ fn update(
             let index = data.1.enabled_clients.iter().position(|c| c.address == client.address).map_or(0, |i| i as i32);
             let frame = client_ui(
                 client,
-                client_active,
+                client_active, show_title,
                 index - selected_index.unwrap_or(0) as i32,
                 data.1.enabled_clients.iter().any(|c| c.address == client.address),
             );
@@ -266,7 +267,7 @@ fn update(
     Ok(())
 }
 
-fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, app: &Application, monitors: &Vec<Monitor>) -> anyhow::Result<()> {
+fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, show_title: bool, app: &Application, monitors: &Vec<Monitor>) -> anyhow::Result<()> {
     let mut workspaces_fixed_list = vec![];
     for monitor in monitors {
         let connector = monitor.connector().with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
@@ -288,7 +289,7 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, ap
         {
             let share_unlocked = data_mut.lock().await;
             for (workspaces_fixed, connector, _) in workspaces_fixed_list.iter() {
-                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, workspaces_fixed.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
+                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_fixed.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
             }
         }
 
@@ -298,7 +299,7 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, ap
             let show = share_unlocked.3;
             for (workspaces_fixed, connector, window) in workspaces_fixed_list.iter() {
                 if show { window.show(); } else { window.hide(); }
-                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, workspaces_fixed.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
+                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_fixed.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
             }
         }
     });
@@ -307,7 +308,7 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, ap
 }
 
 
-pub fn start_gui(share: &Share, switch_ws_on_hover: bool, stay_open_on_close: bool, custom_css: Option<PathBuf>) -> anyhow::Result<()> {
+pub fn start_gui(share: &Share, switch_ws_on_hover: bool, stay_open_on_close: bool, custom_css: Option<PathBuf>, show_title: bool) -> anyhow::Result<()> {
     let arc_share = share.clone();
     std::thread::spawn(move || {
         let application = Application::builder().application_id("com.github.h3rmt.hyprswitch.2").build();
@@ -338,7 +339,7 @@ pub fn start_gui(share: &Share, switch_ws_on_hover: bool, stay_open_on_close: bo
             let monitors = gdk::DisplayManager::get().list_displays().first().context("No Display found (Failed to get all monitor)").expect("Failed to get all monitors").monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>();
 
             let arc_share_share = arc_share.clone();
-            let _ = activate(arc_share_share, switch_ws_on_hover, stay_open_on_close, app, &monitors).context("Failed to activate windows").map_err(|e| warn!("{:?}", e));
+            let _ = activate(arc_share_share, switch_ws_on_hover, stay_open_on_close, show_title, app, &monitors).context("Failed to activate windows").map_err(|e| warn!("{:?}", e));
         });
 
         debug!("Running application");
