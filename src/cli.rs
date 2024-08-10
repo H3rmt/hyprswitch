@@ -15,9 +15,9 @@ pub struct App {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Command {
-    /// Initialize and run the Daemon
+    /// Initialize and start the Daemon
     Init {
-        /// Switch to workspaces when hovering over them in GUI
+        /// Switch to workspaces when hovering over them in the GUI
         #[arg(long)]
         switch_ws_on_hover: bool,
 
@@ -38,7 +38,7 @@ pub enum Command {
         #[clap(flatten)]
         simple_opts: SimpleOpts,
 
-        /// If the GUI isn't open, execute the command immediately, otherwise just open the GUI
+        /// If the GUI isn't open, also execute the first switch immediately, otherwise just open the GUI
         #[arg(long)]
         do_initial_execute: bool,
     },
@@ -72,7 +72,7 @@ pub struct SimpleOpts {
     #[arg(short = 'r', long)]
     pub reverse: bool,
 
-    /// Switch to a specific window offset
+    /// Switch to a specific window offset (default 1)
     #[arg(short = 'o', long, default_value = "1")]
     pub offset: u8,
 

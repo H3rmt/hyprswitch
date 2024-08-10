@@ -10,11 +10,12 @@ It can cycle through windows using keyboard shortcuts or/and a GUI.
 
 Windows are sorted by their position on the screen, and can be filtered by class or workspace.
 
-To use the GUI, you need to pass the `--daemon` flag to the script which will start a socket server and a GUI.
-Subsequent calls to the script (with the `--daemon` flag) will send the command to the daemon which will execute the
+To use the GUI, you need to start the daemon once at the start of Hyprland with `exec-once = hyprswitch init &` in your
+config.
+Subsequent calls to hyprswitch (with the `gui` command) will send the command to the daemon which will execute the
 command and update the GUI.
 
-![image.png](imgs/image_2.png)
+![image.png](imgs/image_3.png)
 
 # Installation
 
@@ -37,6 +38,35 @@ command and update the GUI.
 # Usage
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
+
+## Parameters
+
+- `--dry-run`/`-d` Print the command that would be executed
+- `-v` Increase the verbosity level (max: -vv)
+
+- `init` Initialize and start the Daemon
+  - `--switch-ws-on-hover` Switch to workspaces when hovering over them in the GUI
+  - `--stay-open-on-close` Don't close GUI when clicking on client (only close with `hyprswitch close`)
+  - `--custom-css` Specify a path to custom css file
+  - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
+
+- `simple` Switch without using the GUI / Daemon (switches directly)
+  - `--reverse`/`-r` Reverse the order of windows / switch backwards
+  - `--offset`/`-o` Switch to a specific window offset (default 1)
+  - `--include-special-workspaces` Include special workspaces (e.g., scratchpad)
+  - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
+  - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors)
+  - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused window
+  - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently focused window
+  - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused window
+  - `--sort-recent` Sort windows by most recently focused
+   
+- `gui` Starts/Opens the GUI + sends the command to daemon of GUI is already opened
+  - `--do-initial-execute` If the GUI isn't open, also execute the first switch immediately, otherwise just open the GUI
+  - Same options as `simple`
+
+- `close` Close the GUI, executes the command to switch window
+  - `kill` Don't switch to the selected window, just close the GUI
 
 ## Examples:
 
@@ -85,6 +115,10 @@ bind = $modifier $reverse, $key, exec, hyprswitch simple -s -r
 #### Press $modifier + $key to open the GUI, use mouse to click on window
 
 ```ini
+exec-once = hyprswitch init --show-title &
+
+......
+
 $key = TAB
 $modifier = SUPER
 $switch_release = SUPER_L
@@ -109,6 +143,10 @@ Complex Config with submap to allow for many different keybindings when opening 
 - Release $modifier ($modifier_release) to execute the switch and close the gui
 
 ```ini
+exec-once = hyprswitch init --show-title &
+
+......
+
 $key = TAB
 $modifier = ALT
 $modifier_release = ALT_L
@@ -316,11 +354,6 @@ window {
 
 # Other
 
-### Rust Features
-
-if the gui should use libadwaita pass `--features libadwaita` to the cargo install command
-
-
 ### Sorting of windows
 
 See [tests](/tests) for more details on how windows get sorted
@@ -366,16 +399,6 @@ See [tests](/tests) for more details on how windows get sorted
    +----------------------------------------+
         2       4         7    9
 ```
-
-
-### Ignore monitors flag
-
-This flag requires that workspaces have an offset of 10 for each monitor. (TODO, make this configurable)
-
-This means that if you have 2 monitors, the workspaces on the second monitor must start at 11 if the first workspace on
-the first monitor is 1 to allow the scrip to map the correct workspaces together.
-
-this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.org/Configuring/Workspace-Rules/)
 
 ### `--ignore-workspaces`
 
