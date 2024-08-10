@@ -14,9 +14,9 @@ async fn main() -> anyhow::Result<()> {
     let cli = App::try_parse()
         .with_context(|| "Failed to parse command line arguments")
         .map_err(|e| {
-            let _ = Notification::new() // TODO switch to main branch
+            let _ = Notification::new()
                 .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                .body(&format!("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/dev/README.md to see config) {:?}", e))
+                .body(&format!("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see config) {:?}", e))
                 .timeout(10000)
                 .hint(notify_rust::Hint::Urgency(Urgency::Critical))
                 .show();
@@ -45,9 +45,9 @@ async fn main() -> anyhow::Result<()> {
         hyprswitch::cli::Command::Gui { simple_opts, do_initial_execute } => {
             info!("Daemon already running, Sending command to daemon");
             if !hyprswitch::daemon::daemon_running().await {
-                let _ = Notification::new() // TODO switch to main branch
+                let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                    .body("Daemon not running (add ``exec-once = hyprswitch init &``) to your Hyprland config\n(visit https://github.com/H3rmt/hyprswitch/blob/dev/README.md to see GUI configs)")
+                    .body("Daemon not running (add ``exec-once = hyprswitch init &``) to your Hyprland config\n(visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see GUI configs)")
                     .timeout(10000)
                     .hint(notify_rust::Hint::Urgency(Urgency::Critical))
                     .show();
