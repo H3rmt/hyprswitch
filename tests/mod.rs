@@ -13,7 +13,7 @@ pub mod common {
     use svg::node::element::{Group, Rectangle, SVG, Text};
 
     use hyprswitch::{MonitorData, WorkspaceData};
-    use hyprswitch::sort::{MONITOR_WORKSPACE_INDEX_OFFSET, SortableClient};
+    use hyprswitch::sort::SortableClient;
 
     #[derive(Debug)]
     pub struct MockClient(
@@ -41,9 +41,6 @@ pub mod common {
         }
         fn ws(&self) -> WorkspaceId {
             self.4
-        }
-        fn wsi(&self, monitor_count: i128) -> WorkspaceId {
-            self.4 - (*MONITOR_WORKSPACE_INDEX_OFFSET * monitor_count as i32)
         }
         fn m(&self) -> i128 {
             self.5
@@ -148,6 +145,16 @@ pub mod common {
             .set("width", "100%")
             .set("height", "100%")
             .set("viewBox", format!("{} {} {} {}", x, y, width, height));
+        
+        // add background
+        svg = svg.add(
+            Rectangle::new()
+                .set("x", x)
+                .set("y", y)
+                .set("width", width)
+                .set("height", height)
+                .set("fill", "grey"),
+        );
 
         for (i, x, y, width, height, identifier) in rectangles {
             let color = RandomColor::new().to_hsl_array();

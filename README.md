@@ -10,11 +10,12 @@ It can cycle through windows using keyboard shortcuts or/and a GUI.
 
 Windows are sorted by their position on the screen, and can be filtered by class or workspace.
 
-To use the GUI, you need to pass the `--daemon` flag to the script which will start a socket server and a GUI.
-Subsequent calls to the script (with the `--daemon` flag) will send the command to the daemon which will execute the
+To use the GUI, you need to start the daemon once at the start of Hyprland with `exec-once = hyprswitch init &` in your
+config.
+Subsequent calls to hyprswitch (with the `gui` command) will send the command to the daemon which will execute the
 command and update the GUI.
 
-![image.png](imgs/image_2.png)
+![image.png](imgs/image_3.png)
 
 # Installation
 
@@ -38,98 +39,97 @@ command and update the GUI.
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
-The script accepts these parameters:
+## Parameters
 
-- Sorting related
-    - `--reverse`/`-r` Reverse the order of windows / switch backwards
-    - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused
-      window
-    - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently
-      focused window
-    - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused
-      window
-
-    - `--sort-recent` Sort windows by most recently focused (when used with `--daemon` it will use the order of windows
-      when the daemon was started)
-
-    - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
-    - `--ignore-monitors` Sort all windows on matching workspaces on monitors
-      like [one big monitor](#--ignore-monitors), [workspaces must have offset of 10 for each monitor](#ignore-monitors-flag)
-
-- GUI related
-    - `--daemon` Starts as daemon, creates socket server and GUI, sends Command to the daemon if already running
-    - `--stop-daemon` Stops the daemon, sends stop to socket server, doesn't execute current window switch, executes the
-      command to switch window if `--switch-on-close` is true
-    - `--do-initial-execute` Also execute the initial command when starting the daemon
-    - `--switch-ws-on-hover` Switch to workspaces when hovering over them in GUI
-    - `--switch-on-close` Execute the command to switch windows on close of daemon instead of switching for every
-      command
-    - `--custom-css` Path to a css file to
-      add [custom styles](#CSS) e.g., `/home/user/hyprswitch.css` / `/usr/local/share/hyprswitch.css`
-
-- `--offset`/`-o` Switch to a specific window offset (default 1)
-- `--show-special-workspaces` Show special workspaces (e.g., scratchpad)
 - `--dry-run`/`-d` Print the command that would be executed
-- `-v` Increase the verbosity level (-vv ist max)
+- `-v` Increase the verbosity level (max: -vv)
 
-#### Here are some examples:
+- `init` Initialize and start the Daemon
+  - `--switch-ws-on-hover` Switch to workspaces when hovering over them in the GUI
+  - `--stay-open-on-close` Don't close GUI when clicking on client (only close with `hyprswitch close`)
+  - `--custom-css` Specify a path to custom css file
+  - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
+
+- `simple` Switch without using the GUI / Daemon (switches directly)
+  - `--reverse`/`-r` Reverse the order of windows / switch backwards
+  - `--offset`/`-o` Switch to a specific window offset (default 1)
+  - `--include-special-workspaces` Include special workspaces (e.g., scratchpad)
+  - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
+  - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors)
+  - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused window
+  - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently focused window
+  - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused window
+  - `--sort-recent` Sort windows by most recently focused
+   
+- `gui` Starts/Opens the GUI + sends the command to daemon of GUI is already opened
+  - `--do-initial-execute` If the GUI isn't open, also execute the first switch immediately, otherwise just open the GUI
+  - Same options as `simple`
+
+- `close` Close the GUI, executes the command to switch window
+  - `kill` Don't switch to the selected window, just close the GUI
+
+## Examples:
 
 (Modify the $... variables to use the keys you prefer)
 
-### No-GUI Config
+### Simple (No GUI)
 
-Just use 2 keybindings to switch to 'next' or 'previous' window
+#### Next Previous
 
 ```ini
+# 2 Keybindings to switch to 'next' or 'previous' window
 $key = TAB
 $modifier = CTRL
 $reverse = SHIFT
 
-bind = $modifier, $key, exec, hyprswitch
-bind = $modifier $reverse, $key, exec, hyprswitch -r
+bind = $modifier, $key, exec, hyprswitch simple
+bind = $modifier $reverse, $key, exec, hyprswitch simple -r
 ```
 
-### No-GUI sort-recent Config
-
-Just use 1 keybinding to switch to previously focused application
+#### Last Focused
 
 ```ini
+# 1 Keybinding to switch to previously focused application
+$key = TAB
+$modifier = CTRL
+
+bind = $modifier, $key, exec, hyprswitch simple --sort-recent
+```
+
+#### Same class/type
+
+```ini
+# 2 Keybindings to switch to next' or 'previous' window of same class/type
 $key = TAB
 $modifier = CTRL
 $reverse = SHIFT
 
-bind = $modifier, $key, exec, hyprswitch --sort-recent
+bind = $modifier, $key, exec, hyprswitch simple -s
+bind = $modifier $reverse, $key, exec, hyprswitch simple -s -r
 ```
 
-### Same class No-GUI Config
+### GUI
 
-Just use 2 keybindings to switch to 'next' or 'previous' window of same class/type
+**Add ``exec-once = hyprswitch init &`` to your `~/.config/hypr/hyprland.conf` to start the daemon on startup**
 
-```ini
-$key = TAB
-$modifier = CTRL
-$reverse = SHIFT
-
-bind = $modifier, $key, exec, hyprswitch -s
-bind = $modifier $reverse, $key, exec, hyprswitch -s -r
-```
-
-### GUI Config
-
-Press $modifier + $key to open the GUI, use mouse to click on window
+#### Press $modifier + $key to open the GUI, use mouse to click on window
 
 ```ini
+exec-once = hyprswitch init --show-title &
+
+......
+
 $key = TAB
 $modifier = SUPER
 $switch_release = SUPER_L
 
 # open hyprswitch
-bind = $modifier, $key, exec, hyprswitch --daemon
+bind = $modifier, $key, exec, hyprswitch gui
 
 # close hyprswitch
-bindr = $modifier, $switch_release, exec, hyprswitch --stop-daemon
-# if it somehow doesn't close on releasing $switch_release, escape can kill
-bindrn = ,escape, exec, pkill hyprswitch
+bindr = $modifier, $switch_release, exec, hyprswitch close
+# if it somehow doesn't close on releasing $switch_release, escape can kill (doesnt switch)
+bindrn = ,escape, exec, hyprswitch close --kill
 ```
 
 ### GUI + Keyboard Config
@@ -137,62 +137,224 @@ bindrn = ,escape, exec, pkill hyprswitch
 Complex Config with submap to allow for many different keybindings when opening hyprswitch
 (run `hyprctl dispatch submap reset` if stuck in switch submap)
 
-- Press (and hold) $modifier + $key to open the GUI and switch trough window
+- Press (and hold) $modifier + $key to open the GUI and switch trough windows
 - Release $key and press 3 to switch to the third next window
 - Release $key and press/hold $reverse + $key to traverse in reverse order
 - Release $modifier ($modifier_release) to execute the switch and close the gui
 
 ```ini
+exec-once = hyprswitch init --show-title &
+
+......
+
 $key = TAB
 $modifier = ALT
 $modifier_release = ALT_L
 $reverse = SHIFT
 
 # allows repeated switching with same keypress that starts the submap
-binde = $modifier, $key, exec, hyprswitch --daemon --do-initial-execute
+binde = $modifier, $key, exec, hyprswitch gui --do-initial-execute
 bind = $modifier, $key, submap, switch
 
 # allows repeated switching with same keypress that starts the submap
-binde = $modifier $reverse, $key, exec, hyprswitch --daemon --do-initial-execute -r
+binde = $modifier $reverse, $key, exec, hyprswitch gui --do-initial-execute -r
 bind = $modifier $reverse, $key, submap, switch
 
 submap = switch
 # allow repeated window switching in submap (same keys as repeating while starting)
-binde = $modifier, $key, exec, hyprswitch --daemon
-binde = $modifier $reverse, $key, exec, hyprswitch --daemon -r
+binde = $modifier, $key, exec, hyprswitch gui
+binde = $modifier $reverse, $key, exec, hyprswitch gui -r
 
-# switch to specific window offset
-bind = $modifier, 1, exec, hyprswitch --daemon --offset=1
-bind = $modifier, 2, exec, hyprswitch --daemon --offset=2
-bind = $modifier, 3, exec, hyprswitch --daemon --offset=3
-bind = $modifier, 4, exec, hyprswitch --daemon --offset=4
-bind = $modifier, 5, exec, hyprswitch --daemon --offset=5
+# switch to specific window offset (TODO replace with a more dynamic solution)
+bind = $modifier, 1, exec, hyprswitch gui --offset=1
+bind = $modifier, 2, exec, hyprswitch gui --offset=2
+bind = $modifier, 3, exec, hyprswitch gui --offset=3
+bind = $modifier, 4, exec, hyprswitch gui --offset=4
+bind = $modifier, 5, exec, hyprswitch gui --offset=5
 
-bind = $modifier $reverse, 1, exec, hyprswitch --daemon --offset=1 -r
-bind = $modifier $reverse, 2, exec, hyprswitch --daemon --offset=2 -r
-bind = $modifier $reverse, 3, exec, hyprswitch --daemon --offset=3 -r
-bind = $modifier $reverse, 4, exec, hyprswitch --daemon --offset=4 -r
-bind = $modifier $reverse, 5, exec, hyprswitch --daemon --offset=5 -r
+bind = $modifier $reverse, 1, exec, hyprswitch gui --offset=1 -r
+bind = $modifier $reverse, 2, exec, hyprswitch gui --offset=2 -r
+bind = $modifier $reverse, 3, exec, hyprswitch gui --offset=3 -r
+bind = $modifier $reverse, 4, exec, hyprswitch gui --offset=4 -r
+bind = $modifier $reverse, 5, exec, hyprswitch gui --offset=5 -r
 
 
 # exit submap and stop hyprswitch
-bindrt = $modifier, $modifier_release, exec, hyprswitch --stop-daemon
+bindrt = $modifier, $modifier_release, exec, hyprswitch close
 bindrt = $modifier, $modifier_release, submap, reset
 
-# if it somehow doesn't close on releasing $switch_release, escape can kill
-bindr = ,escape, exec, pkill hyprswitch
+# if it somehow doesn't close on releasing $switch_release, escape can kill (doesnt switch)
+bindr = ,escape, exec, hyprswitch close --kill
 bindr = ,escape, submap, reset
 submap = reset
 ```
 
-# Rust Features
+# CSS
 
-GUI functionality is included by default, but can be disabled with `--no-default-features` or enabled
-with `--features gui` when installing via cargo
+### Class used:
 
-if the gui should use libadwaita pass `--features libadwaita` to the cargo install command
+- **client-image**
+  <table><tr><td>
 
-# Sorting of windows
+  ```css
+  .client-image {
+    margin: 15px;
+  }
+  ```
+  </td><td><img src="imgs/css_client-image.png"/> </td></tr></table>
+
+- **client-index**
+  <table><tr><td>
+
+  ```css
+  .client-index {
+    margin: 6px;
+    padding: 5px;
+    font-size: 30px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(20, 20, 20, 1);
+  }
+  ```
+  </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
+
+- **client** + **client_active**
+
+  client_active is the client that is currently focused / will be focused when exiting hyprswitch
+  <table><tr><td>
+
+  ```css
+  .client {
+    border-radius: 15px;
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(25, 25, 25, 0.90);
+  }
+  .client:hover {
+    background-color: rgba(40, 40, 50, 1);
+  }
+  .client_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+  }
+  ```
+  </td><td><img src="imgs/css_client.png"/> </td></tr></table>
+
+- **workspace_frame** + **workspace_frame_special**
+
+  workspace_frame_special is added when workspaceId is < 0 (e.g., scratchpad)
+  <table><tr><td>
+
+  ```css
+  .workspace {
+    font-size: 25px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(70, 80, 90, 0.80);
+    background-color: rgba(20, 20, 25, 0.90);
+  }
+  .workspace_special {
+    border: 3px solid rgba(0, 255, 0, 0.4);
+  }
+  ```
+  </td><td><img src="imgs/css_workspace.png"/> </td></tr></table>
+
+- **workspaces**
+  <table><tr><td>
+
+  ```css
+  .workspaces {
+    margin: 10px;
+  }
+  ```
+  </td><td><img src="imgs/css_workspaces.png"/> </td></tr></table>
+
+- **window**
+  <table><tr><td>
+
+  ```css
+  window {
+    border-radius: 15px;
+    opacity: 0.85;
+    border: 6px solid rgba(15, 170, 190, 0.85);
+  }
+  ```
+  </td><td><img src="imgs/css_window.png"/> </td></tr></table>
+
+### Complete config:
+
+```css
+.client-image {
+    margin: 15px;
+}
+
+.client-index {
+    margin: 6px;
+    padding: 5px;
+    font-size: 30px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(20, 20, 20, 1);
+}
+
+.client {
+    border-radius: 15px;
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(25, 25, 25, 0.90);
+}
+
+.client:hover {
+    background-color: rgba(40, 40, 50, 1);
+}
+
+.client_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+}
+
+.workspace {
+    font-size: 25px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(70, 80, 90, 0.80);
+    background-color: rgba(20, 20, 25, 0.90);
+}
+
+.workspace_special {
+    border: 3px solid rgba(0, 255, 0, 0.4);
+}
+
+.workspaces {
+    margin: 10px;
+}
+
+window {
+    border-radius: 15px;
+    opacity: 0.85;
+    border: 6px solid rgba(17, 171, 192, 0.85);
+}
+```
+
+### Example:
+
+```css
+.client_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+    background-color: rgba(200, 9, 9, 0.80);
+}
+
+.client-image {
+    margin: 10px;
+}
+
+window {
+    opacity: 1;
+    border: 6px solid rgba(0, 0, 0, 0.85);
+}
+```
+
+# Other
+
+### Sorting of windows
 
 See [tests](/tests) for more details on how windows get sorted
 
@@ -237,175 +399,6 @@ See [tests](/tests) for more details on how windows get sorted
    +----------------------------------------+
         2       4         7    9
 ```
-
-# CSS
-
-### Class used:
-
-- **client-image**
-  <table><tr><td>
-
-  ```css
-  .client-image {
-    margin: 15px;
-  }
-  ```
-  </td><td><img src="imgs/css_client-image.png"/> </td></tr></table>
-
-- **client-index**
-  <table><tr><td>
-
-  ```css
-  .client-index {
-    margin: 6px;
-    padding: 5px;
-    font-size: 30px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 20, 0.99);
-  }
-  ```
-  </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
-
-- **client** + **client_active**
-
-  client_active is the client that is currently focused / will be focused when exiting hyprswitch
-  <table><tr><td>
-
-  ```css
-  .client {
-    border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
-  }
-  .client:hover {
-    background-color: rgba(30, 30, 30, 0.99);
-  }
-  .client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
-  }
-  ```
-  </td><td><img src="imgs/css_client.png"/> </td></tr></table>
-
-- **workspace_frame** + **workspace_frame_special**
-
-  workspace_frame_special is added when workspaceId is < 0 (e.g., scratchpad)
-  <table><tr><td>
-
-  ```css
-  .workspace {
-    font-size: 25px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(80, 80, 80, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
-  }
-  .workspace_special {
-    border: 3px solid rgba(0, 255, 0, 0.4);
-  }
-  ```
-  </td><td><img src="imgs/css_workspace.png"/> </td></tr></table>
-
-- **workspaces**
-  <table><tr><td>
-
-  ```css
-  .workspaces {
-    margin: 10px;
-  }
-  ```
-  </td><td><img src="imgs/css_workspaces.png"/> </td></tr></table>
-
-- **window**
-  <table><tr><td>
-
-  ```css
-  window {
-    border-radius: 15px;
-    opacity: 0.9;
-    border: 6px solid rgba(0, 0, 0, 0.4);
-  }
-  ```
-  </td><td><img src="imgs/css_window.png"/> </td></tr></table>
-
-### Complete config:
-
-```css
-.client-image {
-    margin: 15px;
-}
-
-.client-index {
-    margin: 6px;
-    padding: 5px;
-    font-size: 30px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 20, 0.99);
-}
-
-.client {
-    border-radius: 15px;
-    border: 3px solid rgba(130, 130, 180, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
-}
-
-.client:hover {
-    background-color: rgba(30, 30, 30, 0.99);
-}
-
-.client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
-}
-
-.workspace {
-    font-size: 25px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(80, 80, 80, 0.4);
-    background-color: rgba(20, 20, 25, 0.85);
-}
-
-.workspace_special {
-    border: 3px solid rgba(0, 255, 0, 0.4);
-}
-
-.workspaces {
-    margin: 10px;
-}
-
-window {
-    border-radius: 15px;
-    opacity: 0.9;
-    border: 6px solid rgba(0, 0, 0, 0.4);
-}
-```
-
-### Example:
-
-```css
-.client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
-    background-color: rgba(200, 9, 9, 0.80);
-}
-
-.client-image {
-    margin: 10px;
-}
-```
-
-# Other
-
-### Ignore monitors flag
-
-This flag requires that workspaces have an offset of 10 for each monitor. (TODO, make this configurable)
-
-This means that if you have 2 monitors, the workspaces on the second monitor must start at 11 if the first workspace on
-the first monitor is 1 to allow the scrip to map the correct workspaces together.
-
-this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.org/Configuring/Workspace-Rules/)
 
 ### `--ignore-workspaces`
 
@@ -481,6 +474,5 @@ this can be configured in `~/.config/hypr/hyprland.conf` (https://wiki.hyprland.
 - `NEXT_INDEX_MAX` i32 [default: 5]: Maximum number of windows to display the next index for (can be used to show the
   next index for the first 5 windows if you have -u bindings for the next/last 5 windows). Setting it to -1 will disable
   the next index indicator
-- `EXIT_ON_CLICK` bool [default: true]: Exit the GUI when clicking on a window
 - `WORKSPACE_GAP` usize [default: 15]: Gap between workspaces in the GUI (cant be configured via CSS as the workspace
   positions are calculated from the real workspace positions)

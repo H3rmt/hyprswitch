@@ -44,7 +44,7 @@ fn many_1() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -96,7 +96,7 @@ fn many_2() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
