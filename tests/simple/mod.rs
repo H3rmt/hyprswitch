@@ -35,7 +35,7 @@ fn simple_1() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -74,7 +74,7 @@ fn simple_2() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -113,7 +113,7 @@ fn simple_3() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -153,7 +153,7 @@ fn simple_4() {
     workspace_data.insert(0, ws(0, 0));
 
     let update = Instant::now();
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
@@ -193,7 +193,7 @@ fn simple_5() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -233,7 +233,7 @@ fn float_1() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -273,7 +273,7 @@ fn order_1() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -313,7 +313,7 @@ fn order_2() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -356,7 +356,7 @@ fn order_3() {
     let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
     workspace_data.insert(0, ws(0, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();

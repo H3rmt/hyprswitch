@@ -145,6 +145,16 @@ pub mod common {
             .set("width", "100%")
             .set("height", "100%")
             .set("viewBox", format!("{} {} {} {}", x, y, width, height));
+        
+        // add background
+        svg = svg.add(
+            Rectangle::new()
+                .set("x", x)
+                .set("y", y)
+                .set("width", width)
+                .set("height", height)
+                .set("fill", "grey"),
+        );
 
         for (i, x, y, width, height, identifier) in rectangles {
             let color = RandomColor::new().to_hsl_array();

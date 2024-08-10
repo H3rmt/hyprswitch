@@ -42,7 +42,7 @@ fn default() {
     workspace_data.insert(0, ws(0, 0));
     workspace_data.insert(1, ws(5, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -87,7 +87,7 @@ fn ignore_workspace() {
     workspace_data.insert(0, ws(0, 0));
     workspace_data.insert(1, ws(5, 0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -140,7 +140,7 @@ fn vertical() {
     workspace_data.insert(0, ws(0, 0));
     workspace_data.insert(1, ws(0, 8));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -193,7 +193,7 @@ fn vertical_ignore_workspace() {
     workspace_data.insert(0, ws(0, 0));
     workspace_data.insert(1, ws(0, 8));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();

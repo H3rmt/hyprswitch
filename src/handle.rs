@@ -146,9 +146,9 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
     debug!("workspace_data: {:?}", workspace_data);
 
     if config.ignore_monitors {
-        clients = update_clients(clients, &workspace_data, None);
+        clients = update_clients(clients, Some(&workspace_data), None);
     } else {
-        clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+        clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     }
 
     if config.sort_recent {
@@ -172,6 +172,10 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
         });
     } else {
         clients = sort_clients(clients, config.ignore_workspaces, config.ignore_monitors);
+    }
+    // also remove offset of monitors (else gui will be offset)
+    if config.ignore_monitors {
+        clients = update_clients(clients, None, Some(&monitor_data));
     }
     
 

@@ -53,7 +53,7 @@ fn default() {
     workspace_data.insert(10, ws(0,0));
     workspace_data.insert(11, ws(5,0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -109,7 +109,7 @@ fn ignore_workspaces() {
     workspace_data.insert(10, ws(0,0));
     workspace_data.insert(11, ws(5,0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
@@ -165,12 +165,14 @@ fn ignore_monitor() {
     workspace_data.insert(10, ws(0,0));
     workspace_data.insert(11, ws(5,0));
 
-    let clients = update_clients(clients, &workspace_data, None);
+    let clients = update_clients(clients, Some(&workspace_data), None);
     println!("updated clients: {clients:?}");
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, true);
     println!("{clients:?} ({:?})", start.elapsed());
+
+    let clients = update_clients(clients, None, Some(&monitor_data));
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
     assert_eq!(clients.len(), len);
@@ -222,11 +224,13 @@ fn ignore_monitor_ignore_workspace() {
     workspace_data.insert(10, ws(0,0));
     workspace_data.insert(11, ws(5,0));
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
 
     let start = Instant::now();
     let clients = sort_clients(clients, true, true);
     println!("{clients:?} ({:?})", start.elapsed());
+
+    let clients = update_clients(clients, None, Some(&monitor_data));
     create_svg_from_client_tests(&clients, function!(), monitor_data);
 
     assert_eq!(clients.len(), len);
@@ -314,7 +318,7 @@ fn default_more_monitor() {
     workspace_data.insert(6, WorkspaceData { x: 0, y: 0 });
     workspace_data.insert(7, WorkspaceData { x: 5, y: 0 });
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);
@@ -404,7 +408,7 @@ fn ignore_workspaces_more_monitor() {
     workspace_data.insert(6, WorkspaceData { x: 0, y: 0 });
     workspace_data.insert(7, WorkspaceData { x: 5, y: 0 });
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
 
     let start = Instant::now();
     let clients = sort_clients(clients, true, false);
@@ -494,7 +498,7 @@ fn ignore_monitor_more_monitor() {
     workspace_data.insert(31, WorkspaceData { x: 0, y: 0 });
     workspace_data.insert(32, WorkspaceData { x: 5, y: 0 });
 
-    let clients = update_clients(clients, &workspace_data, None);
+    let clients = update_clients(clients, Some(&workspace_data), None);
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, true);
@@ -585,7 +589,7 @@ fn ignore_monitor_ignore_workspace_more_monitor() {
     workspace_data.insert(6, WorkspaceData { x: 0, y: 0 });
     workspace_data.insert(7, WorkspaceData { x: 5, y: 0 });
 
-    let clients = update_clients(clients, &workspace_data, Some(&monitor_data));
+    let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
 
     let start = Instant::now();
     let clients = sort_clients(clients, true, true);

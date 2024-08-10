@@ -203,7 +203,7 @@ where
 /// removes offset by monitor, adds offset by workspace (client on monitor 1 and workspace 2 will be moved left by monitor 1 offset and right by workspace 2 offset (workspace width * 2))
 pub fn update_clients<SC>(
     clients: Vec<SC>,
-    workspace_data: &HashMap<WorkspaceId, WorkspaceData>,
+    workspace_data: Option<&HashMap<WorkspaceId, WorkspaceData>>,
     monitor_data: Option<&HashMap<MonitorId, MonitorData>>,
 ) -> Vec<SC>
 where
@@ -212,10 +212,14 @@ where
     clients
         .into_iter()
         .filter_map(|mut c| {
-            let ws = workspace_data.get(&c.ws()).or_else(|| {
-                error!("Workspace {:?} not found for client: {:?}", c.ws(), c);
-                None
-            });
+            let ws = if let Some(wdt) = workspace_data {
+                wdt.get(&c.ws()).map(|ws| (ws.x, ws.y)).or_else(|| {
+                    error!("Workspace {:?} not found for client: {:?}", c.ws(), c);
+                    None
+                })
+            } else {
+                Some((0, 0))
+            };
 
             let md = if let Some(mdt) = monitor_data {
                 mdt.get(&c.m()).map(|md| (md.x, md.y)).or_else(|| {
@@ -226,10 +230,10 @@ where
                 Some((0, 0))
             };
 
-            if let (Some(ws), Some((md_x, md_y))) = (ws, md) {
+            if let (Some((ws_x, ws_y)), Some((md_x, md_y))) = (ws, md) {
                 // info!("c: {:?}; {}x{}; {}x{}", c.identifier() ,ws.x,ws.y, md_x, md_y);
-                c.set_x(c.x() + ws.x - md_x); // move x cord by workspace offset
-                c.set_y(c.y() + ws.y - md_y); // move y cord by workspace offset
+                c.set_x(c.x() + ws_x - md_x); // move x cord by workspace offset
+                c.set_y(c.y() + ws_y - md_y); // move y cord by workspace offset
                 // println!("c: {:?}", c);
                 Some(c)
             } else {
