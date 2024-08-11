@@ -280,7 +280,7 @@ submap = reset
   ```
   </td><td><img src="imgs/css_window.png"/> </td></tr></table>
 
-### Complete config:
+### Default CSS:
 
 ```css
 .client-image {
@@ -334,7 +334,7 @@ window {
 }
 ```
 
-### Example:
+### Custom CSS Example:
 
 ```css
 .client_active {
