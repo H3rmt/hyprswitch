@@ -66,7 +66,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
   - Same options as `simple`
 
 - `close` Close the GUI, executes the command to switch window
-  - `kill` Don't switch to the selected window, just close the GUI
+  - `--kill` Don't switch to the selected window, just close the GUI
 
 ## Examples:
 
