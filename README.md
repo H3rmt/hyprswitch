@@ -45,28 +45,32 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 - `-v` Increase the verbosity level (max: -vv)
 
 - `init` Initialize and start the Daemon
-  - `--switch-ws-on-hover` Switch to workspaces when hovering over them in the GUI
-  - `--stay-open-on-close` Don't close GUI when clicking on client (only close with `hyprswitch close`)
-  - `--custom-css` Specify a path to custom css file
-  - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
+    - `--switch-ws-on-hover` Switch to workspaces when hovering over them in the GUI
+    - `--stay-open-on-close` Don't close GUI when clicking on client (only close with `hyprswitch close`)
+    - `--custom-css` Specify a path to custom css file
+    - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
 
 - `simple` Switch without using the GUI / Daemon (switches directly)
-  - `--reverse`/`-r` Reverse the order of windows / switch backwards
-  - `--offset`/`-o` Switch to a specific window offset (default 1)
-  - `--include-special-workspaces` Include special workspaces (e.g., scratchpad)
-  - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
-  - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors)
-  - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused window
-  - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently focused window
-  - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused window
-  - `--sort-recent` Sort windows by most recently focused
-   
+    - `--reverse`/`-r` Reverse the order of windows / switch backwards
+    - `--offset`/`-o` Switch to a specific window offset (default 1)
+    - `--include-special-workspaces` Include special workspaces (e.g., scratchpad)
+    - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
+    - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors)
+    - `--filter-same-class`/`-s` Only switch between windows that have the same class/type as the currently focused
+      window
+    - `--filter-current-workspace`/`-w` Only switch between windows that are on the same workspace as the currently
+      focused window
+    - `--filter-current-monitor`/`-m` Only switch between windows that are on the same monitor as the currently focused
+      window
+    - `--sort-recent` Sort windows by most recently focused
+
 - `gui` Starts/Opens the GUI + sends the command to daemon of GUI is already opened
-  - `--do-initial-execute` If the GUI isn't open, also execute the first switch immediately, otherwise just open the GUI
-  - Same options as `simple`
+    - `--do-initial-execute` If the GUI isn't open, also execute the first switch immediately, otherwise just open the
+      GUI
+    - Same options as `simple`
 
 - `close` Close the GUI, executes the command to switch window
-  - `--kill` Don't switch to the selected window, just close the GUI
+    - `--kill` Don't switch to the selected window, just close the GUI
 
 ## Examples:
 
@@ -474,5 +478,4 @@ See [tests](/tests) for more details on how windows get sorted
 - `NEXT_INDEX_MAX` i32 [default: 5]: Maximum number of windows to display the next index for (can be used to show the
   next index for the first 5 windows if you have -u bindings for the next/last 5 windows). Setting it to -1 will disable
   the next index indicator
-- `WORKSPACE_GAP` usize [default: 15]: Gap between workspaces in the GUI (cant be configured via CSS as the workspace
-  positions are calculated from the real workspace positions)
+- `WORKSPACES_PER_ROW` u32 [default: 5]: Number of workspaces per row in the GUI

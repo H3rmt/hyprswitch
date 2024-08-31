@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use gtk4::{Align, ApplicationWindow, CssProvider, EventControllerMotion, EventSequenceState, Fixed, Frame, gdk, gdk::Monitor, gdk_pixbuf, GestureClick, gio::File, glib, glib::clone, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, pango, Picture, prelude::*, style_context_add_provider_for_display, STYLE_PROVIDER_PRIORITY_APPLICATION, STYLE_PROVIDER_PRIORITY_USER, TextDirection};
+use gtk4::{Align, ApplicationWindow, CssProvider, EventControllerMotion, EventSequenceState, Fixed, FlowBox, Frame, gdk, gdk::Monitor, gdk_pixbuf, GestureClick, gio::File, glib, glib::clone, IconLookupFlags, IconPaintable, IconTheme, Label, Orientation, Overflow, Overlay, pango, Picture, prelude::*, SelectionMode, style_context_add_provider_for_display, STYLE_PROVIDER_PRIORITY_APPLICATION, STYLE_PROVIDER_PRIORITY_USER, TextDirection};
 use gtk4::Application;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
@@ -62,7 +62,7 @@ lazy_static! {
     static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
     static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(5, |s| s.parse().expect("Failed to parse NEXT_INDEX_MAX"));
-    static ref WORKSPACE_GAP: usize = option_env!("WORKSPACE_GAP").map_or(15, |s| s.parse().expect("Failed to parse WORKSPACE_GAP"));
+    static ref WORKSPACES_PER_ROW: u32 = option_env!("WORKSPACES_PER_ROW").map_or(5, |s| s.parse().expect("Failed to parse WORKSPACES_PER_ROW"));
 }
 
 fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32, enabled: bool) -> Frame {
@@ -159,13 +159,13 @@ fn update(
     switch_ws_on_hover: bool,
     stay_open_on_close: bool,
     show_title: bool,
-    workspaces_fixed: Fixed,
+    workspaces_flow: FlowBox,
     data: &MutexGuard<(Config, ClientsData, Option<Address>, bool)>,
     connector: &str,
 ) -> anyhow::Result<()> {
     // remove all children
-    while let Some(child) = workspaces_fixed.first_child() {
-        workspaces_fixed.remove(&child);
+    while let Some(child) = workspaces_flow.first_child() {
+        workspaces_flow.remove(&child);
     }
 
     // get monitor data by connector
@@ -174,20 +174,13 @@ fn update(
     let mut workspaces = data.1.workspace_data.iter().filter(|(_, v)| v.monitor == *monitor_id).collect::<Vec<_>>();
     workspaces.sort_by(|a, b| a.0.cmp(b.0));
 
-    for (id, workspace) in workspaces.iter().enumerate() {
-        let x = workspace.1.x as f64 / *SIZE_FACTOR as f64;
-        let y = workspace.1.y as f64 / *SIZE_FACTOR as f64;
+    for workspace in workspaces {
         let width = (workspace.1.width / *SIZE_FACTOR as u16) as i32;
         let height = (workspace.1.height / *SIZE_FACTOR as u16) as i32;
-        // debug!(
-        //     "Rendering workspace {} at {x}, {y} with size {width}, {height}",
-        //     workspace.1.name
-        // );
 
         let clients = data.1.clients.iter().filter(|client| client.monitor == *monitor_id && client.workspace.id == *workspace.0).collect::<Vec<_>>();
 
         let workspace_fixed = Fixed::builder().width_request(width).height_request(height).build();
-
         let workspace_frame = Frame::builder().css_classes(vec!["workspace"]).label(&workspace.1.name).label_xalign(0.5).child(&workspace_fixed).build();
 
         if *workspace.0 < 0 {
@@ -261,18 +254,22 @@ fn update(
             frame.add_controller(gesture);
         }
 
-        workspaces_fixed.put(&workspace_frame, x + (id * *WORKSPACE_GAP) as f64, y);
+        workspaces_flow.insert(&workspace_frame, -1);
     }
 
     Ok(())
 }
 
 fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, show_title: bool, app: &Application, monitors: &Vec<Monitor>) -> anyhow::Result<()> {
-    let mut workspaces_fixed_list = vec![];
+    let mut monitor_data_list = vec![];
     for monitor in monitors {
         let connector = monitor.connector().with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
-        let workspaces_fixed = Fixed::builder().css_classes(vec!["workspaces"]).build();
-        let window = ApplicationWindow::builder().application(app).child(&workspaces_fixed).default_height(10).default_width(10).build();
+        let workspaces_flow = FlowBox::builder().css_classes(vec!["workspaces"]).selection_mode(SelectionMode::None)
+            .orientation(Orientation::Horizontal)
+            .max_children_per_line(*WORKSPACES_PER_ROW)
+            .min_children_per_line(*WORKSPACES_PER_ROW)
+            .build();
+        let window = ApplicationWindow::builder().application(app).child(&workspaces_flow).default_height(10).default_width(10).build();
 
         window.init_layer_shell();
         window.set_layer(Layer::Overlay);
@@ -280,7 +277,7 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, sh
         window.present();
         window.hide();
 
-        workspaces_fixed_list.push((workspaces_fixed, connector, window));
+        monitor_data_list.push((workspaces_flow, connector, window));
     }
 
     let arc_share_share = share.clone();
@@ -288,8 +285,8 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, sh
         let (data_mut, notify) = &*arc_share_share;
         {
             let share_unlocked = data_mut.lock().await;
-            for (workspaces_fixed, connector, _) in workspaces_fixed_list.iter() {
-                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_fixed.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
+            for (workspaces_flow, connector, _) in monitor_data_list.iter() {
+                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
             }
         }
 
@@ -297,9 +294,9 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, sh
             notify.notified().await;
             let share_unlocked = data_mut.lock().await;
             let show = share_unlocked.3;
-            for (workspaces_fixed, connector, window) in workspaces_fixed_list.iter() {
+            for (workspaces_flow, connector, window) in monitor_data_list.iter() {
                 if show { window.show(); } else { window.hide(); }
-                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_fixed.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
+                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
             }
         }
     });
