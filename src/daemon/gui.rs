@@ -5,12 +5,11 @@ use gtk4::{Align, ApplicationWindow, CssProvider, EventControllerMotion, EventSe
 use gtk4::Application;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
-use hyprland::shared::Address;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
 use tokio::sync::MutexGuard;
 
-use crate::{ClientsData, Config, DRY, handle, icons, Share};
+use crate::{DRY, handle, icons, Share, SharedConfig};
 use crate::daemon::funcs::{close, switch_gui};
 
 const CSS: &str = r#"
@@ -61,11 +60,10 @@ lazy_static! {
     static ref SIZE_FACTOR: i16 =option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
     static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
-    static ref NEXT_INDEX_MAX: i32 = option_env!("NEXT_INDEX_MAX").map_or(5, |s| s.parse().expect("Failed to parse NEXT_INDEX_MAX"));
     static ref WORKSPACES_PER_ROW: u32 = option_env!("WORKSPACES_PER_ROW").map_or(5, |s| s.parse().expect("Failed to parse WORKSPACES_PER_ROW"));
 }
 
-fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32, enabled: bool) -> Frame {
+fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32, enabled: bool, max_switch_offset: u8) -> Frame {
     let theme = IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
         // debug!("Icon found for {}", client.class);
@@ -137,7 +135,7 @@ fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32,
 
     let overlay = Overlay::builder().child(&picture).build();
 
-    if enabled && *NEXT_INDEX_MAX != 0 && index <= *NEXT_INDEX_MAX && index >= -(*NEXT_INDEX_MAX) {
+    if enabled && max_switch_offset != 0 && index <= max_switch_offset as i32 && index >= -(max_switch_offset as i32) {
         let label = Label::builder().css_classes(vec!["client-index"]).label(index.to_string()).halign(Align::End).valign(Align::End).build();
         overlay.add_overlay(&label)
     }
@@ -160,7 +158,7 @@ fn update(
     stay_open_on_close: bool,
     show_title: bool,
     workspaces_flow: FlowBox,
-    data: &MutexGuard<(Config, ClientsData, Option<Address>, bool)>,
+    data: &MutexGuard<SharedConfig>,
     connector: &str,
 ) -> anyhow::Result<()> {
     // remove all children
@@ -169,16 +167,22 @@ fn update(
     }
 
     // get monitor data by connector
-    let (monitor_id, _monitor_data) = data.1.monitor_data.iter().find(|(_, v)| v.connector == connector).with_context(|| format!("Failed to find monitor with connector {connector}"))?;
+    let (monitor_id, _monitor_data) = data.clients_data.monitor_data.iter().find(|(_, v)| v.connector == connector).with_context(|| format!("Failed to find monitor with connector {connector}"))?;
 
-    let mut workspaces = data.1.workspace_data.iter().filter(|(_, v)| v.monitor == *monitor_id).collect::<Vec<_>>();
+    let mut workspaces = data.clients_data.workspace_data.iter().filter(|(_, v)| v.monitor == *monitor_id).collect::<Vec<_>>();
     workspaces.sort_by(|a, b| a.0.cmp(b.0));
 
     for workspace in workspaces {
         let width = (workspace.1.width / *SIZE_FACTOR as u16) as i32;
         let height = (workspace.1.height / *SIZE_FACTOR as u16) as i32;
 
-        let clients = data.1.clients.iter().filter(|client| client.monitor == *monitor_id && client.workspace.id == *workspace.0).collect::<Vec<_>>();
+        let clients = {
+            let mut clients = data.clients_data.clients.iter()
+                .filter(|client| client.monitor == *monitor_id && client.workspace.id == *workspace.0)
+                .collect::<Vec<_>>();
+            clients.sort_by(|a, b| a.floating.cmp(&b.floating));
+            clients
+        };
 
         let workspace_fixed = Fixed::builder().width_request(width).height_request(height).build();
         let workspace_frame = Frame::builder().css_classes(vec!["workspace"]).label(&workspace.1.name).label_xalign(0.5).child(&workspace_fixed).build();
@@ -214,17 +218,18 @@ fn update(
         }
 
         // index of selected client (offset for selecting)
-        let selected_index = data.2.as_ref().and_then(|addr| data.1.enabled_clients.iter().position(|c| c.address == *addr));
+        let selected_index = data.active_address.as_ref().and_then(|addr| data.clients_data.enabled_clients.iter().position(|c| c.address == *addr));
         for client in clients {
-            let client_active = data.2.as_ref().map_or(false, |addr| *addr == client.address);
+            let client_active = data.active_address.as_ref().map_or(false, |addr| *addr == client.address);
             // debug!("Rendering client {}", client.class);
             // debug!("Client active: {}", client_active);
-            let index = data.1.enabled_clients.iter().position(|c| c.address == client.address).map_or(0, |i| i as i32);
+            let index = data.clients_data.enabled_clients.iter().position(|c| c.address == client.address).map_or(0, |i| i as i32);
             let frame = client_ui(
                 client,
                 client_active, show_title,
                 index - selected_index.unwrap_or(0) as i32,
-                data.1.enabled_clients.iter().any(|c| c.address == client.address),
+                data.clients_data.enabled_clients.iter().any(|c| c.address == client.address),
+                data.config.max_switch_offset,
             );
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
             let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
@@ -293,7 +298,7 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, sh
         loop {
             notify.notified().await;
             let share_unlocked = data_mut.lock().await;
-            let show = share_unlocked.3;
+            let show = share_unlocked.gui_show;
             for (workspaces_flow, connector, window) in monitor_data_list.iter() {
                 if show { window.show(); } else { window.hide(); }
                 let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));

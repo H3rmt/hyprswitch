@@ -4,7 +4,7 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 
-use crate::{ACTIVE, Command, Config, Share};
+use crate::{ACTIVE, Command, Config, convert_u8_to_key, Share};
 use crate::daemon::{INIT_COMMAND_LEN, SWITCH_COMMAND_LEN};
 use crate::daemon::funcs::{close, init, switch};
 
@@ -41,10 +41,12 @@ pub async fn handle_client(
                     ignore_workspaces: buffer[5] == 1,
                     ignore_monitors: buffer[6] == 1,
                     include_special_workspaces: buffer[7] == 1,
+                    max_switch_offset: buffer[8],
+                    release_key: convert_u8_to_key(buffer[9]).with_context(|| format!("Failed to convert u8 to mod {}", buffer[9]))?.parse()?,
                 };
                 info!("Received init command {config:?}");
 
-                match init(share, config).await.with_context(|| format!("Failed to init with config {config:?}")) {
+                match init(share, config.clone()).await.with_context(|| format!("Failed to init with config {:?}", config)) {
                     Ok(_) => {
                         debug!("Daemon initialised");
                         stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;

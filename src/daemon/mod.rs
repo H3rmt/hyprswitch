@@ -9,9 +9,10 @@ pub mod send;
 mod handle;
 mod gui;
 mod funcs;
+mod submap;
 
 pub const SWITCH_COMMAND_LEN: usize = 1 + 2;
-pub const INIT_COMMAND_LEN: usize = 1 + 7;
+pub const INIT_COMMAND_LEN: usize = 1 + 9;
 
 fn get_socket_path_buff() -> PathBuf {
     let mut buf = if let Ok(runtime_path) = var("XDG_RUNTIME_DIR") {

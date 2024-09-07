@@ -3,7 +3,7 @@ use log::info;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
-use crate::{Command, Config};
+use crate::{Command, Config, convert_key_to_u8};
 use crate::daemon::{get_socket_path_buff, INIT_COMMAND_LEN, SWITCH_COMMAND_LEN};
 
 pub async fn send_check_command() -> anyhow::Result<bool> {
@@ -30,7 +30,9 @@ pub async fn send_init_command(config: Config) -> anyhow::Result<bool> {
     let buf: &[u8; INIT_COMMAND_LEN] = &[b'i',
         config.filter_same_class as u8, config.filter_current_workspace as u8,
         config.filter_current_monitor as u8, config.sort_recent as u8,
-        config.ignore_workspaces as u8, config.ignore_monitors as u8, config.include_special_workspaces as u8
+        config.ignore_workspaces as u8, config.ignore_monitors as u8,
+        config.include_special_workspaces as u8, config.max_switch_offset,
+        convert_key_to_u8(config.release_key)
     ];
     let mut stream = send(buf).await.with_context(|| format!("Failed to send init command {buf:?}"))?;
     let mut buffer = Vec::new();

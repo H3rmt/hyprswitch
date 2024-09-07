@@ -475,7 +475,4 @@ See [tests](/tests) for more details on how windows get sorted
   Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
 - `ICON_SCALE` i32 [default: 1]: Argument passed to the theme.lookup_icon function (IDK what this does, setting it to
   anything other than 1 changes nothing)
-- `NEXT_INDEX_MAX` i32 [default: 5]: Maximum number of windows to display the next index for (can be used to show the
-  next index for the first 5 windows if you have -u bindings for the next/last 5 windows). Setting it to -1 will disable
-  the next index indicator
 - `WORKSPACES_PER_ROW` u32 [default: 5]: Number of workspaces per row in the GUI

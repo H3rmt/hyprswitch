@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 
+use crate::parse_mod;
+
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct App {
@@ -41,6 +43,14 @@ pub enum Command {
         /// If the GUI isn't open, also execute the first switch immediately, otherwise just open the GUI
         #[arg(long)]
         do_initial_execute: bool,
+
+        /// The maximum offset you can switch to with number keys and is shown in the GUI
+        #[arg(long)]
+        max_switch_offset: Option<u8>,
+
+        /// Automatically switch to the selected window and close the GUI if this key is released
+        #[arg(long, value_parser = parse_mod)]
+        release_key: Option<String>,
     },
     /// Switch without using the GUI / Daemon (switches directly)
     Simple {

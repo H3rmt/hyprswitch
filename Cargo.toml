@@ -23,6 +23,7 @@ notify-rust = "4.11.1"
 
 gtk4 = { version = "0.9.1" }
 gtk4-layer-shell = { version = "0.4.0" }
+rand = "0.8.5"
 
 [dev-dependencies]
 random_color = "0.8.0"

@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
                 .context("Failed to run daemon")?;
             return Ok(());
         }
-        hyprswitch::cli::Command::Gui { simple_opts, do_initial_execute } => {
+        hyprswitch::cli::Command::Gui { simple_opts, do_initial_execute, max_switch_offset, release_key } => {
             info!("Daemon already running, Sending command to daemon");
             if !hyprswitch::daemon::daemon_running().await {
                 let _ = Notification::new()
@@ -62,8 +62,13 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 // Daemon is not running
                 info!("Daemon not running, initialising daemon");
-                let config = Config::from(simple_opts.clone());
-                send_init_command(config).await
+                let config = {
+                    let mut config = Config::from(simple_opts.clone());
+                    config.max_switch_offset = max_switch_offset.unwrap_or(5);
+                    config.release_key = release_key.unwrap_or("".to_string());
+                    config
+                };
+                send_init_command(config.clone()).await
                     .with_context(|| format!("Failed to send init command with config {config:?} to daemon"))?;
                 if do_initial_execute {
                     let command = Command::from(simple_opts);
@@ -95,7 +100,7 @@ async fn stop_daemon(kill: bool) -> anyhow::Result<()> {
 
 async fn run_normal(opts: SimpleOpts) -> anyhow::Result<()> {
     let config = Config::from(opts.clone());
-    let (clients_data, active_address) = handle::collect_data(config).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
+    let (clients_data, active_address) = handle::collect_data(config.clone()).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
     debug!("Clients data: {:?}", clients_data);
 
     let command = Command::from(opts);

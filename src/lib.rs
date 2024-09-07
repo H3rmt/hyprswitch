@@ -36,7 +36,7 @@ pub struct Command {
     pub offset: u8,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub ignore_monitors: bool,
     pub ignore_workspaces: bool,
@@ -45,6 +45,8 @@ pub struct Config {
     pub filter_current_monitor: bool,
     pub filter_same_class: bool,
     pub include_special_workspaces: bool,
+    pub max_switch_offset: u8,
+    pub release_key: String,
 }
 
 impl Default for Config {
@@ -57,6 +59,8 @@ impl Default for Config {
             filter_current_monitor: false,
             filter_same_class: false,
             include_special_workspaces: true,
+            max_switch_offset: Default::default(),
+            release_key: "none".to_string(),
         }
     }
 }
@@ -69,8 +73,15 @@ pub struct ClientsData {
     pub monitor_data: std::collections::HashMap<MonitorId, MonitorData>,
 }
 
+pub struct SharedConfig {
+    pub config: Config,
+    pub clients_data: ClientsData,
+    pub active_address: Option<hyprland::shared::Address>,
+    pub gui_show: bool,
+}
+
 // config, clients, selected-client, gui-show
-pub type Share = std::sync::Arc<(tokio::sync::Mutex<(Config, ClientsData, Option<hyprland::shared::Address>, bool)>, tokio::sync::Notify)>;
+pub type Share = std::sync::Arc<(tokio::sync::Mutex<SharedConfig>, tokio::sync::Notify)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -88,6 +99,8 @@ impl From<SimpleOpts> for Config {
             filter_current_monitor: opts.filter_current_monitor,
             filter_same_class: opts.filter_same_class,
             include_special_workspaces: opts.include_special_workspaces,
+            max_switch_offset: Default::default(),
+            release_key: Default::default(),
         }
     }
 }
@@ -99,4 +112,43 @@ impl From<SimpleOpts> for Command {
             offset: opts.offset,
         }
     }
+}
+
+pub fn convert_key_to_u8(md: String) -> u8 {
+    match md.as_str() {
+        "" => 0,
+        "alt_l" => 56,
+        "alt_r" => 100,
+        "ctrl_l" => 29,
+        "ctrl_r" => 97,
+        "super_l" => 125,
+        "super_r" => 126,
+        _ => 0,
+    }
+}
+
+pub fn convert_u8_to_key<'a>(s: u8) -> anyhow::Result<&'a str> {
+    match s {
+        0 => Ok(""),
+        56 => Ok("alt_l"),
+        100 => Ok("alt_r"),
+        29 => Ok("ctrl_l"),
+        97 => Ok("ctrl_r"),
+        125 => Ok("super_l"),
+        126 => Ok("super_r"),
+        _ => Err(anyhow::anyhow!("Invalid Mod string")),
+    }
+}
+
+pub fn parse_mod(s: &str) -> anyhow::Result<String> {
+    match s.to_lowercase().as_str() {
+        "none" | "" => Ok(""),
+        "alt_l" => Ok("alt_l"),
+        "alt_r" => Ok("alt_r"),
+        "ctrl_l" => Ok("ctrl_l"),
+        "ctrl_r" => Ok("ctrl_r"),
+        "super_l" => Ok("super_l"),
+        "super_r" => Ok("super_r"),
+        _ => Err(anyhow::anyhow!("Invalid Mod string, expected one of none, alt, ctrl, shift, super"))
+    }.map(|s| s.to_string())
 }
