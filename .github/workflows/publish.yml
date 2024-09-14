@@ -15,12 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check if tag is -rc or -alpha and exit if it is
-        run: |
-          if [[ ${{ github.ref }} == *"-rc"* ]] || [[ ${{ github.ref }} == *"-alpha"* ]]; then
-            echo "Skipping publish for ${{ github.ref }}"
-            exit 0
-          fi
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install gtk4-layer-shell

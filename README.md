@@ -89,124 +89,62 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 
 ### Simple (No GUI)
 
-#### Next Previous
+#### Next/Previous
 
 ```ini
 # 2 Keybindings to switch to 'next' or 'previous' window
-$key = TAB
-$modifier = CTRL
-$reverse = SHIFT
-
-bind = $modifier, $key, exec, hyprswitch simple
-bind = $modifier $reverse, $key, exec, hyprswitch simple -r
+$key = tab
+bind = ctrl, $key, exec, hyprswitch simple
+bind = ctrl shift, $key, exec, hyprswitch simple -r
 ```
 
 #### Last Focused
 
 ```ini
 # 1 Keybinding to switch to previously focused application
-$key = TAB
-$modifier = CTRL
-
-bind = $modifier, $key, exec, hyprswitch simple --sort-recent
+$key = tab
+bind = ctrl, $key, exec, hyprswitch simple --sort-recent
 ```
 
-#### Same class/type
+#### Same class(type)
 
 ```ini
 # 2 Keybindings to switch to next' or 'previous' window of same class/type
-$key = TAB
-$modifier = CTRL
-$reverse = SHIFT
-
-bind = $modifier, $key, exec, hyprswitch simple -s
-bind = $modifier $reverse, $key, exec, hyprswitch simple -s -r
+$key = tab
+bind = ctrl, $key, exec, hyprswitch simple -s
+bind = ctrl shift, $key, exec, hyprswitch simple -s -r
 ```
 
 ### GUI
 
 **Add ``exec-once = hyprswitch init &`` to your `~/.config/hypr/hyprland.conf` to start the daemon on startup**
 
-#### Press $modifier + $key to open the GUI, use mouse to click on window
+#### Press super + $key to open the GUI, use mouse to click on window
 
 ```ini
 exec-once = hyprswitch init --show-title &
 
-......
-
-$key = TAB
-$modifier = SUPER
-$switch_release = SUPER_L
-
-# open hyprswitch
-bind = $modifier, $key, exec, hyprswitch gui
-
-# close hyprswitch
-bindr = $modifier, $switch_release, exec, hyprswitch close
-# if it somehow doesn't close on releasing $switch_release, escape can kill (doesnt switch)
-bindrn = ,escape, exec, hyprswitch close --kill
+$key = tab
+bind = super, $key, exec, $bin gui --mod-key super_l --key $key
 ```
 
-### GUI + Keyboard Config (will get reworked/simplified in the future)
-
-Complex Config with submap to allow for many different keybindings when opening hyprswitch
-(run `hyprctl dispatch submap reset` if stuck in switch submap)
-
-- Press (and hold) $modifier + $key to open the GUI and switch trough windows
-- Release $key and press 3 to switch to the third next window
-- Release $key and press/hold $reverse + $key to traverse in reverse order
-- Release $modifier ($modifier_release) to execute the switch and close the gui
+#### Press alt + $key to open the GUI, hold alt, press $key to switch to the next window, press shift + $key to switch backwards, release alt to switch
 
 ```ini
 exec-once = hyprswitch init --show-title &
 
-......
+$key = tab
+bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release && hyprswitch dispatch
+bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release && hyprswitch dispatch -r
 
-$key = TAB
-$modifier = ALT
-$modifier_release = ALT_L
-$reverse = SHIFT
-
-# allows repeated switching with same keypress that starts the submap
-binde = $modifier, $key, exec, hyprswitch gui --do-initial-execute
-bind = $modifier, $key, submap, switch
-
-# allows repeated switching with same keypress that starts the submap
-binde = $modifier $reverse, $key, exec, hyprswitch gui --do-initial-execute -r
-bind = $modifier $reverse, $key, submap, switch
-
-submap = switch
-# allow repeated window switching in submap (same keys as repeating while starting)
-binde = $modifier, $key, exec, hyprswitch gui
-binde = $modifier $reverse, $key, exec, hyprswitch gui -r
-
-# switch to specific window offset (TODO replace with a more dynamic solution)
-bind = $modifier, 1, exec, hyprswitch gui --offset=1
-bind = $modifier, 2, exec, hyprswitch gui --offset=2
-bind = $modifier, 3, exec, hyprswitch gui --offset=3
-bind = $modifier, 4, exec, hyprswitch gui --offset=4
-bind = $modifier, 5, exec, hyprswitch gui --offset=5
-
-bind = $modifier $reverse, 1, exec, hyprswitch gui --offset=1 -r
-bind = $modifier $reverse, 2, exec, hyprswitch gui --offset=2 -r
-bind = $modifier $reverse, 3, exec, hyprswitch gui --offset=3 -r
-bind = $modifier $reverse, 4, exec, hyprswitch gui --offset=4 -r
-bind = $modifier $reverse, 5, exec, hyprswitch gui --offset=5 -r
-
-
-# exit submap and stop hyprswitch
-bindrt = $modifier, $modifier_release, exec, hyprswitch close
-bindrt = $modifier, $modifier_release, submap, reset
-
-# if it somehow doesn't close on releasing $switch_release, escape can kill (doesnt switch)
-bindr = ,escape, exec, hyprswitch close --kill
-bindr = ,escape, submap, reset
-submap = reset
+# use the if switching to the next window with the opening keypress is unwanted
+#bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release
+#bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release
 ```
 
 # CSS
 
-### Class used:
+### Class used in GUI + default css:
 
 - **client-image**
   <table><tr><td>
@@ -273,7 +211,7 @@ submap = reset
   ```
   </td><td><img src="imgs/css_workspace.png"/> </td></tr></table>
 
-- **workspaces**
+- **workspaces (use experimental WORKSPACES_PER_ROW env var to change width)**
   <table><tr><td>
 
   ```css
@@ -349,7 +287,7 @@ window {
 }
 ```
 
-### Custom CSS Example:
+### Custom CSS Example to override default CSS values:
 
 ```css
 .client_active {
