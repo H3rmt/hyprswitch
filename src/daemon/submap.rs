@@ -3,7 +3,7 @@ use std::env;
 use anyhow::Context;
 use hyprland::dispatch::{Dispatch, DispatchType};
 use hyprland::keyword::Keyword;
-use log::{debug};
+use log::debug;
 
 use crate::cli::{CloseType, ModKey};
 use crate::GuiConfig;
@@ -37,6 +37,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
             // }
             CloseType::ModKeyRelease => {
                 keyword_list.push(("bindrt", format!("{}, {}, exec, {} close", main_mod, gui_config.mod_key, current_exe)));
+                keyword_list.push(("bindrt", format!("{} shift, {}, exec, {} close", main_mod, gui_config.mod_key, current_exe)));
             }
             CloseType::None | CloseType::Index => {}
         };
