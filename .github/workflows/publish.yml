@@ -37,7 +37,7 @@ jobs:
         run: |
           if [[ ${{ github.ref }} == *"-rc"* ]] || [[ ${{ github.ref }} == *"-alpha"* ]]; then
             echo "Skipping publish for ${{ github.ref }}"
-            exit 0
+            exit 1
           fi
       - name: Publish AUR package
         uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
