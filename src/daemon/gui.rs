@@ -167,7 +167,8 @@ fn update(
     }
 
     // get monitor data by connector
-    let (monitor_id, _monitor_data) = data.clients_data.monitor_data.iter().find(|(_, v)| v.connector == connector).with_context(|| format!("Failed to find monitor with connector {connector}"))?;
+    let (monitor_id, _monitor_data) = data.clients_data.monitor_data.iter().find(|(_, v)| v.connector == connector)
+        .with_context(|| format!("Failed to find monitor with connector {connector}"))?;
 
     let mut workspaces = data.clients_data.workspace_data.iter().filter(|(_, v)| v.monitor == *monitor_id).collect::<Vec<_>>();
     workspaces.sort_by(|a, b| a.0.cmp(b.0));
@@ -229,7 +230,7 @@ fn update(
                 client_active, show_title,
                 index - selected_index.unwrap_or(0) as i32,
                 data.clients_data.enabled_clients.iter().any(|c| c.address == client.address),
-                data.config.max_switch_offset,
+                data.gui_config.max_switch_offset,
             );
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
             let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
@@ -288,13 +289,6 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, sh
     let arc_share_share = share.clone();
     glib::spawn_future_local(async move {
         let (data_mut, notify) = &*arc_share_share;
-        {
-            let share_unlocked = data_mut.lock().await;
-            for (workspaces_flow, connector, _) in monitor_data_list.iter() {
-                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
-            }
-        }
-
         loop {
             notify.notified().await;
             let share_unlocked = data_mut.lock().await;

@@ -3,26 +3,18 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use log::{debug, info, warn};
+use notify_rust::{Notification, Urgency};
 use tokio::net::UnixListener;
 use tokio::sync::{Mutex, Notify};
 
-use crate::{Config, handle, Share, SharedConfig};
+use crate::{Share, SharedConfig};
 use crate::daemon::{get_socket_path_buff, gui};
 use crate::daemon::handle::handle_client;
 
 pub async fn start_daemon(switch_ws_on_hover: bool, stay_open_on_close: bool, custom_css: Option<PathBuf>, show_title: bool) -> anyhow::Result<()> {
     // we don't have any config here, so we just create a default one with no filtering
-    let config = Config::default();
-    let (clients_data, active_address) =
-        handle::collect_data(config.clone()).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
-
     // create arc to send to threads containing the config the daemon was initialised with and the data (clients, etc.)
-    let share: Share = Arc::new((Mutex::new(SharedConfig {
-        config,
-        clients_data,
-        active_address,
-        gui_show: false,
-    }), Notify::new()));
+    let share: Share = Arc::new((Mutex::new(SharedConfig::default()), Notify::new()));
 
     info!("Starting gui");
     gui::start_gui(&share, switch_ws_on_hover, stay_open_on_close, custom_css, show_title).expect("Failed to start gui");
@@ -43,7 +35,17 @@ pub async fn start_daemon(switch_ws_on_hover: bool, stay_open_on_close: bool, cu
                 debug!("Accepted client");
                 let arc_share = share.clone();
                 tokio::spawn(async move {
-                    handle_client(stream, arc_share).await.context("Failed to handle client").unwrap_or_else(|e| warn!("{:?}", e));
+                    handle_client(stream, arc_share).await.context("Failed to handle client")
+                        .unwrap_or_else(|e| {
+                            let _ = Notification::new()
+                                .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+                                .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
+                                .timeout(10000)
+                                .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+                                .show();
+
+                            warn!("{:?}", e)
+                        });
                 });
             }
             Err(e) => {

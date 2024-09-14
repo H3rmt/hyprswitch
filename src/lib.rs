@@ -1,6 +1,10 @@
 #![deny(clippy::print_stdout)]
 
-use crate::cli::SimpleOpts;
+use std::fmt;
+
+use serde::{Deserialize, Serialize};
+
+use crate::cli::{CloseType, GuiConf, ModKey, SimpleConf, SimpleOpts};
 
 pub mod handle;
 pub mod icons;
@@ -30,13 +34,13 @@ pub struct WorkspaceData {
 }
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Command {
     pub reverse: bool,
     pub offset: u8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Config {
     pub ignore_monitors: bool,
     pub ignore_workspaces: bool,
@@ -45,27 +49,25 @@ pub struct Config {
     pub filter_current_monitor: bool,
     pub filter_same_class: bool,
     pub include_special_workspaces: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GuiConfig {
     pub max_switch_offset: u8,
-    pub release_key: String,
+    pub mod_key: ModKey,
+    pub key: String,
+    pub close: CloseType,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            ignore_monitors: false,
-            ignore_workspaces: false,
-            sort_recent: false,
-            filter_current_workspace: false,
-            filter_current_monitor: false,
-            filter_same_class: false,
-            include_special_workspaces: true,
-            max_switch_offset: Default::default(),
-            release_key: "none".to_string(),
-        }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Transfer {
+    Switch(Command),
+    Init(Config, GuiConfig),
+    Close(bool),
+    Check,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ClientsData {
     pub clients: Vec<hyprland::data::Client>,
     pub enabled_clients: Vec<hyprland::data::Client>,
@@ -73,8 +75,10 @@ pub struct ClientsData {
     pub monitor_data: std::collections::HashMap<MonitorId, MonitorData>,
 }
 
+#[derive(Debug, Default)]
 pub struct SharedConfig {
-    pub config: Config,
+    pub simple_config: Config,
+    pub gui_config: GuiConfig,
     pub clients_data: ClientsData,
     pub active_address: Option<hyprland::shared::Address>,
     pub gui_show: bool,
@@ -89,8 +93,8 @@ pub static DRY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
 /// global variable to store if daemon is active (displaying GUI)
 pub static ACTIVE: std::sync::OnceLock<tokio::sync::Mutex<bool>> = std::sync::OnceLock::new();
 
-impl From<SimpleOpts> for Config {
-    fn from(opts: SimpleOpts) -> Self {
+impl From<SimpleConf> for Config {
+    fn from(opts: SimpleConf) -> Self {
         Self {
             ignore_monitors: opts.ignore_monitors,
             ignore_workspaces: opts.ignore_workspaces,
@@ -99,8 +103,6 @@ impl From<SimpleOpts> for Config {
             filter_current_monitor: opts.filter_current_monitor,
             filter_same_class: opts.filter_same_class,
             include_special_workspaces: opts.include_special_workspaces,
-            max_switch_offset: Default::default(),
-            release_key: Default::default(),
         }
     }
 }
@@ -114,41 +116,26 @@ impl From<SimpleOpts> for Command {
     }
 }
 
-pub fn convert_key_to_u8(md: String) -> u8 {
-    match md.as_str() {
-        "" => 0,
-        "alt_l" => 56,
-        "alt_r" => 100,
-        "ctrl_l" => 29,
-        "ctrl_r" => 97,
-        "super_l" => 125,
-        "super_r" => 126,
-        _ => 0,
+impl From<GuiConf> for GuiConfig {
+    fn from(opts: GuiConf) -> Self {
+        Self {
+            max_switch_offset: opts.max_switch_offset.unwrap_or(5),
+            mod_key: opts.mod_key,
+            key: opts.key,
+            close: opts.close,
+        }
     }
 }
 
-pub fn convert_u8_to_key<'a>(s: u8) -> anyhow::Result<&'a str> {
-    match s {
-        0 => Ok(""),
-        56 => Ok("alt_l"),
-        100 => Ok("alt_r"),
-        29 => Ok("ctrl_l"),
-        97 => Ok("ctrl_r"),
-        125 => Ok("super_l"),
-        126 => Ok("super_r"),
-        _ => Err(anyhow::anyhow!("Invalid Mod string")),
+impl fmt::Display for ModKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self { // need snake_case
+            ModKey::SuperL => write!(f, "super_l"),
+            ModKey::SuperR => write!(f, "super_r"),
+            ModKey::AltL => write!(f, "alt_l"),
+            ModKey::AltR => write!(f, "alt_r"),
+            ModKey::CtrlL => write!(f, "ctrl_l"),
+            ModKey::CtrlR => write!(f, "ctrl_r"),
+        }
     }
-}
-
-pub fn parse_mod(s: &str) -> anyhow::Result<String> {
-    match s.to_lowercase().as_str() {
-        "none" | "" => Ok(""),
-        "alt_l" => Ok("alt_l"),
-        "alt_r" => Ok("alt_r"),
-        "ctrl_l" => Ok("ctrl_l"),
-        "ctrl_r" => Ok("ctrl_r"),
-        "super_l" => Ok("super_l"),
-        "super_r" => Ok("super_r"),
-        _ => Err(anyhow::anyhow!("Invalid Mod string, expected one of none, alt, ctrl, shift, super"))
-    }.map(|s| s.to_string())
 }

@@ -4,8 +4,7 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 
-use crate::{ACTIVE, Command, Config, convert_u8_to_key, Share};
-use crate::daemon::{INIT_COMMAND_LEN, SWITCH_COMMAND_LEN};
+use crate::{ACTIVE, Share, Transfer};
 use crate::daemon::funcs::{close, init, switch};
 
 pub async fn handle_client(
@@ -19,90 +18,70 @@ pub async fn handle_client(
         return Ok(());
     }
 
-    debug!("Received command: {buffer:?} ({})", buffer[0] as char);
-    match buffer[0] {
-        b'r' => {
+    let transfer: Transfer = bincode::deserialize(&buffer).with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
+    debug!("Received command: {transfer:?}");
+    match transfer {
+        Transfer::Check => {
             info!("Received running? command");
             if *ACTIVE.get().expect("ACTIVE not set").lock().await {
-                stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
-                debug!("Daemon is running send");
+                return_success(true, &mut stream).await?;
             } else {
-                stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
-                debug!("Daemon is not running send");
+                return_success(false, &mut stream).await?;
             }
         }
-        b'i' => {
-            if buffer.len() == INIT_COMMAND_LEN {
-                let config = Config {
-                    filter_same_class: buffer[1] == 1,
-                    filter_current_workspace: buffer[2] == 1,
-                    filter_current_monitor: buffer[3] == 1,
-                    sort_recent: buffer[4] == 1,
-                    ignore_workspaces: buffer[5] == 1,
-                    ignore_monitors: buffer[6] == 1,
-                    include_special_workspaces: buffer[7] == 1,
-                    max_switch_offset: buffer[8],
-                    release_key: convert_u8_to_key(buffer[9]).with_context(|| format!("Failed to convert u8 to mod {}", buffer[9]))?.parse()?,
-                };
-                info!("Received init command {config:?}");
-
-                match init(share, config.clone()).await.with_context(|| format!("Failed to init with config {:?}", config)) {
+        Transfer::Init(config, gui_config) => {
+            if !*ACTIVE.get().expect("ACTIVE not set").lock().await {
+                info!("Received init command {config:?} and {gui_config:?}");
+                match init(share, config.clone(), gui_config.clone()).await.with_context(|| format!("Failed to init with config {:?} and gui_config {:?}", config, gui_config)) {
                     Ok(_) => {
-                        debug!("Daemon initialised");
-                        stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                        return_success(true, &mut stream).await?;
                     }
                     Err(e) => {
                         error!("{:?}", e);
-                        stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                        return_success(false, &mut stream).await?;
                     }
                 };
-            } else {
-                warn!("Invalid command length");
             }
         }
-        b'c' => {
+        Transfer::Close(kill) => {
             if *ACTIVE.get().expect("ACTIVE not set").lock().await {
                 info!("Received close command");
-                match close(share, buffer[1] == 1).await.with_context(|| format!("Failed to close gui  kill:{}", buffer[1] == 1)) {
+                match close(share, kill).await.with_context(|| format!("Failed to close gui  kill: {kill}")) {
                     Ok(_) => {
-                        stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                        return_success(true, &mut stream).await?;
                     }
                     Err(e) => {
                         error!("{:?}", e);
-                        stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
+                        return_success(false, &mut stream).await?;
                     }
                 };
             }
         }
-        b's' => {
+        Transfer::Switch(command) => {
             if *ACTIVE.get().expect("ACTIVE not set").lock().await {
-                if buffer.len() == SWITCH_COMMAND_LEN {
-                    let command = Command {
-                        reverse: buffer[1] == 1,
-                        offset: buffer[2],
-                    };
-                    info!("Received switch command {command:?}");
-                    match switch(share, command).await.with_context(|| format!("Failed to execute with command {command:?}")) {
-                        Ok(_) => {
-                            stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
-                        }
-                        Err(e) => {
-                            error!("{:?}", e);
-                            stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
-                        }
-                    };
-                } else {
-                    warn!("Invalid command length");
-                }
+                info!("Received switch command {command:?}");
+                match switch(share, command).await.with_context(|| format!("Failed to execute with command {command:?}")) {
+                    Ok(_) => {
+                        return_success(true, &mut stream).await?;
+                    }
+                    Err(e) => {
+                        error!("{:?}", e);
+                        return_success(false, &mut stream).await?;
+                    }
+                };
             }
-        }
-        _ => {
-            error!("Unknown command");
         }
     };
 
     Ok(())
 }
 
-
+async fn return_success(success: bool, stream: &mut UnixStream) -> anyhow::Result<()> {
+    if success {
+        stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
+    } else {
+        stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
+    }
+    Ok(())
+}
 

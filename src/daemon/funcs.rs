@@ -2,7 +2,7 @@ use anyhow::Context;
 use hyprland::data::Client;
 use log::{debug, info};
 
-use crate::{ACTIVE, Command, Config, DRY, handle, Share};
+use crate::{ACTIVE, Command, Config, DRY, GuiConfig, handle, Share};
 use crate::daemon::submap::{activate_submap, deactivate_submap};
 
 /// dont close anything, close is called after this function
@@ -14,7 +14,7 @@ pub async fn switch_gui(share: Share, next_client: Client) -> anyhow::Result<()>
     let (latest, notify) = &*share;
     let mut lock = latest.lock().await;
 
-    let (clients_data, _) = handle::collect_data(lock.config.clone()).await.with_context(|| format!("Failed to collect data with config {:?}", lock.config))?;
+    let (clients_data, _) = handle::collect_data(lock.simple_config.clone()).await.with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;
     debug!("Clients data: {:?}", clients_data);
 
     lock.clients_data = clients_data;
@@ -36,7 +36,7 @@ pub async fn switch(share: Share, command: Command) -> anyhow::Result<()> {
         next_client.address.clone()
     };
 
-    let (clients_data, _) = handle::collect_data(lock.config.clone()).await.with_context(|| format!("Failed to collect data with config {:?}", lock.config))?;
+    let (clients_data, _) = handle::collect_data(lock.simple_config.clone()).await.with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;
     debug!("Clients data: {:?}", clients_data);
     lock.clients_data = clients_data;
     lock.active_address = Some(next_client_address);
@@ -72,7 +72,7 @@ pub async fn close(share: Share, kill: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn init(share: Share, config: Config) -> anyhow::Result<()> {
+pub async fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyhow::Result<()> {
     let (clients_data, active_address) = handle::collect_data(config.clone()).await
         .with_context(|| format!("Failed to collect data with config {:?}", config.clone()))?;
     debug!("Clients data: {:?}", clients_data);
@@ -80,13 +80,14 @@ pub async fn init(share: Share, config: Config) -> anyhow::Result<()> {
     let (latest, notify) = &*share;
     let mut lock = latest.lock().await;
 
-    lock.config = config.clone();
+    lock.simple_config = config.clone();
+    lock.gui_config = gui_config.clone();
     lock.clients_data = clients_data;
     lock.active_address = active_address;
     lock.gui_show = true;
     notify.notify_one(); // trigger GUI update
 
-    activate_submap(config.clone())?;
+    activate_submap(gui_config.clone())?;
 
     *(ACTIVE.get().expect("ACTIVE not set").lock().await) = true;
     Ok(())
