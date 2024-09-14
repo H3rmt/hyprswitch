@@ -1,7 +1,7 @@
 [package]
 name = "hyprswitch"
 description = "A CLI/GUI that allows switching between windows in Hyprland"
-version = "2.1.3"
+version = "3.0.0"
 edition = "2021"
 license = "MIT"
 readme = "README.md"
