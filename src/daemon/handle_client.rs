@@ -78,9 +78,9 @@ pub(super) async fn handle_client(
 
 async fn return_success(success: bool, stream: &mut UnixStream) -> anyhow::Result<()> {
     if success {
-        stream.write_all(&[b'1']).await.with_context(|| "Failed to write data to socket".to_string())?;
+        stream.write_all(b"1").await.with_context(|| "Failed to write data to socket".to_string())?;
     } else {
-        stream.write_all(&[b'0']).await.with_context(|| "Failed to write data to socket".to_string())?;
+        stream.write_all(b"0").await.with_context(|| "Failed to write data to socket".to_string())?;
     }
     Ok(())
 }

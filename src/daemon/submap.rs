@@ -72,12 +72,11 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
 
         Dispatch::call(DispatchType::Custom("submap", &name))?;
         Ok(())
-    })().map_err(|e| {
+    })().inspect_err(|_| {
         // reset submap if failed
         Dispatch::call(DispatchType::Custom("submap", "reset")).unwrap_or_else(|e| {
             log::error!("{:?}", e);
         });
-        e
     })?;
 
     Ok(())
