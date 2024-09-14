@@ -136,7 +136,7 @@ bindr = $modifier, $switch_release, exec, hyprswitch close
 bindrn = ,escape, exec, hyprswitch close --kill
 ```
 
-### GUI + Keyboard Config (will get reworked/simplified in the future)
+### GUI + Keyboard Config (will get reworked/simplified in 3.0.0)
 
 Complex Config with submap to allow for many different keybindings when opening hyprswitch
 (run `hyprctl dispatch submap reset` if stuck in switch submap)
