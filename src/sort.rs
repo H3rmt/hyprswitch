@@ -249,6 +249,7 @@ pub trait SortableClient {
     /// Y
     fn y(&self) -> u16;
     /// width
+    #[allow(dead_code)]
     fn w(&self) -> u16;
     /// height
     fn h(&self) -> u16;
@@ -258,6 +259,7 @@ pub trait SortableClient {
     fn m(&self) -> MonitorId;
     fn set_x(&mut self, x: u16);
     fn set_y(&mut self, y: u16);
+    #[allow(dead_code)]
     fn identifier(&self) -> String;
 }
 

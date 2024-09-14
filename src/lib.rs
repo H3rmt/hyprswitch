@@ -1,16 +1,18 @@
 #![deny(clippy::print_stdout)]
 
+use std::env::var;
 use std::fmt;
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
 use crate::cli::{CloseType, GuiConf, ModKey, SimpleConf, SimpleOpts};
 
-pub mod handle;
-pub mod icons;
 pub mod sort;
 pub mod daemon;
 pub mod cli;
+pub mod client;
+pub mod handle;
 
 pub type MonitorId = i128;
 
@@ -138,4 +140,17 @@ impl fmt::Display for ModKey {
             ModKey::CtrlR => write!(f, "ctrl_r"),
         }
     }
+}
+
+pub fn get_socket_path_buff() -> PathBuf {
+    let mut buf = if let Ok(runtime_path) = var("XDG_RUNTIME_DIR") {
+        PathBuf::from(runtime_path)
+    } else if let Ok(uid) = var("UID") {
+        PathBuf::from("/run/user/".to_owned() + &uid)
+    } else {
+        PathBuf::from("/tmp")
+    };
+
+    buf.push("hyprswitch.sock");
+    buf
 }

@@ -7,10 +7,11 @@ use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
 use tokio::sync::Mutex;
 
-use hyprswitch::{ACTIVE, cli, Command, Config, DRY, GuiConfig, handle};
-use hyprswitch::cli::{App, SimpleConf, SimpleOpts};
-use hyprswitch::daemon::send::{send_init_command, send_kill_daemon, send_switch_command};
-use hyprswitch::daemon::start::start_daemon;
+use hyprswitch::{ACTIVE, cli, Command, Config, DRY, GuiConfig};
+use hyprswitch::cli::App;
+use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
+use hyprswitch::daemon::start_daemon;
+use hyprswitch::handle::{collect_data, find_next_client, switch_async};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -40,21 +41,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
     ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled)");
 
     match cli.command {
-        cli::Command::Simple { simple_opts, simple_conf } => {
-            run_normal(simple_opts, simple_conf).await?;
-        }
-        cli::Command::Init { switch_ws_on_hover, stay_open_on_close, custom_css, show_title } => {
-            if hyprswitch::daemon::daemon_running().await {
+        cli::Command::Init { switch_ws_on_hover, custom_css, show_title } => {
+            if daemon_running().await {
                 warn!("Daemon already running");
                 return Ok(());
             }
             info!("Starting daemon");
-            start_daemon(switch_ws_on_hover, stay_open_on_close, custom_css, show_title).await
+            start_daemon(switch_ws_on_hover, custom_css, show_title).await
                 .context("Failed to run daemon")?;
             return Ok(());
         }
         cli::Command::Close { kill } => {
-            stop_daemon(kill).await?;
+            info!("Stopping daemon");
+
+            if !daemon_running().await {
+                warn!("Daemon not running");
+                return Ok(());
+            }
+
+            send_kill_daemon(kill).await.context("Failed to send kill command to daemon")?;
         }
         cli::Command::Dispatch { simple_opts } => {
             let command = Command::from(simple_opts);
@@ -62,7 +67,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .with_context(|| format!("Failed to send switch command with command {command:?} to daemon"))?;
         }
         cli::Command::Gui { gui_config, config } => {
-            if !hyprswitch::daemon::daemon_running().await {
+            if !daemon_running().await {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
                     .body("Daemon not running (add ``exec-once = hyprswitch init &``) to your Hyprland config\n(visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see GUI configs)")
@@ -81,33 +86,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             return Ok(());
         }
+        cli::Command::Simple { simple_opts, simple_conf } => {
+            let config = Config::from(simple_conf);
+            let (clients_data, active_address) = collect_data(config.clone()).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
+            debug!("Clients data: {:?}", clients_data);
+
+            let command = Command::from(simple_opts);
+            let (next_client, _) = find_next_client(command, &clients_data.enabled_clients, active_address.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
+            info!("Next client: {:?}", next_client.class);
+
+            switch_async(next_client, *DRY.get().expect("DRY not set")).await.with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
+        }
     };
     return Ok(());
-}
-
-
-async fn stop_daemon(kill: bool) -> anyhow::Result<()> {
-    info!("Stopping daemon");
-
-    if !hyprswitch::daemon::daemon_running().await {
-        warn!("Daemon not running");
-        return Ok(());
-    }
-
-    send_kill_daemon(kill).await.context("Failed to send kill command to daemon")?;
-    Ok(())
-}
-
-async fn run_normal(opts: SimpleOpts, conf: SimpleConf) -> anyhow::Result<()> {
-    let config = Config::from(conf);
-    let (clients_data, active_address) = handle::collect_data(config.clone()).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
-    debug!("Clients data: {:?}", clients_data);
-
-    let command = Command::from(opts);
-    let (next_client, _) = handle::find_next_client(command, &clients_data.enabled_clients, active_address.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
-    info!("Next client: {:?}", next_client.class);
-
-    handle::switch_async(next_client, *DRY.get().expect("DRY not set")).await.with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
-
-    Ok(())
 }

@@ -1,16 +1,15 @@
 use anyhow::Context;
+use log::debug;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
-use crate::{Command, Config, GuiConfig, Transfer};
-use crate::daemon::get_socket_path_buff;
+use crate::{Command, Config, get_socket_path_buff, GuiConfig, Transfer};
 
 pub async fn send_check_command() -> anyhow::Result<bool> {
     let transfer = Transfer::Check;
     let transfer_serialized = bincode::serialize(&transfer).with_context(|| format!("Failed to serialize transfer {transfer:?}"))?;
     send(&transfer_serialized).await.with_context(|| format!("Failed to send switch command {transfer_serialized:?}"))
 }
-
 
 pub async fn send_switch_command(command: Command) -> anyhow::Result<bool> {
     let transfer = Transfer::Switch(command);
@@ -28,6 +27,20 @@ pub async fn send_kill_daemon(kill: bool) -> anyhow::Result<bool> {
     let transfer = Transfer::Close(kill);
     let transfer_serialized = bincode::serialize(&transfer).with_context(|| format!("Failed to serialize transfer {transfer:?}"))?;
     send(&transfer_serialized).await.with_context(|| format!("Failed to send close command {transfer_serialized:?}"))
+}
+pub async fn daemon_running() -> bool {
+    // check if socket exists and socket is open
+    let buf = get_socket_path_buff();
+    if buf.exists() {
+        debug!("Checking if daemon is running");
+        UnixStream::connect(buf).await.map_err(|e| {
+            debug!("Daemon not running: {e}");
+            e
+        }).is_ok()
+    } else {
+        debug!("Daemon not running");
+        false
+    }
 }
 
 async fn send(buffer: &[u8]) -> anyhow::Result<bool> {

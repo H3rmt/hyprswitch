@@ -5,8 +5,8 @@ use log::{debug, info};
 use crate::{ACTIVE, Command, Config, DRY, GuiConfig, handle, Share};
 use crate::daemon::submap::{activate_submap, deactivate_submap};
 
-/// dont close anything, close is called after this function
-pub async fn switch_gui(share: Share, next_client: Client) -> anyhow::Result<()> {
+/// don't close anything, close is called after this function
+pub(crate) async fn switch_gui(share: Share, next_client: Client) -> anyhow::Result<()> {
     handle::switch_async(&next_client, *DRY.get().expect("DRY not set")).await.with_context(|| {
         format!("Failed to execute with next_client {next_client:?}")
     })?;
@@ -25,7 +25,7 @@ pub async fn switch_gui(share: Share, next_client: Client) -> anyhow::Result<()>
 }
 
 
-pub async fn switch(share: Share, command: Command) -> anyhow::Result<()> {
+pub(crate) async fn switch(share: Share, command: Command) -> anyhow::Result<()> {
     let (latest, notify) = &*share;
     let mut lock = latest.lock().await;
 
@@ -45,7 +45,7 @@ pub async fn switch(share: Share, command: Command) -> anyhow::Result<()> {
 }
 
 
-pub async fn close(share: Share, kill: bool) -> anyhow::Result<()> {
+pub(crate) async fn close(share: Share, kill: bool) -> anyhow::Result<()> {
     let (latest, notify) = &*share;
     let mut lock = latest.lock().await;
 
@@ -72,7 +72,7 @@ pub async fn close(share: Share, kill: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyhow::Result<()> {
+pub(crate) async fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyhow::Result<()> {
     let (clients_data, active_address) = handle::collect_data(config.clone()).await
         .with_context(|| format!("Failed to collect data with config {:?}", config.clone()))?;
     debug!("Clients data: {:?}", clients_data);

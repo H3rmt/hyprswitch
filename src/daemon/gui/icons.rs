@@ -1,10 +1,8 @@
-#![allow(clippy::redundant_closure)]
-
 use std::{collections::HashMap, env, fs::DirEntry, ops::Deref, path::PathBuf, sync::OnceLock};
 
 use log::warn;
 
-pub fn get_icon_name(icon: &str) -> Option<&str> {
+pub(super) fn get_icon_name(icon: &str) -> Option<&str> {
     static LOADER: OnceLock<HashMap<Box<str>, Box<str>>> = OnceLock::new();
     let map = LOADER.get_or_init(create_desktop_file_map);
     map.get(icon.to_ascii_lowercase().as_str()).map(Deref::deref)

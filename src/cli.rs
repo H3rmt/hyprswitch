@@ -27,10 +27,6 @@ pub enum Command {
         #[arg(long)]
         switch_ws_on_hover: bool,
 
-        /// Don't close GUI when clicking on client (only close with `hyprswitch close`)
-        #[arg(long)]
-        stay_open_on_close: bool,
-
         /// Specify a path to custom css file
         #[arg(long)]
         custom_css: Option<PathBuf>,
@@ -91,7 +87,7 @@ pub struct GuiConf {
     #[arg(long)]
     pub mod_key: ModKey,
 
-    /// The key to used to open the GUI
+    /// The key to used to open the GUI (e.g., tab)
     #[arg(long)]
     pub key: String,
 

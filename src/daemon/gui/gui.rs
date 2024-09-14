@@ -1,67 +1,14 @@
-use std::path::PathBuf;
-
 use anyhow::Context;
-use gtk4::{Align, ApplicationWindow, CssProvider, EventControllerMotion, EventSequenceState, Fixed, FlowBox, Frame, gdk, gdk::Monitor, gdk_pixbuf, GestureClick, gio::File, glib, glib::clone, IconLookupFlags, IconPaintable, IconTheme, Label, Orientation, Overflow, Overlay, pango, Picture, prelude::*, SelectionMode, style_context_add_provider_for_display, STYLE_PROVIDER_PRIORITY_APPLICATION, STYLE_PROVIDER_PRIORITY_USER, TextDirection};
+use gtk4::{Align, ApplicationWindow, EventControllerMotion, EventSequenceState, Fixed, FlowBox, Frame, gdk::Monitor, gdk_pixbuf, GestureClick, gio::File, glib, glib::clone, IconLookupFlags, IconPaintable, IconTheme, Label, Orientation, Overflow, Overlay, pango, Picture, prelude::*, SelectionMode, TextDirection};
 use gtk4::Application;
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::data::Client;
-use lazy_static::lazy_static;
-use log::{debug, info, warn};
+use log::{info, warn};
 use tokio::sync::MutexGuard;
 
-use crate::{DRY, handle, icons, Share, SharedConfig};
+use crate::{DRY, handle, Share, SharedConfig};
 use crate::daemon::funcs::{close, switch_gui};
-
-const CSS: &str = r#"
-.client-image {
-    margin: 15px;
-}
-.client-index {
-    margin: 6px;
-    padding: 5px;
-    font-size: 30px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(80, 90, 120, 0.80);
-    background-color: rgba(20, 20, 20, 1);
-}
-.client {
-    border-radius: 15px;
-    border: 3px solid rgba(80, 90, 120, 0.80);
-    background-color: rgba(25, 25, 25, 0.90);
-}
-.client:hover {
-    background-color: rgba(40, 40, 50, 1);
-}
-.client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
-}
-.workspace {
-    font-size: 25px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(70, 80, 90, 0.80);
-    background-color: rgba(20, 20, 25, 0.90);
-}
-.workspace_special {
-    border: 3px solid rgba(0, 255, 0, 0.4);
-}
-.workspaces {
-    margin: 10px;
-}
-window {
-    border-radius: 15px;
-    opacity: 0.85;
-    border: 6px solid rgba(15, 170, 190, 0.85);
-}
-"#;
-
-lazy_static! {
-    static ref SIZE_FACTOR: i16 =option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
-    static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
-    static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
-    static ref WORKSPACES_PER_ROW: u32 = option_env!("WORKSPACES_PER_ROW").map_or(5, |s| s.parse().expect("Failed to parse WORKSPACES_PER_ROW"));
-}
+use crate::daemon::gui::{ICON_SCALE, ICON_SIZE, icons, SIZE_FACTOR, WORKSPACES_PER_ROW};
 
 fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32, enabled: bool, max_switch_offset: u8) -> Frame {
     let theme = IconTheme::new();
@@ -155,7 +102,6 @@ fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32,
 fn update(
     share: Share,
     switch_ws_on_hover: bool,
-    stay_open_on_close: bool,
     show_title: bool,
     workspaces_flow: FlowBox,
     data: &MutexGuard<SharedConfig>,
@@ -249,12 +195,10 @@ fn update(
                         .with_context(|| format!("Failed to focus client {}", client.class))
                         .map_err(|e| warn!("{:?}", e));
 
-                    if !stay_open_on_close {
-                        info!("Exiting on click of client window");
-                        let _ = close(share.clone(), false).await
-                            .with_context(|| "Failed to close daemon".to_string())
-                            .map_err(|e| warn!("{:?}", e));
-                    }
+                    info!("Exiting on click of client window");
+                    let _ = close(share.clone(), false).await
+                        .with_context(|| "Failed to close daemon".to_string())
+                        .map_err(|e| warn!("{:?}", e));
                 }));
             }));
             frame.add_controller(gesture);
@@ -266,7 +210,7 @@ fn update(
     Ok(())
 }
 
-fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, show_title: bool, app: &Application, monitors: &Vec<Monitor>) -> anyhow::Result<()> {
+pub(super) fn activate(share: Share, switch_ws_on_hover: bool, show_title: bool, app: &Application, monitors: &Vec<Monitor>) -> anyhow::Result<()> {
     let mut monitor_data_list = vec![];
     for monitor in monitors {
         let connector = monitor.connector().with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
@@ -295,7 +239,7 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, sh
             let show = share_unlocked.gui_show;
             for (workspaces_flow, connector, window) in monitor_data_list.iter() {
                 if show { window.show(); } else { window.hide(); }
-                let _ = update(arc_share_share.clone(), switch_ws_on_hover, stay_open_on_close, show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
+                let _ = update(arc_share_share.clone(), switch_ws_on_hover, show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
             }
         }
     });
@@ -303,44 +247,3 @@ fn activate(share: Share, switch_ws_on_hover: bool, stay_open_on_close: bool, sh
     Ok(())
 }
 
-
-pub fn start_gui(share: &Share, switch_ws_on_hover: bool, stay_open_on_close: bool, custom_css: Option<PathBuf>, show_title: bool) -> anyhow::Result<()> {
-    let arc_share = share.clone();
-    std::thread::spawn(move || {
-        let application = Application::builder().application_id("com.github.h3rmt.hyprswitch.2").build();
-
-        application.connect_activate(move |app| {
-            let provider_app = CssProvider::new();
-            provider_app.load_from_data(CSS);
-            style_context_add_provider_for_display(
-                &gdk::Display::default().context("Could not connect to a display.").expect("Could not connect to a display."),
-                &provider_app,
-                STYLE_PROVIDER_PRIORITY_APPLICATION,
-            );
-
-            if let Some(custom_css) = &custom_css {
-                // check if custom css file exists
-                if !custom_css.exists() {
-                    warn!("Custom css file {custom_css:?} does not exist");
-                } else {
-                    let provider_user = CssProvider::new();
-                    provider_user.load_from_path(custom_css);
-                    style_context_add_provider_for_display(
-                        &gdk::Display::default().context("Could not connect to a display.").expect("Could not connect to a display."),
-                        &provider_user,
-                        STYLE_PROVIDER_PRIORITY_USER,
-                    );
-                }
-            }
-            let monitors = gdk::DisplayManager::get().list_displays().first().context("No Display found (Failed to get all monitor)").expect("Failed to get all monitors").monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>();
-
-            let arc_share_share = arc_share.clone();
-            let _ = activate(arc_share_share, switch_ws_on_hover, stay_open_on_close, show_title, app, &monitors).context("Failed to activate windows").map_err(|e| warn!("{:?}", e));
-        });
-
-        debug!("Running application");
-        application.run_with_args::<String>(&[]);
-    });
-
-    Ok(())
-}

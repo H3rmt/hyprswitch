@@ -7,7 +7,7 @@ use tokio::net::UnixStream;
 use crate::{ACTIVE, Share, Transfer};
 use crate::daemon::funcs::{close, init, switch};
 
-pub async fn handle_client(
+pub(super) async fn handle_client(
     mut stream: UnixStream, share: Share,
 ) -> anyhow::Result<()> {
     let mut buffer = Vec::new();

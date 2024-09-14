@@ -3,7 +3,7 @@ use std::env;
 use anyhow::Context;
 use hyprland::dispatch::{Dispatch, DispatchType};
 use hyprland::keyword::Keyword;
-use log::{debug, info};
+use log::{debug};
 
 use crate::cli::{CloseType, ModKey};
 use crate::GuiConfig;
@@ -12,7 +12,7 @@ fn generate_submap_name() -> String {
     format!("hyprswitch-{}-{}", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"), rand::random::<u32>())
 }
 
-pub fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
+pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
     let name = generate_submap_name();
     let mut keyword_list = Vec::<(&str, String)>::new();
 
@@ -64,7 +64,7 @@ pub fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
 
         debug!("keyword_list: ");
         for (key, value) in keyword_list {
-            info!("{} = {}", key, value);
+            debug!("{} = {}", key, value);
             Keyword::set(key, value)?;
         }
         debug!("keyword_list end");
@@ -82,7 +82,7 @@ pub fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn deactivate_submap() -> anyhow::Result<()> {
+pub(super) fn deactivate_submap() -> anyhow::Result<()> {
     Dispatch::call(DispatchType::Custom("submap", "reset"))?;
     Ok(())
 }
