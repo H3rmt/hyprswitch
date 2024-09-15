@@ -23,10 +23,6 @@ pub struct App {
 pub enum Command {
     /// Initialize and start the Daemon
     Init {
-        /// Switch to workspaces when hovering over them in the GUI
-        #[arg(long)]
-        switch_ws_on_hover: bool,
-
         /// Specify a path to custom css file
         #[arg(long)]
         custom_css: Option<PathBuf>,
@@ -68,13 +64,13 @@ pub enum Command {
 // ModKey doesnt work (if pressed to fast closes instantly)
 #[derive(clap::ValueEnum, Clone, Default, Debug, Serialize, Deserialize)]
 pub enum CloseType {
-    // /// Close when pressing the mod key again (e.g., SUPER) or an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
-    // ModKeyIndex,
     #[default]
+    /// Close when pressing the mod key + key again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
+    ModKeyIndex,
     /// Close when pressing an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
     Index,
-    // /// Close when pressing the mod key again (e.g., SUPER) or clicking on a window in GUI (or pressing escape)
-    // ModKey,
+    /// Close when pressing the mod key + key again (e.g., SUPER + TAB) or clicking on a window in GUI (or pressing escape)
+    ModKey,
     /// Close when releasing the mod key (e.g., SUPER) or clicking on a window in GUI (or pressing escape)
     ModKeyRelease,
     /// Close when clicking on a window in GUI (or pressing escape)

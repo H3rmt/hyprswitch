@@ -25,39 +25,46 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         let main_mod = get_mod_from_mod_key(gui_config.mod_key.clone());
         debug!("current_exe: {}", current_exe);
 
-
-        keyword_list.push(("bind", format!("{}, {}, exec, {} dispatch", main_mod, gui_config.key, current_exe)));
-        keyword_list.push(("bind", format!("{} shift, {}, exec, {} dispatch -r", main_mod, gui_config.key, current_exe)));
-
         // always bind escape to close
         keyword_list.push(("bind", format!(" ,escape , exec, {} close --kill", current_exe)));
         match gui_config.close {
-            // CloseType::ModKey | CloseType::ModKeyIndex => {
-            //     keyword_list.push(("bind", format!("{}, {}, exec, {} close", main_mod, gui_config.mod_key, current_exe)));
-            // }
+            CloseType::ModKeyRelease | CloseType::None | CloseType::Index => {
+                // allow repeatable presses to switch to next
+                keyword_list.push(("bind", format!("{}, {}, exec, {} dispatch", main_mod, gui_config.key, current_exe)));
+                keyword_list.push(("bind", format!("{} shift, {}, exec, {} dispatch -r", main_mod, gui_config.key, current_exe)));
+            }
+            CloseType::ModKey | CloseType::ModKeyIndex => {
+                // close on repeatable presses
+                keyword_list.push(("bind", format!("{}, {}, exec, {} close", main_mod, gui_config.key, current_exe)));
+                keyword_list.push(("bind", format!("{} shift, {}, exec, {} close", main_mod, gui_config.key, current_exe)));
+            }
+        };
+        match gui_config.close {
             CloseType::ModKeyRelease => {
+                // close when mod key is released
                 keyword_list.push(("bindrt", format!("{}, {}, exec, {} close", main_mod, gui_config.mod_key, current_exe)));
                 keyword_list.push(("bindrt", format!("{} shift, {}, exec, {} close", main_mod, gui_config.mod_key, current_exe)));
             }
-            CloseType::None | CloseType::Index => {}
+            CloseType::None | CloseType::Index | CloseType::ModKey | CloseType::ModKeyIndex => {}
         };
         match gui_config.close {
-            CloseType::Index => {
+            CloseType::None | CloseType::ModKey => {
                 for i in 1..=gui_config.max_switch_offset {
-                    keyword_list.push(("bind", format!(",{}, exec, {} dispatch -o={} && {} close", i, current_exe, i, current_exe)));
-                    keyword_list.push(("bind", format!("shift,{}, exec, {} dispatch -o={} -r && {} close", i, current_exe, i, current_exe)));
+                    keyword_list.push(("bind", format!(",{}, exec, {} dispatch -o={}", i, current_exe, i)));
+                    keyword_list.push(("bind", format!("shift,{}, exec, {} dispatch -o={} -r", i, current_exe, i)));
                 }
             }
             CloseType::ModKeyRelease => {
+                // main_mod needed as it is still pressed
                 for i in 1..=gui_config.max_switch_offset {
                     keyword_list.push(("bind", format!("{} ,{}, exec, {} dispatch -o={}", main_mod, i, current_exe, i)));
                     keyword_list.push(("bind", format!("{} shift,{}, exec, {} dispatch -o={} -r", main_mod, i, current_exe, i)));
                 }
             }
-            CloseType::None => {
+            CloseType::Index | CloseType::ModKeyIndex => {
                 for i in 1..=gui_config.max_switch_offset {
-                    keyword_list.push(("bind", format!(",{}, exec, {} dispatch -o={}", i, current_exe, i)));
-                    keyword_list.push(("bind", format!("shift,{}, exec, {} dispatch -o={} -r", i, current_exe, i)));
+                    keyword_list.push(("bind", format!(",{}, exec, {} dispatch -o={} && {} close", i, current_exe, i, current_exe)));
+                    keyword_list.push(("bind", format!("shift,{}, exec, {} dispatch -o={} -r && {} close", i, current_exe, i, current_exe)));
                 }
             }
         };
@@ -82,7 +89,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(super) fn deactivate_submap() -> anyhow::Result<()> {
+pub fn deactivate_submap() -> anyhow::Result<()> {
     Dispatch::call(DispatchType::Custom("submap", "reset"))?;
     Ok(())
 }

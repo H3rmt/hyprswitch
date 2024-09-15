@@ -20,6 +20,9 @@ pub(super) const CSS: &str = r#"
     border: 3px solid rgba(70, 80, 90, 0.80);
     background-color: rgba(20, 20, 25, 0.90);
 }
+.workspace:hover {
+    background-color: rgba(40, 40, 50, 1);
+}
 .workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
 }

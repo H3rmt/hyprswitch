@@ -8,6 +8,7 @@ use lazy_static::lazy_static;
 use log::{debug, warn};
 
 use crate::Share;
+
 #[allow(clippy::module_inception)]
 mod gui;
 mod icons;
@@ -20,7 +21,7 @@ lazy_static! {
     static ref WORKSPACES_PER_ROW: u32 = option_env!("WORKSPACES_PER_ROW").map_or(5, |s| s.parse().expect("Failed to parse WORKSPACES_PER_ROW"));
 }
 
-pub(super) fn start_gui(share: &Share, switch_ws_on_hover: bool, custom_css: Option<PathBuf>, show_title: bool) -> anyhow::Result<()> {
+pub(super) fn start_gui(share: &Share, custom_css: Option<PathBuf>, show_title: bool) -> anyhow::Result<()> {
     let arc_share = share.clone();
     std::thread::spawn(move || {
         let application = Application::builder().application_id("com.github.h3rmt.hyprswitch.2").build();
@@ -52,7 +53,7 @@ pub(super) fn start_gui(share: &Share, switch_ws_on_hover: bool, custom_css: Opt
                 .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>();
 
             let arc_share_share = arc_share.clone();
-            let _ = gui::activate(arc_share_share, switch_ws_on_hover, show_title, app, &monitors).context("Failed to activate windows").map_err(|e| warn!("{:?}", e));
+            let _ = gui::activate(arc_share_share, show_title, app, &monitors).context("Failed to activate windows").map_err(|e| warn!("{:?}", e));
         });
 
         debug!("Running application");

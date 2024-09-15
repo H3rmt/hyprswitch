@@ -45,7 +45,6 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 - `-v` Increase the verbosity level (max: -vv)
 
 - `init` Initialize and start the Daemon
-    - `--switch-ws-on-hover` Switch to workspaces when hovering over them in the GUI
     - `--custom-css <PATH>` Specify a path to custom css file
     - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
 
@@ -68,10 +67,15 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
       shift_l, shift_r)
     - `--key <KEY>` The key to used to open the GUI (e.g., tab)
     - `--close <TYPE>` How to close hyprswitch
-        - `Index` Close when pressing an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
-        - `ModKeyRelease` Close when releasing the mod key (e.g., SUPER) or clicking on a window in GUI (or pressing
+        - `mod-key-index` Close when pressing the mod key + key again (e.g., SUPER + TAB) or an index key (1, 2,
+          3, ...) or clicking on a window in GUI (or pressing escape)
+        - `index` Close when pressing an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing
           escape)
-        - `None` Close when clicking on a window in GUI (or pressing escape)
+        - `mod-key` Close when pressing the mod key + key again (e.g., SUPER + TAB) or clicking on a window in
+          GUI (or pressing escape)
+        - `mod-key-release` Close when releasing the mod key (e.g., SUPER) or clicking on a window in GUI (or pressing
+          escape)
+        - `none` Close when clicking on a window in GUI (or pressing escape)
     - `--max-switch-offset <MAX_SWITCH_OFFSET>` The maximum offset you can switch to with number keys and is shown in
       the GUI
     - Same options as `simple` except `--offset` and `--reverse`
@@ -156,7 +160,7 @@ bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close 
   ```
   </td><td><img src="imgs/css_client-image.png"/> </td></tr></table>
 
-- **client-index**
+- **index**
   <table><tr><td>
 
   ```css
@@ -192,7 +196,7 @@ bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close 
   ```
   </td><td><img src="imgs/css_client.png"/> </td></tr></table>
 
-- **workspace_frame** + **workspace_frame_special**
+- **workspace_frame** + **workspace_frame_special** + **workspace_active**
 
   workspace_frame_special is added when workspaceId is < 0 (e.g., scratchpad)
   <table><tr><td>
@@ -205,8 +209,14 @@ bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close 
     border: 3px solid rgba(70, 80, 90, 0.80);
     background-color: rgba(20, 20, 25, 0.90);
   }
+  .workspace:hover {
+    background-color: rgba(40, 40, 50, 1);
+  }
   .workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
+  }
+  .workspace_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
   }
   ```
   </td><td><img src="imgs/css_workspace.png"/> </td></tr></table>
@@ -240,16 +250,6 @@ bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close 
     margin: 15px;
 }
 
-.client-index {
-    margin: 6px;
-    padding: 5px;
-    font-size: 30px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(80, 90, 120, 0.80);
-    background-color: rgba(20, 20, 20, 1);
-}
-
 .client {
     border-radius: 15px;
     border: 3px solid rgba(80, 90, 120, 0.80);
@@ -272,8 +272,26 @@ bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close 
     background-color: rgba(20, 20, 25, 0.90);
 }
 
+.workspace:hover {
+    background-color: rgba(40, 40, 50, 1);
+}
+
 .workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
+}
+
+.workspace_active {
+    border: 3px solid rgba(239, 9, 9, 0.94);
+}
+
+.index {
+    margin: 6px;
+    padding: 5px;
+    font-size: 30px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(20, 20, 20, 1);
 }
 
 .workspaces {
@@ -283,7 +301,7 @@ bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close 
 window {
     border-radius: 15px;
     opacity: 0.85;
-    border: 6px solid rgba(17, 171, 192, 0.85);
+    border: 6px solid rgba(15, 170, 190, 0.85);
 }
 ```
 

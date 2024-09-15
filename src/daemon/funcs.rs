@@ -1,5 +1,6 @@
 use anyhow::Context;
 use hyprland::data::Client;
+use hyprland::shared::Address;
 use log::{debug, info};
 
 use crate::{ACTIVE, Command, Config, DRY, GuiConfig, handle, Share};
@@ -19,12 +20,35 @@ pub(crate) async fn switch_gui(share: Share, next_client: Client) -> anyhow::Res
     debug!("Clients data: {:?}", clients_data);
 
     lock.clients_data = clients_data;
+    lock.simple_config.switch_workspaces = false;
     lock.active = Some((next_client.address.clone(), next_client.ws()));
     notify.notify_one(); // trigger GUI update
 
     Ok(())
 }
 
+/// don't close anything, close is called after this function
+pub(crate) async fn switch_gui_workspace(share: Share, name: &str) -> anyhow::Result<()> {
+    handle::switch_workspace(name, *DRY.get().expect("DRY not set"))
+        .with_context(|| format!("Failed to execute switch workspace with ws_name {name:?}"))?;
+
+    let (latest, notify) = &*share;
+    let mut lock = latest.lock().await;
+
+    let (clients_data, _) = handle::collect_data(lock.simple_config.clone()).await.with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;
+    debug!("Clients data: {:?}", clients_data);
+
+    let active_id = lock.active.clone().map(|(addr, _)| addr).unwrap_or(Address::new(""));
+    let ws_id = *clients_data.workspace_data.iter().find(|(_, ws)| ws.name == name)
+        .context("Workspace data not found")?.0;
+
+    lock.clients_data = clients_data;
+    lock.simple_config.switch_workspaces = true;
+    lock.active = Some((active_id, ws_id));
+    notify.notify_one(); // trigger GUI update
+
+    Ok(())
+}
 
 pub(crate) async fn switch(share: Share, command: Command) -> anyhow::Result<()> {
     let (latest, notify) = &*share;
@@ -60,8 +84,15 @@ pub(crate) async fn close(share: Share, kill: bool) -> anyhow::Result<()> {
                     handle::toggle_workspace(&workspace_data.name, *DRY.get().expect("DRY not set"))
                         .with_context(|| format!("Failed to execute toggle workspace with ws_name {}", workspace_data.name))?;
                 } else {
-                    handle::switch_workspace(&workspace_data.name, *DRY.get().expect("DRY not set"))
-                        .with_context(|| format!("Failed to execute switch workspace with ws_name {}", workspace_data.name))?;
+                    // check if already on workspace (if so, don't switch because it throws an error `Previous workspace doesn't exist`)
+                    if let Some((_, ws)) = lock.active.as_ref() {
+                        if ws == next_workspace {
+                            info!("Already on workspace {}", workspace_data.name);
+                        } else {
+                            handle::switch_workspace(&workspace_data.name, *DRY.get().expect("DRY not set"))
+                                .with_context(|| format!("Failed to execute switch workspace with ws_name {}", workspace_data.name))?;
+                        }
+                    }
                 }
             } else {
                 let client = lock.clients_data.enabled_clients.iter().find(|c| &c.address == next_client)

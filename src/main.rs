@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use hyprswitch::{ACTIVE, cli, Command, Config, DRY, GuiConfig};
 use hyprswitch::cli::App;
 use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
-use hyprswitch::daemon::start_daemon;
+use hyprswitch::daemon::{deactivate_submap, start_daemon};
 use hyprswitch::handle::{collect_data, find_next_client, switch_async};
 
 #[tokio::main]
@@ -41,14 +41,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled???)");
 
     match cli.command {
-        cli::Command::Init { switch_ws_on_hover, custom_css, show_title } => {
+        cli::Command::Init { custom_css, show_title } => {
             if daemon_running().await {
                 warn!("Daemon already running");
                 return Ok(());
             }
             info!("Starting daemon");
-            start_daemon(switch_ws_on_hover, custom_css, show_title).await
-                .context("Failed to run daemon")?;
+            start_daemon(custom_css, show_title).await
+                .context("Failed to run daemon")
+                .inspect_err(|_| {
+                    let _ = deactivate_submap();
+                })?;
             return Ok(());
         }
         cli::Command::Close { kill } => {
