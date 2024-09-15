@@ -35,10 +35,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             exit(1);
         });
     stderrlog::new().module(module_path!()).verbosity(cli.global_opts.verbose as usize + 1).init()
-        .context("Failed to initialize logging").unwrap_or_else(|e| warn!("{:?}", e));
+        .context("Failed to initialize logging :(").unwrap_or_else(|e| warn!("{:?}", e));
 
-    DRY.set(cli.global_opts.dry_run).expect("unable to set DRY (already filled)");
-    ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled)");
+    DRY.set(cli.global_opts.dry_run).expect("unable to set DRY (already filled???)");
+    ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled???)");
 
     match cli.command {
         cli::Command::Init { switch_ws_on_hover, custom_css, show_title } => {

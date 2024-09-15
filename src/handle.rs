@@ -1,4 +1,5 @@
 use std::{collections::HashMap, sync::OnceLock};
+use std::collections::BTreeMap;
 
 use anyhow::Context;
 use hyprland::{
@@ -21,10 +22,10 @@ use crate::sort::update_clients;
 pub fn find_next_client<'a>(
     command: Command,
     enabled_clients: &'a [Client],
-    selected_addr: Option<&Address>,
+    selected_addr: Option<&(Address, WorkspaceId)>,
 ) -> anyhow::Result<(&'a Client, usize)> {
     let index = match selected_addr {
-        Some(add) => {
+        Some((add, _)) => {
             let ind = enabled_clients.iter().position(|c| c.address == *add);
             match ind {
                 Some(si) => if command.reverse {
@@ -66,7 +67,7 @@ pub fn find_next_client<'a>(
     Ok((next_client, index))
 }
 
-pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option<Address>)> {
+pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option<(Address, WorkspaceId)>)> {
     let mut clients = Clients::get_async()
         .await?
         .into_iter()
@@ -101,7 +102,7 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
     // all monitors with their data, x and y are the offset of the monitor, width and height are the size of the monitor.
     // combined_width and combined_height are the combined size of all workspaces on the monitor and workspaces_on_monitor is the number of workspaces on the monitor
     let monitor_data = {
-        let mut md: HashMap<MonitorId, MonitorData> = HashMap::new();
+        let mut md: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
 
         monitors.iter().for_each(|monitor| {
             md.entry(monitor.id).or_insert_with(|| MonitorData {
@@ -117,7 +118,7 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
 
     // all workspaces with their data, x and y are the offset of the workspace
     let workspace_data = {
-        let mut wd: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
+        let mut wd: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
 
         monitor_data.iter().for_each(|(monitor_id, monitor_data)| {
             let mut x_offset = 0;
@@ -177,29 +178,30 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
     if config.ignore_monitors {
         clients = update_clients(clients, None, Some(&monitor_data));
     }
-    
+
 
     let active = Client::get_active_async().await?;
 
-    let (active_class, active_workspace_id, active_monitor_id, active_address) =
+    let active: Option<(String, WorkspaceId, MonitorId, Address)> =
         active.as_ref().map_or_else(|| {
-            (None, None, None, None)
+            None
         }, |a| {
-            (Some(a.class.clone()), Some(a.workspace.id), Some(a.monitor), Some(a.address.clone()))
+            Some((a.class.clone(), a.workspace.id, a.monitor, a.address.clone()))
         });
 
     let enabled_clients = clients.iter()
-        .filter(|c| !config.filter_same_class || active_class.as_ref().map_or(true, |a| c.class == *a))
-        .filter(|c| !config.filter_current_workspace || active_workspace_id.map_or(true, |i| c.workspace.id == i))
-        .filter(|c| !config.filter_current_monitor || active_monitor_id.map_or(true, |m| c.monitor == m))
+        .filter(|c| !config.filter_same_class || active.as_ref().map_or(true, |a| c.class == *a.0))
+        .filter(|c| !config.filter_current_workspace || active.as_ref().map_or(true, |i| c.workspace.id == i.1))
+        .filter(|c| !config.filter_current_monitor || active.as_ref().map_or(true, |m| c.monitor == m.2))
         .cloned().collect::<Vec<_>>();
+
 
     Ok((ClientsData {
         clients,
         enabled_clients,
         workspace_data,
         monitor_data,
-    }, active_address))
+    }, active.map(|a| (a.3, a.1))))
 }
 
 fn get_recent_clients_map() -> &'static Mutex<HashMap<Address, i8>> {

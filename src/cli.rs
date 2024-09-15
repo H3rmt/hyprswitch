@@ -142,6 +142,10 @@ pub struct SimpleConf {
     /// Sort windows by most recently focused
     #[arg(long)]
     pub sort_recent: bool,
+
+    /// Switches to next / previous workspace instead of client
+    #[arg(long)]
+    pub switch_workspaces: bool,
 }
 
 #[derive(Args, Debug, Clone)]

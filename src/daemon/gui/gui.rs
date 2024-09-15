@@ -83,7 +83,7 @@ fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32,
     let overlay = Overlay::builder().child(&picture).build();
 
     if enabled && max_switch_offset != 0 && index <= max_switch_offset as i32 && index >= -(max_switch_offset as i32) {
-        let label = Label::builder().css_classes(vec!["client-index"]).label(index.to_string()).halign(Align::End).valign(Align::End).build();
+        let label = Label::builder().css_classes(vec!["index"]).label(index.to_string()).halign(Align::End).valign(Align::End).build();
         overlay.add_overlay(&label)
     }
 
@@ -132,12 +132,14 @@ fn update(
         };
 
         let workspace_fixed = Fixed::builder().width_request(width).height_request(height).build();
-        let workspace_frame = Frame::builder().css_classes(vec!["workspace"]).label(&workspace.1.name).label_xalign(0.5).child(&workspace_fixed).build();
+        let workspace_frame = Frame::builder().label(&workspace.1.name).label_xalign(0.5).child(&workspace_fixed).build();
+        let workspace_frame_overlay = Overlay::builder().css_classes(vec!["workspace"]).child(&workspace_frame).build();
 
         if *workspace.0 < 0 {
             // special workspace
-            workspace_frame.add_css_class("workspace_special");
+            workspace_frame_overlay.add_css_class("workspace_special");
         }
+
         if switch_ws_on_hover {
             let gesture_2 = EventControllerMotion::new();
             let name = &workspace.1.name;
@@ -161,13 +163,30 @@ fn update(
                         .map_err(|e| warn!("{:?}", e));
                 }));
             }
-            workspace_frame.add_controller(gesture_2);
+            workspace_frame_overlay.add_controller(gesture_2);
+        }
+
+        if data.active.as_ref().map_or(false, |(_, ws)| ws == workspace.0) {
+            workspace_frame_overlay.add_css_class("workspace_active");
+        }
+
+        // index of selected workspace
+        if data.simple_config.switch_workspaces {
+            let index = data.clients_data.workspace_data.iter().position(|ws| ws.0 == workspace.0).map_or(0, |i| i as i32);
+            let selected_workspace_index = data.active.as_ref().and_then(|(_, ws)| data.clients_data.workspace_data.iter()
+                .position(|(id, _)| id == ws));
+            let idx = index - selected_workspace_index.unwrap_or(0) as i32;
+            if data.gui_config.max_switch_offset != 0 && idx <= data.gui_config.max_switch_offset as i32 && idx >= -(data.gui_config.max_switch_offset as i32) {
+                let label = Label::builder().css_classes(vec!["index"]).label(idx.to_string()).halign(Align::End).valign(Align::End).build();
+                workspace_frame_overlay.add_overlay(&label)
+            }
         }
 
         // index of selected client (offset for selecting)
-        let selected_index = data.active_address.as_ref().and_then(|addr| data.clients_data.enabled_clients.iter().position(|c| c.address == *addr));
+        let selected_index = data.active.as_ref().and_then(|(addr, _)| data.clients_data.enabled_clients.iter()
+            .position(|c| c.address == *addr));
         for client in clients {
-            let client_active = data.active_address.as_ref().map_or(false, |addr| *addr == client.address);
+            let client_active = if data.simple_config.switch_workspaces { false } else { data.active.as_ref().map_or(false, |(addr, _)| *addr == client.address) };
             // debug!("Rendering client {}", client.class);
             // debug!("Client active: {}", client_active);
             let index = data.clients_data.enabled_clients.iter().position(|c| c.address == client.address).map_or(0, |i| i as i32);
@@ -176,7 +195,7 @@ fn update(
                 client_active, show_title,
                 index - selected_index.unwrap_or(0) as i32,
                 data.clients_data.enabled_clients.iter().any(|c| c.address == client.address),
-                data.gui_config.max_switch_offset,
+                if data.simple_config.switch_workspaces { 0 } else { data.gui_config.max_switch_offset },
             );
             let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
             let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
@@ -204,7 +223,7 @@ fn update(
             frame.add_controller(gesture);
         }
 
-        workspaces_flow.insert(&workspace_frame, -1);
+        workspaces_flow.insert(&workspace_frame_overlay, -1);
     }
 
     Ok(())

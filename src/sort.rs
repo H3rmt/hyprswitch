@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{BTreeMap, VecDeque},
     fmt::Debug,
 };
 
@@ -203,8 +203,8 @@ where
 /// removes offset by monitor, adds offset by workspace (client on monitor 1 and workspace 2 will be moved left by monitor 1 offset and right by workspace 2 offset (workspace width * 2))
 pub fn update_clients<SC>(
     clients: Vec<SC>,
-    workspace_data: Option<&HashMap<WorkspaceId, WorkspaceData>>,
-    monitor_data: Option<&HashMap<MonitorId, MonitorData>>,
+    workspace_data: Option<&BTreeMap<WorkspaceId, WorkspaceData>>,
+    monitor_data: Option<&BTreeMap<MonitorId, MonitorData>>,
 ) -> Vec<SC>
 where
     SC: SortableClient + Debug,

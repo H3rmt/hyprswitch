@@ -52,5 +52,9 @@ async fn send(buffer: &[u8]) -> anyhow::Result<bool> {
 
     let mut buffer = Vec::new();
     stream.read_buf(&mut buffer).await.context("Failed to read data from buffer")?;
-    Ok(buffer[0] == b'1')
+    match buffer[0] {
+        b'1' => Ok(true),
+        b'0' => Err(anyhow::anyhow!("Command failed")),
+        _ => Err(anyhow::anyhow!(format!("Unknown response {} ??", buffer[0]))),
+    }
 }

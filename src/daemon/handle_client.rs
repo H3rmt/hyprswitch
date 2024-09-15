@@ -20,17 +20,16 @@ pub(super) async fn handle_client(
 
     let transfer: Transfer = bincode::deserialize(&buffer).with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
     debug!("Received command: {transfer:?}");
+
+    let active = *ACTIVE.get().expect("ACTIVE not set").lock().await;
+
     match transfer {
         Transfer::Check => {
             info!("Received running? command");
-            if *ACTIVE.get().expect("ACTIVE not set").lock().await {
-                return_success(true, &mut stream).await?;
-            } else {
-                return_success(false, &mut stream).await?;
-            }
+            return_success(active, &mut stream).await?;
         }
         Transfer::Init(config, gui_config) => {
-            if !*ACTIVE.get().expect("ACTIVE not set").lock().await {
+            if !active {
                 info!("Received init command {config:?} and {gui_config:?}");
                 match init(share, config.clone(), gui_config.clone()).await.with_context(|| format!("Failed to init with config {:?} and gui_config {:?}", config, gui_config)) {
                     Ok(_) => {
@@ -41,10 +40,12 @@ pub(super) async fn handle_client(
                         return_success(false, &mut stream).await?;
                     }
                 };
+            } else {
+                return_success(false, &mut stream).await?;
             }
         }
         Transfer::Close(kill) => {
-            if *ACTIVE.get().expect("ACTIVE not set").lock().await {
+            if active {
                 info!("Received close command");
                 match close(share, kill).await.with_context(|| format!("Failed to close gui  kill: {kill}")) {
                     Ok(_) => {
@@ -55,10 +56,12 @@ pub(super) async fn handle_client(
                         return_success(false, &mut stream).await?;
                     }
                 };
+            } else {
+                return_success(false, &mut stream).await?;
             }
         }
         Transfer::Switch(command) => {
-            if *ACTIVE.get().expect("ACTIVE not set").lock().await {
+            if active {
                 info!("Received switch command {command:?}");
                 match switch(share, command).await.with_context(|| format!("Failed to execute with command {command:?}")) {
                     Ok(_) => {
@@ -69,6 +72,8 @@ pub(super) async fn handle_client(
                         return_success(false, &mut stream).await?;
                     }
                 };
+            } else {
+                return_success(false, &mut stream).await?;
             }
         }
     };

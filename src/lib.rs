@@ -1,10 +1,14 @@
 #![deny(clippy::print_stdout)]
 
+use std::collections::BTreeMap;
 use std::env::var;
 use std::fmt;
 use std::path::PathBuf;
+use std::sync::{Arc, OnceLock};
 
+use hyprland::shared::{Address, WorkspaceId};
 use serde::{Deserialize, Serialize};
+use tokio::sync::{Mutex, Notify};
 
 use crate::cli::{CloseType, GuiConf, ModKey, SimpleConf, SimpleOpts};
 
@@ -51,6 +55,7 @@ pub struct Config {
     pub filter_current_monitor: bool,
     pub filter_same_class: bool,
     pub include_special_workspaces: bool,
+    pub switch_workspaces: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -73,8 +78,8 @@ pub enum Transfer {
 pub struct ClientsData {
     pub clients: Vec<hyprland::data::Client>,
     pub enabled_clients: Vec<hyprland::data::Client>,
-    pub workspace_data: std::collections::HashMap<hyprland::shared::WorkspaceId, WorkspaceData>,
-    pub monitor_data: std::collections::HashMap<MonitorId, MonitorData>,
+    pub workspace_data: BTreeMap<WorkspaceId, WorkspaceData>,
+    pub monitor_data: BTreeMap<MonitorId, MonitorData>,
 }
 
 #[derive(Debug, Default)]
@@ -82,18 +87,18 @@ pub struct SharedConfig {
     pub simple_config: Config,
     pub gui_config: GuiConfig,
     pub clients_data: ClientsData,
-    pub active_address: Option<hyprland::shared::Address>,
+    pub active: Option<(Address, WorkspaceId)>,
     pub gui_show: bool,
 }
 
 // config, clients, selected-client, gui-show
-pub type Share = std::sync::Arc<(tokio::sync::Mutex<SharedConfig>, tokio::sync::Notify)>;
+pub type Share = Arc<(Mutex<SharedConfig>, Notify)>;
 
 /// global variable to store if we are in dry mode
-pub static DRY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+pub static DRY: OnceLock<bool> = OnceLock::new();
 
 /// global variable to store if daemon is active (displaying GUI)
-pub static ACTIVE: std::sync::OnceLock<tokio::sync::Mutex<bool>> = std::sync::OnceLock::new();
+pub static ACTIVE: OnceLock<Mutex<bool>> = OnceLock::new();
 
 impl From<SimpleConf> for Config {
     fn from(opts: SimpleConf) -> Self {
@@ -105,6 +110,7 @@ impl From<SimpleConf> for Config {
             filter_current_monitor: opts.filter_current_monitor,
             filter_same_class: opts.filter_same_class,
             include_special_workspaces: opts.include_special_workspaces,
+            switch_workspaces: opts.switch_workspaces,
         }
     }
 }
