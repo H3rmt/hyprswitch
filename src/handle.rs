@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::OnceLock};
 use std::collections::BTreeMap;
+use std::sync::Mutex;
 
 use anyhow::Context;
 use hyprland::{
@@ -12,20 +13,68 @@ use hyprland::{
     prelude::*,
     shared::{Address, WorkspaceId},
 };
-use hyprland::shared::HyprError;
+use hyprland::data::WorkspaceBasic;
 use log::{debug, error, info, warn};
-use tokio::sync::Mutex;
 
-use crate::{ClientsData, Command, Config, MonitorData, MonitorId, sort::sort_clients, WorkspaceData};
+use crate::{Command, Config, Data, MonitorData, MonitorId, sort::sort_clients, WorkspaceData};
 use crate::sort::update_clients;
+
+pub fn find_next_workspace<'a>(
+    command: Command,
+    workspace_data: &'a BTreeMap<i32, WorkspaceData>,
+    selected_addr: Option<&WorkspaceId>,
+) -> anyhow::Result<(&'a WorkspaceData, usize)> {
+    let vec = workspace_data.iter().filter(|(_, w)| w.active).collect::<Vec<_>>();
+    let index = match selected_addr {
+        Some(add) => {
+            let ind = vec.iter().position(|(id, _)| *id == add);
+            match ind {
+                Some(si) => if command.reverse {
+                    if si == 0 {
+                        vec.len() - command.offset as usize
+                    } else {
+                        si - command.offset as usize
+                    }
+                } else if si + command.offset as usize >= vec.len() {
+                    si + command.offset as usize - vec.len()
+                } else {
+                    si + command.offset as usize
+                },
+                None => {
+                    warn!("selected workspace not found");
+                    if command.reverse {
+                        vec.len() - command.offset as usize
+                    } else {
+                        command.offset as usize
+                    }
+                }
+            }
+        }
+        None => {
+            if command.reverse {
+                vec.len() - command.offset as usize
+            } else {
+                command.offset as usize
+            }
+        }
+    };
+
+    let next_workspace = vec
+        .iter()
+        .cycle()
+        .nth(index)
+        .context("No next client found")?;
+
+    Ok((next_workspace.1, index))
+}
 
 pub fn find_next_client<'a>(
     command: Command,
     enabled_clients: &'a [Client],
-    selected_addr: Option<&(Address, WorkspaceId)>,
+    selected_addr: Option<&Address>,
 ) -> anyhow::Result<(&'a Client, usize)> {
     let index = match selected_addr {
-        Some((add, _)) => {
+        Some(add) => {
             let ind = enabled_clients.iter().position(|c| c.address == *add);
             match ind {
                 Some(si) => if command.reverse {
@@ -67,20 +116,18 @@ pub fn find_next_client<'a>(
     Ok((next_client, index))
 }
 
-pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option<(Address, WorkspaceId)>)> {
-    let mut clients = Clients::get_async()
-        .await?
+pub fn collect_data(config: Config) -> anyhow::Result<(Data, Option<Address>, Option<WorkspaceId>)> {
+    let mut clients = Clients::get()?
         .into_iter()
         .filter(|c| c.workspace.id != -1) // ignore clients on invalid workspaces
         .filter(|w| config.include_special_workspaces || !w.workspace.id < 0)
         .collect::<Vec<_>>();
 
-    let monitors = Monitors::get_async().await?;
+    let monitors = Monitors::get()?;
 
     // get all workspaces sorted by ID
     let workspaces = {
-        let mut workspaces = Workspaces::get_async()
-            .await?
+        let mut workspaces = Workspaces::get()?
             .into_iter()
             .filter(|w| w.id != -1) // ignore nonexistent clients
             .filter(|w| config.include_special_workspaces || !w.id < 0)
@@ -117,7 +164,7 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
     };
 
     // all workspaces with their data, x and y are the offset of the workspace
-    let workspace_data = {
+    let mut workspace_data = {
         let mut wd: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
 
         monitor_data.iter().for_each(|(monitor_id, monitor_data)| {
@@ -132,9 +179,11 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
                         x: x_offset,
                         y: monitor_data.y,
                         name: workspace.name.clone(),
+                        id: workspace.id,
                         monitor: *monitor_id,
                         height: monitor_data.height,
                         width: monitor_data.width,
+                        active: true, // gets updated later
                     },
                 );
                 x_offset += monitor_data.width;
@@ -153,7 +202,7 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
     }
 
     if config.sort_recent {
-        let mut focus_map = get_recent_clients_map().lock().await;
+        let mut focus_map = get_recent_clients_map().lock().expect("Failed to lock focus_map");
         if focus_map.is_empty() {
             focus_map.extend(clients.iter().map(|c| (c.address.clone(), c.focus_history_id)));
         };
@@ -180,8 +229,7 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
     }
 
 
-    let active = Client::get_active_async().await?;
-
+    let active = Client::get_active()?;
     let active: Option<(String, WorkspaceId, MonitorId, Address)> =
         active.as_ref().map_or_else(|| {
             None
@@ -195,13 +243,17 @@ pub async fn collect_data(config: Config) -> anyhow::Result<(ClientsData, Option
         .filter(|c| !config.filter_current_monitor || active.as_ref().map_or(true, |m| c.monitor == m.2))
         .cloned().collect::<Vec<_>>();
 
+    // iterate over all workspaces and set active to false if no client is on the workspace is active 
+    for (_, workspace) in workspace_data.iter_mut() {
+        workspace.active = enabled_clients.iter().any(|c| c.workspace.id == workspace.id);
+    }
 
-    Ok((ClientsData {
+    Ok((Data {
         clients,
         enabled_clients,
         workspace_data,
         monitor_data,
-    }, active.map(|a| (a.3, a.1))))
+    }, active.as_ref().map(|a| a.3.clone()), active.map(|a| a.1)))
 }
 
 fn get_recent_clients_map() -> &'static Mutex<HashMap<Address, i8>> {
@@ -209,17 +261,12 @@ fn get_recent_clients_map() -> &'static Mutex<HashMap<Address, i8>> {
     MAP_LOCK.get_or_init(|| { Mutex::new(HashMap::new()) })
 }
 
-pub async fn clear_recent_clients() {
-    get_recent_clients_map().lock().await.clear();
+pub fn clear_recent_clients() {
+    get_recent_clients_map().lock().expect("Failed to lock focus_map").clear();
 }
 
-pub async fn switch_async(next_client: &Client, dry_run: bool) -> Result<(), HyprError> {
-    if next_client.workspace.id < -1 {
-        info!("toggle workspace {}", next_client.workspace.name);
-
-        toggle_workspace(&next_client.workspace.name, dry_run)?;
-        return Ok(()); // TODO switch to correct client https://github.com/H3rmt/hyprswitch/issues/18
-    }
+pub fn switch_client(next_client: &Client, dry_run: bool) -> anyhow::Result<()> {
+    switch_workspace(&next_client.workspace, dry_run)?;
 
     if dry_run {
         #[allow(clippy::print_stdout)]
@@ -228,31 +275,45 @@ pub async fn switch_async(next_client: &Client, dry_run: bool) -> Result<(), Hyp
         }
     } else {
         info!("switch to next_client: {} ({})", next_client.title, next_client.class);
-        Dispatch::call_async(FocusWindow(WindowIdentifier::Address(
+        Dispatch::call(FocusWindow(WindowIdentifier::Address(
             next_client.address.clone(),
-        ))).await?;
+        )))?;
     }
 
     Ok(())
 }
 
-pub fn switch_workspace(workspace_name: &str, dry_run: bool) -> Result<(), HyprError> {
+pub fn switch_workspace(next_workspace: &WorkspaceBasic, dry_run: bool) -> anyhow::Result<()> {
+    let current_workspace = get_current_workspace().context("Failed to get current workspace")?;
+    // check if already on workspace (if so, don't switch because it throws an error `Previous workspace doesn't exist`)
+    if next_workspace.id != current_workspace {
+        if next_workspace.id < 0 {
+            toggle_special_workspace(&next_workspace.name, dry_run)
+                .with_context(|| format!("Failed to execute toggle workspace with name {}", next_workspace.name))?;
+        } else {
+            switch_normal_workspace(next_workspace.id, dry_run)
+                .with_context(|| format!("Failed to execute switch workspace with id {}", next_workspace.id))?;
+        }
+    }
+    Ok(())
+}
+
+fn switch_normal_workspace(workspace_id: WorkspaceId, dry_run: bool) -> anyhow::Result<()> {
     if dry_run {
         #[allow(clippy::print_stdout)]
         {
-            println!("switch to workspace {workspace_name}");
+            println!("switch to workspace {workspace_id}");
         }
     } else {
-        debug!("switch to workspace {workspace_name}");
-        Dispatch::call(Workspace(WorkspaceIdentifierWithSpecial::Name(
-            workspace_name,
+        debug!("switch to workspace {workspace_id}");
+        Dispatch::call(Workspace(WorkspaceIdentifierWithSpecial::Id(
+            workspace_id,
         )))?;
     }
     Ok(())
 }
 
-/// use this to toggle special workspaces
-pub fn toggle_workspace(workspace_name: &str, dry_run: bool) -> Result<(), HyprError> {
+fn toggle_special_workspace(workspace_name: &str, dry_run: bool) -> anyhow::Result<()> {
     let name = workspace_name.strip_prefix("special:").unwrap_or(workspace_name).to_string();
 
     if dry_run {
@@ -265,4 +326,12 @@ pub fn toggle_workspace(workspace_name: &str, dry_run: bool) -> Result<(), HyprE
         Dispatch::call(ToggleSpecialWorkspace(Some(name)))?;
     }
     Ok(())
+}
+
+fn get_current_workspace() -> anyhow::Result<WorkspaceId> {
+    Client::get_active()?.map_or_else(|| {
+        Err(anyhow::anyhow!("No active client found"))
+    }, |a| {
+        Ok(a.workspace.id)
+    })
 }

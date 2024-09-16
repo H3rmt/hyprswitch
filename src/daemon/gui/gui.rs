@@ -1,14 +1,13 @@
-use anyhow::Context;
-use gtk4::{Align, ApplicationWindow, EventSequenceState, Fixed, FlowBox, Frame, gdk::Monitor, gdk_pixbuf, GestureClick, gio::File, glib, glib::clone, IconLookupFlags, IconPaintable, IconTheme, Label, Orientation, Overflow, Overlay, pango, Picture, prelude::*, SelectionMode, TextDirection};
-use gtk4::Application;
-use gtk4_layer_shell::{Layer, LayerShell};
-use hyprland::data::Client;
-use log::{info, warn};
-use tokio::sync::MutexGuard;
+use std::sync::MutexGuard;
 
-use crate::{Share, SharedConfig};
+use anyhow::Context;
+use gtk4::{Align, EventSequenceState, Fixed, FlowBox, Frame, gdk_pixbuf, GestureClick, gio::File, glib::clone, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, pango, Picture, prelude::*, TextDirection};
+use hyprland::data::{Client, WorkspaceBasic};
+use log::{info, warn};
+
+use crate::{Share, SharedData};
 use crate::daemon::funcs::{close, switch_gui, switch_gui_workspace};
-use crate::daemon::gui::{ICON_SCALE, ICON_SIZE, icons, SIZE_FACTOR, WORKSPACES_PER_ROW};
+use crate::daemon::gui::{ICON_SCALE, ICON_SIZE, icons, SIZE_FACTOR};
 
 fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32, enabled: bool, max_switch_offset: u8) -> Frame {
     let theme = IconTheme::new();
@@ -99,11 +98,11 @@ fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32,
     client_frame
 }
 
-fn update(
+pub(super) fn update(
     share: Share,
     show_title: bool,
     workspaces_flow: FlowBox,
-    data: &MutexGuard<SharedConfig>,
+    data: &MutexGuard<SharedData>,
     connector: &str,
 ) -> anyhow::Result<()> {
     // remove all children
@@ -140,31 +139,29 @@ fn update(
         }
 
         let gesture = GestureClick::new();
-        let name = &workspace.1.name;
-        gesture.connect_pressed(clone!(#[strong] name, #[strong] share, move |gesture, _, _, _| {
+        let ws_data: WorkspaceBasic = workspace.1.into();
+        gesture.connect_pressed(clone!(#[strong] ws_data, #[strong] share, move |gesture, _, _, _| {
             gesture.set_state(EventSequenceState::Claimed);
-            tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(clone!(#[strong] name, #[strong] share, async move {
-                let _ = switch_gui_workspace(share.clone(), &name).await
-                    .with_context(|| format!("Failed to focus workspace {}", name))
-                    .map_err(|e| warn!("{:?}", e));
+            let _ = switch_gui_workspace(share.clone(), &ws_data)
+                .with_context(|| format!("Failed to focus workspace {ws_data:?}"))
+                .map_err(|e| warn!("{:?}", e));
 
-                info!("Exiting on click of client window");
-                let _ = close(share.clone(), false).await
-                    .with_context(|| "Failed to close daemon".to_string())
-                    .map_err(|e| warn!("{:?}", e));
-            }));
+            info!("Exiting on click of client window");
+            let _ = close(share.clone(), false)
+                .with_context(|| "Failed to close daemon".to_string())
+                .map_err(|e| warn!("{:?}", e));
         }));
         workspace_frame_overlay.add_controller(gesture);
 
         if data.simple_config.switch_workspaces {
             // border of selected workspace
-            if data.active.as_ref().map_or(false, |(_, ws)| ws == workspace.0) {
+            if data.active.1.as_ref().map_or(false, |ws| ws == workspace.0) {
                 workspace_frame_overlay.add_css_class("workspace_active");
             }
 
             // index of selected workspace
             let index = data.clients_data.workspace_data.iter().position(|ws| ws.0 == workspace.0).map_or(0, |i| i as i32);
-            let selected_workspace_index = data.active.as_ref().and_then(|(_, ws)| data.clients_data.workspace_data.iter()
+            let selected_workspace_index = data.active.1.as_ref().and_then(|ws| data.clients_data.workspace_data.iter()
                 .position(|(id, _)| id == ws));
             let idx = index - selected_workspace_index.unwrap_or(0) as i32;
             if data.gui_config.max_switch_offset != 0 && idx <= data.gui_config.max_switch_offset as i32 && idx >= -(data.gui_config.max_switch_offset as i32) {
@@ -174,10 +171,10 @@ fn update(
         }
 
         // index of selected client (offset for selecting)
-        let selected_index = data.active.as_ref().and_then(|(addr, _)| data.clients_data.enabled_clients.iter()
+        let selected_index = data.active.0.as_ref().and_then(|addr| data.clients_data.enabled_clients.iter()
             .position(|c| c.address == *addr));
         for client in clients {
-            let client_active = if data.simple_config.switch_workspaces { false } else { data.active.as_ref().map_or(false, |(addr, _)| *addr == client.address) };
+            let client_active = if data.simple_config.switch_workspaces { false } else { data.active.0.as_ref().map_or(false, |addr| *addr == client.address) };
             // debug!("Rendering client {}", client.class);
             // debug!("Client active: {}", client_active);
             let index = data.clients_data.enabled_clients.iter().position(|c| c.address == client.address).map_or(0, |i| i as i32);
@@ -200,16 +197,14 @@ fn update(
             let gesture = GestureClick::new();
             gesture.connect_pressed(clone!(#[strong] client, #[strong] share, move |gesture, _, _, _| {
                 gesture.set_state(EventSequenceState::Claimed);
-                tokio::runtime::Runtime::new().expect("Failed to create runtime").block_on(clone!(#[strong] client, #[strong] share, async move {
-                    let _ = switch_gui(share.clone(), client.clone()).await
-                        .with_context(|| format!("Failed to focus client {}", client.class))
-                        .map_err(|e| warn!("{:?}", e));
+                let _ = switch_gui(share.clone(), client.clone())
+                    .with_context(|| format!("Failed to focus client {}", client.class))
+                    .map_err(|e| warn!("{:?}", e));
 
-                    info!("Exiting on click of client window");
-                    let _ = close(share.clone(), false).await
-                        .with_context(|| "Failed to close daemon".to_string())
-                        .map_err(|e| warn!("{:?}", e));
-                }));
+                info!("Exiting on click of client window");
+                let _ = close(share.clone(), false)
+                    .with_context(|| "Failed to close daemon".to_string())
+                    .map_err(|e| warn!("{:?}", e));
             }));
             frame.add_controller(gesture);
         }
@@ -219,41 +214,3 @@ fn update(
 
     Ok(())
 }
-
-pub(super) fn activate(share: Share, show_title: bool, app: &Application, monitors: &Vec<Monitor>) -> anyhow::Result<()> {
-    let mut monitor_data_list = vec![];
-    for monitor in monitors {
-        let connector = monitor.connector().with_context(|| format!("Failed to get connector for monitor {monitor:?}"))?;
-        let workspaces_flow = FlowBox::builder().css_classes(vec!["workspaces"]).selection_mode(SelectionMode::None)
-            .orientation(Orientation::Horizontal)
-            .max_children_per_line(*WORKSPACES_PER_ROW)
-            .min_children_per_line(*WORKSPACES_PER_ROW)
-            .build();
-        let window = ApplicationWindow::builder().application(app).child(&workspaces_flow).default_height(10).default_width(10).build();
-
-        window.init_layer_shell();
-        window.set_layer(Layer::Overlay);
-        window.set_monitor(monitor);
-        window.present();
-        window.hide();
-
-        monitor_data_list.push((workspaces_flow, connector, window));
-    }
-
-    let arc_share_share = share.clone();
-    glib::spawn_future_local(async move {
-        let (data_mut, notify) = &*arc_share_share;
-        loop {
-            notify.notified().await;
-            let share_unlocked = data_mut.lock().await;
-            let show = share_unlocked.gui_show;
-            for (workspaces_flow, connector, window) in monitor_data_list.iter() {
-                if show { window.show(); } else { window.hide(); }
-                let _ = update(arc_share_share.clone(), show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
-            }
-        }
-    });
-
-    Ok(())
-}
-

@@ -4,11 +4,12 @@ use std::collections::BTreeMap;
 use std::env::var;
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
+use hyprland::data::WorkspaceBasic;
 use hyprland::shared::{Address, WorkspaceId};
 use serde::{Deserialize, Serialize};
-use tokio::sync::{Mutex, Notify};
+use tokio::sync::Notify;
 
 use crate::cli::{CloseType, GuiConf, ModKey, SimpleConf, SimpleOpts};
 
@@ -20,7 +21,7 @@ pub mod handle;
 
 pub type MonitorId = i128;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MonitorData {
     pub x: u16,
     pub y: u16,
@@ -29,14 +30,16 @@ pub struct MonitorData {
     pub connector: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WorkspaceData {
+    pub id: WorkspaceId,
     pub x: u16,
     pub y: u16,
     pub width: u16,
     pub height: u16,
     pub name: String,
     pub monitor: MonitorId,
+    pub active: bool,
 }
 
 
@@ -75,7 +78,7 @@ pub enum Transfer {
 }
 
 #[derive(Debug, Default)]
-pub struct ClientsData {
+pub struct Data {
     pub clients: Vec<hyprland::data::Client>,
     pub enabled_clients: Vec<hyprland::data::Client>,
     pub workspace_data: BTreeMap<WorkspaceId, WorkspaceData>,
@@ -83,16 +86,16 @@ pub struct ClientsData {
 }
 
 #[derive(Debug, Default)]
-pub struct SharedConfig {
+pub struct SharedData {
     pub simple_config: Config,
     pub gui_config: GuiConfig,
-    pub clients_data: ClientsData,
-    pub active: Option<(Address, WorkspaceId)>,
+    pub clients_data: Data,
+    pub active: (Option<Address>, Option<WorkspaceId>),
     pub gui_show: bool,
 }
 
 // config, clients, selected-client, gui-show
-pub type Share = Arc<(Mutex<SharedConfig>, Notify)>;
+pub type Share = Arc<(Mutex<SharedData>, Notify)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: OnceLock<bool> = OnceLock::new();
@@ -131,6 +134,15 @@ impl From<GuiConf> for GuiConfig {
             mod_key: opts.mod_key,
             key: opts.key,
             close: opts.close,
+        }
+    }
+}
+
+impl<'a> From<&'a WorkspaceData> for WorkspaceBasic {
+    fn from(data: &'a WorkspaceData) -> Self {
+        WorkspaceBasic {
+            id: data.id,
+            name: data.name.clone(),
         }
     }
 }

@@ -14,7 +14,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 clap = { version = "^4.5.4", features = ["derive"] }
 hyprland = { version = "0.4.0-alpha.3" }
-tokio = { version = "1.38.0", features = ["full"] }
+tokio = { version = "1.38.0", features = ["sync"] }
 log = "0.4.22"
 stderrlog = "0.6.0"
 anyhow = "1.0.86"

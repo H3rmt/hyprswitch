@@ -139,7 +139,7 @@ pub struct SimpleConf {
     #[arg(long)]
     pub sort_recent: bool,
 
-    /// Switches to next / previous workspace instead of client
+    /// Switches to next / previous workspace instead of client TODO make this enum (client, workspace, monitor)
     #[arg(long)]
     pub switch_workspaces: bool,
 }

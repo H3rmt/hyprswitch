@@ -1,20 +1,19 @@
 use std::error::Error;
 use std::process::exit;
+use std::sync::Mutex;
 
 use anyhow::Context;
 use clap::Parser;
 use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
-use tokio::sync::Mutex;
 
 use hyprswitch::{ACTIVE, cli, Command, Config, DRY, GuiConfig};
 use hyprswitch::cli::App;
 use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
 use hyprswitch::daemon::{deactivate_submap, start_daemon};
-use hyprswitch::handle::{collect_data, find_next_client, switch_async};
+use hyprswitch::handle::{collect_data, find_next_client, find_next_workspace, switch_client, switch_workspace};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let cli = App::try_parse()
         .unwrap_or_else(|e| {
             // only show error if not caused by --help ort -V (every start of every help text needs to be added...)
@@ -42,12 +41,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     match cli.command {
         cli::Command::Init { custom_css, show_title } => {
-            if daemon_running().await {
+            if daemon_running() {
                 warn!("Daemon already running");
                 return Ok(());
             }
             info!("Starting daemon");
-            start_daemon(custom_css, show_title).await
+            start_daemon(custom_css, show_title)
                 .context("Failed to run daemon")
                 .inspect_err(|_| {
                     let _ = deactivate_submap();
@@ -57,20 +56,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
         cli::Command::Close { kill } => {
             info!("Stopping daemon");
 
-            if !daemon_running().await {
+            if !daemon_running() {
                 warn!("Daemon not running");
                 return Ok(());
             }
 
-            send_kill_daemon(kill).await.context("Failed to send kill command to daemon")?;
+            send_kill_daemon(kill).context("Failed to send kill command to daemon")?;
         }
         cli::Command::Dispatch { simple_opts } => {
             let command = Command::from(simple_opts);
-            send_switch_command(command).await
+            send_switch_command(command)
                 .with_context(|| format!("Failed to send switch command with command {command:?} to daemon"))?;
         }
         cli::Command::Gui { gui_config, config } => {
-            if !daemon_running().await {
+            if !daemon_running() {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
                     .body("Daemon not running (add ``exec-once = hyprswitch init &``) to your Hyprland config\n(visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see GUI configs)")
@@ -84,22 +83,32 @@ async fn main() -> Result<(), Box<dyn Error>> {
             info!("initialising daemon");
             let gui_config = GuiConfig::from(gui_config);
             let config = Config::from(config);
-            send_init_command(config.clone(), gui_config.clone()).await
+            send_init_command(config.clone(), gui_config.clone())
                 .with_context(|| format!("Failed to send init command with config {config:?} and gui_config {gui_config:?} to daemon"))?;
 
             return Ok(());
         }
         cli::Command::Simple { simple_opts, simple_conf } => {
             let config = Config::from(simple_conf);
-            let (clients_data, active_address) = collect_data(config.clone()).await.with_context(|| format!("Failed to collect data with config {config:?}"))?;
+            let (clients_data, active_address, active_ws) = collect_data(config.clone()).with_context(|| format!("Failed to collect data with config {config:?}"))?;
             debug!("Clients data: {:?}", clients_data);
 
             let command = Command::from(simple_opts);
-            let (next_client, _) = find_next_client(command, &clients_data.enabled_clients, active_address.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
-            info!("Next client: {:?}", next_client.class);
 
-            switch_async(next_client, *DRY.get().expect("DRY not set")).await.with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
+            if config.switch_workspaces {
+                let (next_workspace, _) = find_next_workspace(command, &clients_data.workspace_data, active_ws.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
+                info!("Next workspace: {:?}", next_workspace.name);
+
+                switch_workspace(&next_workspace.into(), *DRY.get().expect("DRY not set"))
+                    .with_context(|| format!("Failed to execute switch workspace with ws_name {next_workspace:?}"))?;
+            } else {
+                let (next_client, _) = find_next_client(command, &clients_data.enabled_clients, active_address.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
+                info!("Next client: {:?}", next_client.class);
+
+                switch_client(next_client, *DRY.get().expect("DRY not set"))
+                    .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
+            }
         }
     };
-    return Ok(());
+    Ok(())
 }
