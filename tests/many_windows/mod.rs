@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
 use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
-use hyprswitch::sort::{update_clients};
-use hyprswitch::sort::{sort_clients};
+use hyprswitch::sort::sort_clients;
+use hyprswitch::sort::update_clients;
 
 use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
@@ -38,10 +38,10 @@ fn many_1() {
     ];
     let len = clients.len();
 
-    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
     monitor_data.insert(0, mon(0, 0, 12, 10));
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
     workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
@@ -90,10 +90,10 @@ fn many_2() {
     ];
     let len = clients.len();
 
-    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
     monitor_data.insert(0, mon(0, 0, 12, 13));
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
     workspace_data.insert(0, ws(0, 0));
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));

@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::time::Instant;
 
 use hyprland::shared::WorkspaceId;
 
-use hyprswitch::sort::{update_clients};
-use hyprswitch::sort::{sort_clients};
 use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
+use hyprswitch::sort::sort_clients;
+use hyprswitch::sort::update_clients;
 
 use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
@@ -43,15 +43,15 @@ fn default() {
     ];
     let len = clients.len();
 
-    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
     monitor_data.insert(1, mon(5, 0, 5, 7));
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, ws(0,0));
-    workspace_data.insert(1, ws(5,0));
-    workspace_data.insert(10, ws(0,0));
-    workspace_data.insert(11, ws(5,0));
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
+    workspace_data.insert(0, ws(0, 0));
+    workspace_data.insert(1, ws(5, 0));
+    workspace_data.insert(10, ws(0, 0));
+    workspace_data.insert(11, ws(5, 0));
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -99,15 +99,15 @@ fn ignore_workspaces() {
     ];
     let len = clients.len();
 
-    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
     monitor_data.insert(1, mon(5, 0, 5, 7));
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, ws(0,0));
-    workspace_data.insert(1, ws(5,0));
-    workspace_data.insert(10, ws(0,0));
-    workspace_data.insert(11, ws(5,0));
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
+    workspace_data.insert(0, ws(0, 0));
+    workspace_data.insert(1, ws(5, 0));
+    workspace_data.insert(10, ws(0, 0));
+    workspace_data.insert(11, ws(5, 0));
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?}");
@@ -155,15 +155,15 @@ fn ignore_monitor() {
     ];
     let len = clients.len();
 
-    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
     monitor_data.insert(1, mon(5, 0, 5, 7));
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, ws(0,0));
-    workspace_data.insert(1, ws(5,0));
-    workspace_data.insert(10, ws(0,0));
-    workspace_data.insert(11, ws(5,0));
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
+    workspace_data.insert(0, ws(0, 0));
+    workspace_data.insert(1, ws(5, 0));
+    workspace_data.insert(10, ws(0, 0));
+    workspace_data.insert(11, ws(5, 0));
 
     let clients = update_clients(clients, Some(&workspace_data), None);
     println!("updated clients: {clients:?}");
@@ -214,15 +214,15 @@ fn ignore_monitor_ignore_workspace() {
     ];
     let len = clients.len();
 
-    let mut monitor_data: HashMap<MonitorId, MonitorData> = HashMap::new();
+    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
     monitor_data.insert(0, mon(0, 0, 4, 7));
     monitor_data.insert(1, mon(5, 0, 5, 7));
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
-    workspace_data.insert(0, ws(0,0));
-    workspace_data.insert(1, ws(5,0));
-    workspace_data.insert(10, ws(0,0));
-    workspace_data.insert(11, ws(5,0));
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
+    workspace_data.insert(0, ws(0, 0));
+    workspace_data.insert(1, ws(5, 0));
+    workspace_data.insert(10, ws(0, 0));
+    workspace_data.insert(11, ws(5, 0));
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
 
@@ -308,7 +308,7 @@ fn default_more_monitor() {
     monitor_data.insert(2, mon(0, 8, 4, 7));
     monitor_data.insert(3, mon(5, 8, 5, 7));
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
     workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
     workspace_data.insert(1, WorkspaceData { x: 5, y: 0 });
     workspace_data.insert(2, WorkspaceData { x: 0, y: 0 });
@@ -398,7 +398,7 @@ fn ignore_workspaces_more_monitor() {
     monitor_data.insert(2, MonitorData { x: 0, y: 8, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(3, MonitorData { x: 5, y: 8, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
     workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
     workspace_data.insert(1, WorkspaceData { x: 5, y: 0 });
     workspace_data.insert(2, WorkspaceData { x: 0, y: 0 });
@@ -488,7 +488,7 @@ fn ignore_monitor_more_monitor() {
     monitor_data.insert(2, MonitorData { x: 0, y: 8, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(3, MonitorData { x: 5, y: 8, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
     workspace_data.insert(1, WorkspaceData { x: 0, y: 0 });
     workspace_data.insert(2, WorkspaceData { x: 5, y: 0 });
     workspace_data.insert(11, WorkspaceData { x: 0, y: 0 });
@@ -579,7 +579,7 @@ fn ignore_monitor_ignore_workspace_more_monitor() {
     monitor_data.insert(2, MonitorData { x: 0, y: 8, width: 4, height: 7, combined_width: 8, combined_height: 7, workspaces_on_monitor: 2 });
     monitor_data.insert(3, MonitorData { x: 5, y: 8, width: 5, height: 7, combined_width: 10, combined_height: 7, workspaces_on_monitor: 2 });
 
-    let mut workspace_data: HashMap<WorkspaceId, WorkspaceData> = HashMap::new();
+    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
     workspace_data.insert(0, WorkspaceData { x: 0, y: 0 });
     workspace_data.insert(1, WorkspaceData { x: 5, y: 0 });
     workspace_data.insert(2, WorkspaceData { x: 0, y: 0 });

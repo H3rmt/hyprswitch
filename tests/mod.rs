@@ -5,14 +5,14 @@ mod simple;
 
 #[cfg(test)]
 pub mod common {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
     use std::fmt::Debug;
 
     use hyprland::shared::WorkspaceId;
     use random_color::RandomColor;
     use svg::node::element::{Group, Rectangle, SVG, Text};
 
-    use hyprswitch::{MonitorData, WorkspaceData};
+    use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
     use hyprswitch::sort::SortableClient;
 
     #[derive(Debug)]
@@ -74,6 +74,8 @@ pub mod common {
             height: 0, // irrelevant for tests
             name: "test".to_string(),
             monitor: 0,
+            active: true, // irrelevant for tests
+            id: 0,      // irrelevant for tests
         }
     }
 
@@ -86,7 +88,7 @@ pub mod common {
     pub fn create_svg_from_client_tests<SC>(
         clients: &[SC],
         filename: &str,
-        monitor_data: HashMap<i128, MonitorData>,
+        monitor_data: BTreeMap<MonitorId, MonitorData>,
     ) where
         SC: SortableClient + Debug,
     {
@@ -145,7 +147,7 @@ pub mod common {
             .set("width", "100%")
             .set("height", "100%")
             .set("viewBox", format!("{} {} {} {}", x, y, width, height));
-        
+
         // add background
         svg = svg.add(
             Rectangle::new()
