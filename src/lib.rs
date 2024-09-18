@@ -11,7 +11,7 @@ use hyprland::shared::{Address, WorkspaceId};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Notify;
 
-use crate::cli::{CloseType, GuiConf, ModKey, SimpleConf, SimpleOpts};
+use crate::cli::{CloseType, GuiConf, ModKey, ReverseKey, SimpleConf, SimpleOpts};
 
 pub mod sort;
 pub mod daemon;
@@ -67,6 +67,7 @@ pub struct GuiConfig {
     pub mod_key: ModKey,
     pub key: String,
     pub close: CloseType,
+    pub reverse_key: ReverseKey,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,10 +131,11 @@ impl From<SimpleOpts> for Command {
 impl From<GuiConf> for GuiConfig {
     fn from(opts: GuiConf) -> Self {
         Self {
-            max_switch_offset: opts.max_switch_offset.unwrap_or(5),
+            max_switch_offset: opts.max_switch_offset,
             mod_key: opts.mod_key,
             key: opts.key,
             close: opts.close,
+            reverse_key: opts.reverse_key,
         }
     }
 }

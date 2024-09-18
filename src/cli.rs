@@ -1,7 +1,9 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::builder::ValueParser;
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Debug, Clone)]
@@ -92,8 +94,40 @@ pub struct GuiConf {
     pub close: CloseType,
 
     /// The maximum offset you can switch to with number keys and is shown in the GUI
-    #[arg(long)]
-    pub max_switch_offset: Option<u8>,
+    #[arg(long, default_value = "5")]
+    pub max_switch_offset: u8,
+
+    /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
+    #[arg(long, value_parser = ValueParser::new(ReverseKey::from_str), default_value = "mod=shift")]
+    pub reverse_key: ReverseKey,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ReverseKey {
+    Mod(String),
+    Key(String),
+}
+
+impl Default for ReverseKey {
+    fn default() -> Self {
+        ReverseKey::Mod("shift".to_string())
+    }
+}
+
+impl FromStr for ReverseKey {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split('=').collect();
+        if parts.len() != 2 {
+            return Err(format!("Invalid format for reverse: {}", s));
+        }
+        match (parts[0], parts[1]) {
+            ("mod", value) => Ok(ReverseKey::Mod(value.to_string())),
+            ("key", value) => Ok(ReverseKey::Key(value.to_string())),
+            _ => Err(format!("Invalid format for reverse: {}", s)),
+        }
+    }
 }
 
 
@@ -139,7 +173,8 @@ pub struct SimpleConf {
     #[arg(long)]
     pub sort_recent: bool,
 
-    /// Switches to next / previous workspace instead of client TODO make this enum (client, workspace, monitor)
+    /// Switches to next / previous workspace instead of client\
+    /// TODO make this enum (client, workspace, monitor)
     #[arg(long)]
     pub switch_workspaces: bool,
 }

@@ -153,6 +153,7 @@ pub(super) fn update(
         }));
         workspace_frame_overlay.add_controller(gesture);
 
+        // TODO dont show index for workspace if all clients are disabled
         if data.simple_config.switch_workspaces {
             // border of selected workspace
             if data.active.1.as_ref().map_or(false, |ws| ws == workspace.0) {
@@ -177,6 +178,7 @@ pub(super) fn update(
             let client_active = if data.simple_config.switch_workspaces { false } else { data.active.0.as_ref().map_or(false, |addr| *addr == client.address) };
             // debug!("Rendering client {}", client.class);
             // debug!("Client active: {}", client_active);
+
             let index = data.clients_data.enabled_clients.iter().position(|c| c.address == client.address).map_or(0, |i| i as i32);
             let frame = client_ui(
                 client,
