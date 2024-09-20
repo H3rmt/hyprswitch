@@ -130,7 +130,7 @@ bind = ctrl shift, $key, exec, hyprswitch simple -s -r
 exec-once = hyprswitch init --show-title &
 
 $key = tab
-bind = super, $key, exec, $bin gui --mod-key super_l --key $key
+bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key
 ```
 
 **Keyboard**: Press alt + $key to open the GUI, hold alt, press $key to switch to the next window, press shift + $key to
