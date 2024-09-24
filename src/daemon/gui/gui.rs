@@ -153,21 +153,22 @@ pub(super) fn update(
         }));
         workspace_frame_overlay.add_controller(gesture);
 
-        // TODO dont show index for workspace if all clients are disabled
         if data.simple_config.switch_workspaces {
             // border of selected workspace
             if data.active.1.as_ref().map_or(false, |ws| ws == workspace.0) {
                 workspace_frame_overlay.add_css_class("workspace_active");
             }
 
-            // index of selected workspace
-            let index = data.clients_data.workspace_data.iter().position(|ws| ws.0 == workspace.0).map_or(0, |i| i as i32);
-            let selected_workspace_index = data.active.1.as_ref().and_then(|ws| data.clients_data.workspace_data.iter()
-                .position(|(id, _)| id == ws));
-            let idx = index - selected_workspace_index.unwrap_or(0) as i32;
-            if data.gui_config.max_switch_offset != 0 && idx <= data.gui_config.max_switch_offset as i32 && idx >= -(data.gui_config.max_switch_offset as i32) {
-                let label = Label::builder().css_classes(vec!["index"]).label(idx.to_string()).halign(Align::End).valign(Align::End).build();
-                workspace_frame_overlay.add_overlay(&label)
+            if workspace.1.active {
+                // index of selected workspace
+                let index = data.clients_data.workspace_data.iter().position(|ws| ws.0 == workspace.0).map_or(0, |i| i as i32);
+                let selected_workspace_index = data.active.1.as_ref().and_then(|ws| data.clients_data.workspace_data.iter()
+                    .position(|(id, _)| id == ws));
+                let idx = index - selected_workspace_index.unwrap_or(0) as i32;
+                if data.gui_config.max_switch_offset != 0 && idx <= data.gui_config.max_switch_offset as i32 && idx >= -(data.gui_config.max_switch_offset as i32) {
+                    let label = Label::builder().css_classes(vec!["index"]).label(idx.to_string()).halign(Align::End).valign(Align::End).build();
+                    workspace_frame_overlay.add_overlay(&label)
+                }
             }
         }
 

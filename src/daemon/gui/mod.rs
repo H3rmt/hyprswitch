@@ -84,8 +84,12 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
                     let share_unlocked = data_mut.lock().expect("Failed to lock");
                     let show = share_unlocked.gui_show;
                     for (workspaces_flow, connector, window) in monitor_data_list.iter() {
-                        if show { window.show(); } else { window.hide(); }
-                        let _ = update(arc_share_share.clone(), show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
+                        if show {
+                            let _ = update(arc_share_share.clone(), show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
+                            window.show();
+                        } else {
+                            window.hide();
+                        }
                     }
                 }
             });

@@ -31,8 +31,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
 
         // repeatable presses
         match gui_config.close {
-            // TODO see if it makes sense to allow None and Index here as you cant switch to the selected index
-            CloseType::ModKeyRelease | CloseType::None | CloseType::Index => {
+            CloseType::ModKeyRelease => {
                 // allow repeatable presses to switch to next
                 keyword_list.push(("bind", format!("{}, {}, exec, {} dispatch", main_mod, gui_config.key, current_exe)));
                 match gui_config.reverse_key.clone() {
@@ -56,6 +55,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                     }
                 };
             }
+            CloseType::None | CloseType::Index => {}
         };
 
         // close on release of mod key

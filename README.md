@@ -124,7 +124,7 @@ bind = ctrl shift, $key, exec, hyprswitch simple -s -r
 
 ### GUI
 
-**Simple**: Press super + $key to open the GUI, use mouse to click on window
+**Simple**: Press super + $key to open the GUI, use mouse to click on window or press 1 / 2 / ... to switch to index
 
 ```ini
 exec-once = hyprswitch init --show-title &
@@ -133,8 +133,8 @@ $key = tab
 bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key
 ```
 
-**Keyboard**: Press alt + $key to open the GUI, hold alt, press $key to switch to the next window, press shift + $key to
-switch backwards, release alt to switch
+**Keyboard 1**: Press alt + $key to open the GUI _and switch to next window_, hold alt, press $key repeatedly to switch
+to the next window, press shift + $key to switch backwards, release alt to switch
 
 ```ini
 exec-once = hyprswitch init --show-title &
@@ -146,6 +146,18 @@ bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close 
 # use the if switching to the next window with the opening keypress is unwanted
 #bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release
 #bind = alt shift, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release
+```
+
+**Keyboard 2**: Press alt + $key to open the GUI _and switch to next workspace_, hold alt, press $key repeatedly to
+switch to the next workspace, press $reverse to switch backwards, release alt to switch
+
+```ini
+exec-once = hyprswitch init --show-title &
+
+$key = tab
+$reverse = grave
+bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=key=$reverse --switch-workspaces --filter-current-monitor && hyprswitch dispatch
+bind = alt, $reverse, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=key=$reverse --switch-workspaces --filter-current-monitor && hyprswitch dispatch -r
 ```
 
 # CSS
