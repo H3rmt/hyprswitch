@@ -7,41 +7,55 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use hyprland::data::WorkspaceBasic;
-use hyprland::shared::{Address, WorkspaceId};
+use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Notify;
 
-use crate::cli::{CloseType, GuiConf, ModKey, ReverseKey, SimpleConf, SimpleOpts};
+use crate::cli::{CloseType, GuiConf, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
 
-pub mod sort;
 pub mod daemon;
 pub mod cli;
 pub mod client;
 pub mod handle;
 
-pub type MonitorId = i128;
-
 #[derive(Debug, Clone)]
 pub struct MonitorData {
-    pub x: u16,
-    pub y: u16,
+    pub x: i32,
+    pub y: i32,
     pub width: u16,
     pub height: u16,
     pub connector: String,
+    pub active: bool,
 }
 
+/// we need both id and name for the workspace (special workspaces need the name)
 #[derive(Debug, Clone)]
 pub struct WorkspaceData {
     pub id: WorkspaceId,
-    pub x: u16,
-    pub y: u16,
+    pub name: String,
+    pub x: i32,
+    pub y: i32,
     pub width: u16,
     pub height: u16,
-    pub name: String,
     pub monitor: MonitorId,
     pub active: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct ClientData {
+    pub x: i16,
+    pub y: i16,
+    pub width: i16,
+    pub height: i16,
+    pub class: String,
+    pub title: String,
+    pub address: Address,
+    pub workspace: WorkspaceId,
+    pub monitor: MonitorId,
+    pub focus_history_id: i8,
+    pub floating: bool,
+    pub active: bool,
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Command {
@@ -58,7 +72,7 @@ pub struct Config {
     pub filter_current_monitor: bool,
     pub filter_same_class: bool,
     pub include_special_workspaces: bool,
-    pub switch_workspaces: bool,
+    pub switch_type: SwitchType,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -80,10 +94,9 @@ pub enum Transfer {
 
 #[derive(Debug, Default)]
 pub struct Data {
-    pub clients: Vec<hyprland::data::Client>,
-    pub enabled_clients: Vec<hyprland::data::Client>,
-    pub workspace_data: BTreeMap<WorkspaceId, WorkspaceData>,
-    pub monitor_data: BTreeMap<MonitorId, MonitorData>,
+    pub clients: Vec<ClientData>,
+    pub workspaces: BTreeMap<WorkspaceId, WorkspaceData>,
+    pub monitors: BTreeMap<MonitorId, MonitorData>,
 }
 
 #[derive(Debug, Default)]
@@ -91,8 +104,17 @@ pub struct SharedData {
     pub simple_config: Config,
     pub gui_config: GuiConfig,
     pub clients_data: Data,
-    pub active: (Option<Address>, Option<WorkspaceId>),
+    pub active: Active,
     pub gui_show: bool,
+}
+
+#[derive(Debug, Default)]
+pub enum Active {
+    Workspace(WorkspaceId),
+    Monitor(MonitorId),
+    Client(Address),
+    #[default]
+    Unknown,
 }
 
 // config, clients, selected-client, gui-show
@@ -114,7 +136,7 @@ impl From<SimpleConf> for Config {
             filter_current_monitor: opts.filter_current_monitor,
             filter_same_class: opts.filter_same_class,
             include_special_workspaces: opts.include_special_workspaces,
-            switch_workspaces: opts.switch_workspaces,
+            switch_type: opts.switch_type,
         }
     }
 }

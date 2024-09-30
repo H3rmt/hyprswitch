@@ -2,14 +2,137 @@ use std::sync::MutexGuard;
 
 use anyhow::Context;
 use gtk4::{Align, EventSequenceState, Fixed, FlowBox, Frame, gdk_pixbuf, GestureClick, gio::File, glib::clone, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, pango, Picture, prelude::*, TextDirection};
-use hyprland::data::{Client, WorkspaceBasic};
+use hyprland::data::WorkspaceBasic;
 use log::{info, warn};
 
-use crate::{Share, SharedData};
-use crate::daemon::funcs::{close, switch_gui, switch_gui_workspace};
+use crate::{Active, ClientData, Share, SharedData};
+use crate::cli::SwitchType;
 use crate::daemon::gui::{ICON_SCALE, ICON_SIZE, icons, SIZE_FACTOR};
+use crate::daemon::gui::switch_fns::{switch_gui, switch_gui_workspace};
+use crate::daemon::handle_fns::close;
 
-fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32, enabled: bool, max_switch_offset: u8) -> Frame {
+pub(super) fn update(
+    share: Share,
+    show_title: bool,
+    workspaces_flow: FlowBox,
+    data: &MutexGuard<SharedData>,
+    connector: &str,
+) -> anyhow::Result<()> {
+    // remove all children
+    while let Some(child) = workspaces_flow.first_child() {
+        workspaces_flow.remove(&child);
+    }
+
+    // get monitor data by connector
+    let (monitor_id, _) = data.clients_data.monitors.iter().find(|(_, v)| v.connector == connector)
+        .with_context(|| format!("Failed to find monitor with connector {connector}"))?;
+
+    let mut workspaces = data.clients_data.workspaces.iter().filter(|(_, v)| v.monitor == *monitor_id).collect::<Vec<_>>();
+    workspaces.sort_by(|a, b| a.0.cmp(b.0));
+
+    for (wid, workspace) in workspaces {
+        let width = (workspace.width / *SIZE_FACTOR as u16) as i32;
+        let height = (workspace.height / *SIZE_FACTOR as u16) as i32;
+
+        let clients = {
+            let mut clients = data.clients_data.clients.iter()
+                .filter(|client| client.monitor == *monitor_id && client.workspace == *wid)
+                .collect::<Vec<_>>();
+            clients.sort_by(|a, b| a.floating.cmp(&b.floating));
+            clients
+        };
+
+        let workspace_fixed = Fixed::builder().width_request(width).height_request(height).build();
+        let workspace_frame = Frame::builder().label(&workspace.name).label_xalign(0.5).child(&workspace_fixed).build();
+        let workspace_frame_overlay = Overlay::builder().css_classes(vec!["workspace"]).child(&workspace_frame).build();
+
+        if *wid < 0 {
+            // special workspace
+            workspace_frame_overlay.add_css_class("workspace_special");
+        }
+
+        let gesture = GestureClick::new();
+        let ws_data: WorkspaceBasic = workspace.into();
+        gesture.connect_pressed(clone!(#[strong] ws_data, #[strong] share, move |gesture, _, _, _| {
+            gesture.set_state(EventSequenceState::Claimed);
+            let _ = switch_gui_workspace(share.clone(), &ws_data)
+                .with_context(|| format!("Failed to focus workspace {ws_data:?}"))
+                .map_err(|e| warn!("{:?}", e));
+
+            info!("Exiting on click of workspace");
+            let _ = close(share.clone(), false)
+                .with_context(|| "Failed to close daemon".to_string())
+                .map_err(|e| warn!("{:?}", e));
+        }));
+        workspace_frame_overlay.add_controller(gesture);
+
+        if data.simple_config.switch_type == SwitchType::Workspace {
+            // border of selected workspace
+            if let Active::Workspace(wwid) = &data.active {
+                if wwid == wid {
+                    workspace_frame_overlay.add_css_class("workspace_active");
+                }
+
+                if workspace.active {
+                    // index of selected workspace
+                    let index = data.clients_data.workspaces.iter().position(|(id, _)| id == wid).map_or(0, |i| i as i32);
+                    let selected_workspace_index = data.clients_data.workspaces.iter().position(|(id, _)| id == wwid);
+                    let idx = index - selected_workspace_index.unwrap_or(0) as i32;
+                    if data.gui_config.max_switch_offset != 0 && idx <= data.gui_config.max_switch_offset as i32 && idx >= -(data.gui_config.max_switch_offset as i32) {
+                        let label = Label::builder().css_classes(vec!["index"]).label(idx.to_string()).halign(Align::End).valign(Align::End).build();
+                        workspace_frame_overlay.add_overlay(&label)
+                    }
+                }
+            }
+        }
+
+        // index of selected client (offset for selecting)
+        let selected_client_index = if let Active::Client(addr) = &data.active {
+            data.clients_data.clients.iter().filter(|c| c.active).position(|c| c.address == *addr)
+        } else { None };
+        for client in clients {
+            let client_active = if data.simple_config.switch_type == SwitchType::Client {
+                if let Active::Client(addr) = &data.active { *addr == client.address } else { false }
+            } else { false };
+
+            let index: i16 = data.clients_data.clients.iter().filter(|c| c.active)
+                .position(|c| c.address == client.address).map_or(0, |i| i as i16);
+            let frame = client_ui(
+                client,
+                client_active, show_title,
+                index - selected_client_index.unwrap_or(0) as i16,
+                data.clients_data.clients.iter().any(|c| c.active && c.address == client.address),
+                if data.simple_config.switch_type == SwitchType::Client { data.gui_config.max_switch_offset } else { 0 },
+            );
+            let x = ((client.x - workspace.x as i16) / *SIZE_FACTOR) as f64;
+            let y = ((client.y - workspace.y as i16) / *SIZE_FACTOR) as f64;
+            let width = (client.width / *SIZE_FACTOR) as i32;
+            let height = (client.height / *SIZE_FACTOR) as i32;
+            frame.set_size_request(width, height);
+            workspace_fixed.put(&frame, x, y);
+
+            let gesture = GestureClick::new();
+            gesture.connect_pressed(clone!(#[strong] client, #[strong] share, move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
+                let _ = switch_gui(share.clone(), client.address.clone())
+                    .with_context(|| format!("Failed to focus client {}", client.class))
+                    .map_err(|e| warn!("{:?}", e));
+
+                info!("Exiting on click of client window");
+                let _ = close(share.clone(), false)
+                    .with_context(|| "Failed to close daemon".to_string())
+                    .map_err(|e| warn!("{:?}", e));
+            }));
+            frame.add_controller(gesture);
+        }
+
+        workspaces_flow.insert(&workspace_frame_overlay, -1);
+    }
+
+    Ok(())
+}
+
+fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: i16, enabled: bool, max_switch_offset: u8) -> Frame {
     let theme = IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
         // debug!("Icon found for {}", client.class);
@@ -81,7 +204,7 @@ fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32,
 
     let overlay = Overlay::builder().child(&picture).build();
 
-    if enabled && max_switch_offset != 0 && index <= max_switch_offset as i32 && index >= -(max_switch_offset as i32) {
+    if enabled && max_switch_offset != 0 && index <= max_switch_offset as i16 && index >= -(max_switch_offset as i16) {
         let label = Label::builder().css_classes(vec!["index"]).label(index.to_string()).halign(Align::End).valign(Align::End).build();
         overlay.add_overlay(&label)
     }
@@ -96,124 +219,4 @@ fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32,
     }
 
     client_frame
-}
-
-pub(super) fn update(
-    share: Share,
-    show_title: bool,
-    workspaces_flow: FlowBox,
-    data: &MutexGuard<SharedData>,
-    connector: &str,
-) -> anyhow::Result<()> {
-    // remove all children
-    while let Some(child) = workspaces_flow.first_child() {
-        workspaces_flow.remove(&child);
-    }
-
-    // get monitor data by connector
-    let (monitor_id, _monitor_data) = data.clients_data.monitor_data.iter().find(|(_, v)| v.connector == connector)
-        .with_context(|| format!("Failed to find monitor with connector {connector}"))?;
-
-    let mut workspaces = data.clients_data.workspace_data.iter().filter(|(_, v)| v.monitor == *monitor_id).collect::<Vec<_>>();
-    workspaces.sort_by(|a, b| a.0.cmp(b.0));
-
-    for workspace in workspaces {
-        let width = (workspace.1.width / *SIZE_FACTOR as u16) as i32;
-        let height = (workspace.1.height / *SIZE_FACTOR as u16) as i32;
-
-        let clients = {
-            let mut clients = data.clients_data.clients.iter()
-                .filter(|client| client.monitor == *monitor_id && client.workspace.id == *workspace.0)
-                .collect::<Vec<_>>();
-            clients.sort_by(|a, b| a.floating.cmp(&b.floating));
-            clients
-        };
-
-        let workspace_fixed = Fixed::builder().width_request(width).height_request(height).build();
-        let workspace_frame = Frame::builder().label(&workspace.1.name).label_xalign(0.5).child(&workspace_fixed).build();
-        let workspace_frame_overlay = Overlay::builder().css_classes(vec!["workspace"]).child(&workspace_frame).build();
-
-        if *workspace.0 < 0 {
-            // special workspace
-            workspace_frame_overlay.add_css_class("workspace_special");
-        }
-
-        let gesture = GestureClick::new();
-        let ws_data: WorkspaceBasic = workspace.1.into();
-        gesture.connect_pressed(clone!(#[strong] ws_data, #[strong] share, move |gesture, _, _, _| {
-            gesture.set_state(EventSequenceState::Claimed);
-            let _ = switch_gui_workspace(share.clone(), &ws_data)
-                .with_context(|| format!("Failed to focus workspace {ws_data:?}"))
-                .map_err(|e| warn!("{:?}", e));
-
-            info!("Exiting on click of client window");
-            let _ = close(share.clone(), false)
-                .with_context(|| "Failed to close daemon".to_string())
-                .map_err(|e| warn!("{:?}", e));
-        }));
-        workspace_frame_overlay.add_controller(gesture);
-
-        if data.simple_config.switch_workspaces {
-            // border of selected workspace
-            if data.active.1.as_ref().map_or(false, |ws| ws == workspace.0) {
-                workspace_frame_overlay.add_css_class("workspace_active");
-            }
-
-            if workspace.1.active {
-                // index of selected workspace
-                let index = data.clients_data.workspace_data.iter().position(|ws| ws.0 == workspace.0).map_or(0, |i| i as i32);
-                let selected_workspace_index = data.active.1.as_ref().and_then(|ws| data.clients_data.workspace_data.iter()
-                    .position(|(id, _)| id == ws));
-                let idx = index - selected_workspace_index.unwrap_or(0) as i32;
-                if data.gui_config.max_switch_offset != 0 && idx <= data.gui_config.max_switch_offset as i32 && idx >= -(data.gui_config.max_switch_offset as i32) {
-                    let label = Label::builder().css_classes(vec!["index"]).label(idx.to_string()).halign(Align::End).valign(Align::End).build();
-                    workspace_frame_overlay.add_overlay(&label)
-                }
-            }
-        }
-
-        // index of selected client (offset for selecting)
-        let selected_index = data.active.0.as_ref().and_then(|addr| data.clients_data.enabled_clients.iter()
-            .position(|c| c.address == *addr));
-        for client in clients {
-            let client_active = if data.simple_config.switch_workspaces { false } else { data.active.0.as_ref().map_or(false, |addr| *addr == client.address) };
-            // debug!("Rendering client {}", client.class);
-            // debug!("Client active: {}", client_active);
-
-            let index = data.clients_data.enabled_clients.iter().position(|c| c.address == client.address).map_or(0, |i| i as i32);
-            let frame = client_ui(
-                client,
-                client_active, show_title,
-                index - selected_index.unwrap_or(0) as i32,
-                data.clients_data.enabled_clients.iter().any(|c| c.address == client.address),
-                if data.simple_config.switch_workspaces { 0 } else { data.gui_config.max_switch_offset },
-            );
-            let x = ((client.at.0 - workspace.1.x as i16) / *SIZE_FACTOR) as f64;
-            let y = ((client.at.1 - workspace.1.y as i16) / *SIZE_FACTOR) as f64;
-            let width = (client.size.0 / *SIZE_FACTOR) as i32;
-            let height = (client.size.1 / *SIZE_FACTOR) as i32;
-            frame.set_size_request(width, height);
-            workspace_fixed.put(&frame, x, y);
-            // debug!("Client {} at {}, {}", client.title, x, y);
-            // debug!("AA {}, {}", client.at.0,  workspace.1.x);
-
-            let gesture = GestureClick::new();
-            gesture.connect_pressed(clone!(#[strong] client, #[strong] share, move |gesture, _, _, _| {
-                gesture.set_state(EventSequenceState::Claimed);
-                let _ = switch_gui(share.clone(), client.clone())
-                    .with_context(|| format!("Failed to focus client {}", client.class))
-                    .map_err(|e| warn!("{:?}", e));
-
-                info!("Exiting on click of client window");
-                let _ = close(share.clone(), false)
-                    .with_context(|| "Failed to close daemon".to_string())
-                    .map_err(|e| warn!("{:?}", e));
-            }));
-            frame.add_controller(gesture);
-        }
-
-        workspaces_flow.insert(&workspace_frame_overlay, -1);
-    }
-
-    Ok(())
 }

@@ -13,7 +13,7 @@ use crate::daemon::handle_client::handle_client;
 
 mod handle_client;
 mod gui;
-mod funcs;
+mod handle_fns;
 mod submap;
 
 pub fn start_daemon(custom_css: Option<PathBuf>, show_title: bool) -> anyhow::Result<()> {

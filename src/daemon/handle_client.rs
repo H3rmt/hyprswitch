@@ -2,10 +2,10 @@ use std::io::{BufRead, BufReader,  Write};
 use std::os::unix::net::UnixStream;
 
 use anyhow::Context;
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 
 use crate::{ACTIVE, Share, Transfer};
-use crate::daemon::funcs::{close, init, switch};
+use crate::daemon::handle_fns::{close, init, switch};
 
 pub(super) fn handle_client(
     mut stream: UnixStream, share: Share,
@@ -50,6 +50,7 @@ pub(super) fn handle_client(
         Transfer::Close(kill) => {
             if active {
                 info!("Received close command");
+                trace!("Received close command with kill: {kill}");
                 match close(share, kill).with_context(|| format!("Failed to close gui  kill: {kill}")) {
                     Ok(_) => {
                         return_success(true, &mut stream)?;

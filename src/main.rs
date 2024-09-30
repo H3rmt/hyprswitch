@@ -7,11 +7,11 @@ use clap::Parser;
 use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
 
-use hyprswitch::{ACTIVE, cli, Command, Config, DRY, GuiConfig};
-use hyprswitch::cli::App;
+use hyprswitch::{ACTIVE, Active, cli, Command, Config, DRY, GuiConfig};
+use hyprswitch::cli::{App, SwitchType};
 use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
 use hyprswitch::daemon::{deactivate_submap, start_daemon};
-use hyprswitch::handle::{collect_data, find_next_client, find_next_workspace, switch_client, switch_workspace};
+use hyprswitch::handle::{collect_data, get_next_active, switch_to_active};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = App::try_parse()
@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             send_switch_command(command)
                 .with_context(|| format!("Failed to send switch command with command {command:?} to daemon"))?;
         }
-        cli::Command::Gui { gui_config, config } => {
+        cli::Command::Gui { gui_conf, simple_config } => {
             if !daemon_running() {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
@@ -81,8 +81,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // Daemon is not running
             info!("initialising daemon");
-            let gui_config = GuiConfig::from(gui_config);
-            let config = Config::from(config);
+            let config = Config::from(simple_config);
+            let gui_config = GuiConfig::from(gui_conf);
             send_init_command(config.clone(), gui_config.clone())
                 .with_context(|| format!("Failed to send init command with config {config:?} and gui_config {gui_config:?} to daemon"))?;
 
@@ -90,23 +90,20 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         cli::Command::Simple { simple_opts, simple_conf } => {
             let config = Config::from(simple_conf);
-            let (clients_data, active_address, active_ws) = collect_data(config.clone()).with_context(|| format!("Failed to collect data with config {config:?}"))?;
+            let (clients_data, active) = collect_data(config.clone()).with_context(|| format!("Failed to collect data with config {config:?}"))?;
             debug!("Clients data: {:?}", clients_data);
 
             let command = Command::from(simple_opts);
 
-            if config.switch_workspaces {
-                let (next_workspace, _) = find_next_workspace(command, &clients_data.workspace_data, active_ws.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
-                info!("Next workspace: {:?}", next_workspace.name);
-
-                switch_workspace(&next_workspace.into(), *DRY.get().expect("DRY not set"))
-                    .with_context(|| format!("Failed to execute switch workspace with ws_name {next_workspace:?}"))?;
-            } else {
-                let (next_client, _) = find_next_client(command, &clients_data.enabled_clients, active_address.as_ref()).with_context(|| format!("Failed to find next client with command {command:?}"))?;
-                info!("Next client: {:?}", next_client.class);
-
-                switch_client(next_client, *DRY.get().expect("DRY not set"))
-                    .with_context(|| format!("Failed to execute with next_client {next_client:?}"))?;
+            let active = match config.switch_type {
+                SwitchType::Client => if let Some(add) = active.0 { Active::Client(add) } else { Active::Unknown },
+                SwitchType::Workspace => if let Some(ws) = active.1 { Active::Workspace(ws) } else { Active::Unknown },
+                SwitchType::Monitor => if let Some(mon) = active.2 { Active::Monitor(mon) } else { Active::Unknown },
+            };
+            info!("Active: {:?}", active);
+            let next_active = get_next_active(&config.switch_type, command, &clients_data, &active);
+            if let Ok(next_active) = next_active {
+                switch_to_active(&next_active, &clients_data)?;
             }
         }
     };

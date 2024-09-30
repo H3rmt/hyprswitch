@@ -1,15 +1,13 @@
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use hyprland::shared::WorkspaceId;
+use hyprland::shared::{MonitorId, WorkspaceId};
 
-use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
-use hyprswitch::sort::sort_clients;
-use hyprswitch::sort::update_clients;
+use crate::{MonitorData, WorkspaceData};
+use crate::handle::sort::{sort_clients, update_clients};
+use crate::handle::sort::tests::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
 
-use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
-
-/// ```
+/// ```text
 ///                   Monitor 1
 ///       Workspace 1           Workspace 2
 /// 1  +------+  +------+ | +------+  +------+
@@ -54,7 +52,7 @@ fn default() {
     assert!(is_sorted(&clients));
 }
 
-/// ```
+/// ```text
 ///                   Monitor 1
 ///       Workspace 1           Workspace 2
 /// 1  +------+  +------+ | +------+  +------+
@@ -99,7 +97,7 @@ fn ignore_workspace() {
     assert!(is_sorted(&clients));
 }
 
-/// ```
+/// ```text
 ///    1      2  3      4
 /// 1  +------+  +------+
 /// 2  |  1   |  |  2   |
@@ -152,7 +150,7 @@ fn vertical() {
     assert!(is_sorted(&clients));
 }
 
-/// ```
+/// ```text
 ///    1      2  3      4
 /// 1  +------+  +------+
 /// 2  |  1   |  |  2   |

@@ -16,6 +16,8 @@ mod gui;
 mod icons;
 mod css;
 
+mod switch_fns;
+
 lazy_static! {
     static ref SIZE_FACTOR: i16 =option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
     static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
@@ -82,10 +84,10 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
                 loop {
                     notify.notified().await;
                     let share_unlocked = data_mut.lock().expect("Failed to lock");
-                    let show = share_unlocked.gui_show;
                     for (workspaces_flow, connector, window) in monitor_data_list.iter() {
-                        if show {
-                            let _ = update(arc_share_share.clone(), show_title, workspaces_flow.clone(), &share_unlocked, connector).with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
+                        if share_unlocked.gui_show {
+                            let _ = update(arc_share_share.clone(), show_title, workspaces_flow.clone(), &share_unlocked, connector)
+                                .with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
                             window.show();
                         } else {
                             window.hide();
