@@ -66,6 +66,7 @@ pub(super) fn update(
         }));
         workspace_frame_overlay.add_controller(gesture);
 
+        // TODO add the same for monitor
         if data.simple_config.switch_type == SwitchType::Workspace {
             // border of selected workspace
             if let Active::Workspace(wwid) = &data.active {
