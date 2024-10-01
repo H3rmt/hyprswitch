@@ -1,7 +1,7 @@
 use anyhow::Context;
 use hyprland::data::{Client, WorkspaceBasic};
 use hyprland::dispatch::{Dispatch, MonitorIdentifier, WindowIdentifier, WorkspaceIdentifierWithSpecial};
-use hyprland::dispatch::DispatchType::{FocusMonitor, FocusWindow, ToggleSpecialWorkspace, Workspace};
+use hyprland::dispatch::DispatchType::{BringActiveToTop, FocusMonitor, FocusWindow, ToggleSpecialWorkspace, Workspace};
 use hyprland::prelude::HyprDataActiveOptional;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use log::{debug, info};
@@ -75,6 +75,7 @@ pub fn switch_client(address: &Address, dry_run: bool) -> anyhow::Result<()> {
     } else {
         info!("switch to next_client: {}", address);
         Dispatch::call(FocusWindow(WindowIdentifier::Address(address.clone())))?;
+        Dispatch::call(BringActiveToTop)?;
     }
 
     Ok(())
