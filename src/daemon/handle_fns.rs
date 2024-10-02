@@ -1,5 +1,5 @@
 use anyhow::Context;
-use log::{debug, info, trace};
+use log::{info, trace};
 
 use crate::{ACTIVE, Active, Command, Config, GuiConfig, Share};
 use crate::cli::SwitchType;

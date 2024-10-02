@@ -4,7 +4,7 @@ use hyprland::dispatch::{Dispatch, MonitorIdentifier, WindowIdentifier, Workspac
 use hyprland::dispatch::DispatchType::{BringActiveToTop, FocusMonitor, FocusWindow, ToggleSpecialWorkspace, Workspace};
 use hyprland::prelude::HyprDataActiveOptional;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{debug, info};
+use log::info;
 
 use crate::{Active, Data, DRY};
 

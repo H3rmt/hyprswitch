@@ -23,11 +23,11 @@ pub struct App {
 
 #[derive(Args, Debug, Clone)]
 pub struct GlobalOpts {
-    /// Print the command that would be executed
+    /// Print the command that would be executed instead of executing it
     #[arg(short = 'd', long)]
     pub dry_run: bool,
 
-    /// Increase the verbosity level (max: -vv)
+    /// Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
     #[arg(short = 'v', action = clap::ArgAction::Count)]
     pub verbose: u8,
 }

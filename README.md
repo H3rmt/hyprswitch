@@ -41,8 +41,8 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 
 ## Parameters
 
-- `--dry-run / -d` Print the command that would be executed
-- `-v` Increase the verbosity level (max: -vv)
+- `--dry-run / -d` Print the command that would be executed instead of executing it
+- `-v` Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
 
 - `init` Initialize and start the Daemon
     - `--custom-css <PATH>` Specify a path to custom css file

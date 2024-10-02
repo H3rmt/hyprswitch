@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use hyprland::data::{Client, Clients, Monitors, Workspaces};
 use hyprland::prelude::{HyprData, HyprDataActiveOptional};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{debug, error, trace};
+use log::{error, trace};
 
 use crate::{ClientData, Config, Data, MonitorData, WorkspaceData};
 use crate::handle::get_recent_clients_map;
