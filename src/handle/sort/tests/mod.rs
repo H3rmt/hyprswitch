@@ -13,8 +13,6 @@ mod multi_workspace_multi_monitor_horizontal;
 mod multi_workspaces;
 mod simple;
 
-type TestClient = (u16, ClientData);
-
 pub fn is_sorted(data: &[ClientData]) -> bool {
     data.windows(2).all(|w| {
         w[0].address.to_string().parse::<u16>().unwrap() < w[1].address.to_string().parse::<u16>().unwrap()
@@ -22,7 +20,7 @@ pub fn is_sorted(data: &[ClientData]) -> bool {
 }
 
 pub fn create_svg_from_client_tests(
-    clients: &Vec<ClientData>,
+    clients: &[ClientData],
     filename: &str,
     monitor_data: BTreeMap<MonitorId, MonitorData>,
 ) {
@@ -63,7 +61,7 @@ pub fn create_svg_from_client_tests(
             0,
             0,
             wid,
-            (monitor.height * 10 + 10),
+            monitor.height * 10 + 10,
             2,
         );
     }
