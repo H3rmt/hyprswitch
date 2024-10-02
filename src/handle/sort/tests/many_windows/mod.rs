@@ -1,10 +1,7 @@
-use std::collections::BTreeMap;
 use std::time::Instant;
 
-use hyprland::shared::{MonitorId, WorkspaceId};
-use crate::handle::sort::tests::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
-use crate::{MonitorData, WorkspaceData};
 use crate::handle::sort::{sort_clients, update_clients};
+use crate::handle::sort::tests::{client_vec, create_svg_from_client_tests, function, is_sorted, monitor_map, workspace_map};
 
 /// ```text
 ///       1       3    5   6     8   10  11  12
