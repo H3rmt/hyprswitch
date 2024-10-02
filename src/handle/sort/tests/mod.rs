@@ -136,7 +136,7 @@ macro_rules! client_vec {
         use crate::ClientData;
 
         let mut map = Vec::new();
-        let mut count = -1;
+        let mut count = 0;
         $(
             count += 1;
             map.push(ClientData {
