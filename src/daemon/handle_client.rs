@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader,  Write};
+use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 
 use anyhow::Context;
@@ -22,7 +22,7 @@ pub(super) fn handle_client(
     }
 
     let transfer: Transfer = bincode::deserialize(&buffer).with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
-    debug!("Received command: {transfer:?}");
+    trace!("Received command: {transfer:?}");
 
     let active = *ACTIVE.get().expect("ACTIVE not set").lock().expect("Failed to lock ACTIVE");
 

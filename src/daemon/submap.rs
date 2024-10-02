@@ -3,7 +3,7 @@ use std::env;
 use anyhow::Context;
 use hyprland::dispatch::{Dispatch, DispatchType};
 use hyprland::keyword::Keyword;
-use log::debug;
+use log::{debug, error, trace};
 
 use crate::cli::{CloseType, ModKey};
 use crate::cli::ReverseKey::{Key, Mod};
@@ -97,19 +97,19 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         };
         keyword_list.push(("submap", "reset".to_string()));
 
-        debug!("keyword_list: ");
+        trace!("keyword_list: ");
         for (key, value) in keyword_list {
-            debug!("{} = {}", key, value);
+            trace!("{} = {}", key, value);
             Keyword::set(key, value)?;
         }
-        debug!("keyword_list end");
+        trace!("keyword_list end");
 
         Dispatch::call(DispatchType::Custom("submap", &name))?;
         Ok(())
     })().inspect_err(|_| {
         // reset submap if failed
         Dispatch::call(DispatchType::Custom("submap", "reset")).unwrap_or_else(|e| {
-            log::error!("{:?}", e);
+            error!("{:?}", e);
         });
     })?;
 

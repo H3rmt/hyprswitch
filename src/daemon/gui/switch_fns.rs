@@ -1,7 +1,7 @@
 use anyhow::Context;
 use hyprland::data::WorkspaceBasic;
 use hyprland::shared::{Address, MonitorId};
-use log::debug;
+use log::trace;
 
 use crate::{Active, DRY, Share};
 use crate::handle::{collect_data, switch_client, switch_monitor, switch_workspace};
@@ -17,7 +17,7 @@ pub(crate) fn switch_gui(share: Share, address: Address) -> anyhow::Result<()> {
 
     let (clients_data, _) = collect_data(lock.simple_config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;
-    debug!("Clients data: {:?}", clients_data);
+    trace!("Clients data: {:?}", clients_data);
 
     lock.clients_data = clients_data;
     lock.active = Active::Client(address);
@@ -36,7 +36,7 @@ pub(crate) fn switch_gui_workspace(share: Share, ws_data: &WorkspaceBasic) -> an
 
     let (clients_data, _) = collect_data(lock.simple_config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;
-    debug!("Clients data: {:?}", clients_data);
+    trace!("Clients data: {:?}", clients_data);
 
     lock.clients_data = clients_data;
     lock.active = Active::Workspace(ws_data.id);
@@ -56,7 +56,7 @@ pub(crate) fn switch_gui_monitor(share: Share, id: MonitorId) -> anyhow::Result<
 
     let (clients_data, _) = collect_data(lock.simple_config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;
-    debug!("Clients data: {:?}", clients_data);
+    trace!("Clients data: {:?}", clients_data);
 
     lock.clients_data = clients_data;
     lock.active = Active::Monitor(id);

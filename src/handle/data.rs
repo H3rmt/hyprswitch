@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use hyprland::data::{Client, Clients, Monitors, Workspaces};
 use hyprland::prelude::{HyprData, HyprDataActiveOptional};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{debug, error};
+use log::{debug, error, trace};
 
 use crate::{ClientData, Config, Data, MonitorData, WorkspaceData};
 use crate::handle::get_recent_clients_map;
@@ -59,7 +59,6 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
             workspaces.iter().filter(|ws| {
                 ws.monitor == monitors.iter().find(|m| m.id == *monitor_id).unwrap().name
             }).for_each(|workspace| {
-                // debug!("workspace: {:?}", workspace);
                 wd.insert(workspace.id, WorkspaceData {
                     x: x_offset,
                     y: monitor_data.y,
@@ -102,9 +101,9 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
         cd
     };
 
-    debug!("client_data: {:?}", client_data);
-    debug!("workspace_data: {:?}", workspace_data);
-    debug!("monitor_data: {:?}", monitor_data);
+    trace!("client_data: {:?}", client_data);
+    trace!("workspace_data: {:?}", workspace_data);
+    trace!("monitor_data: {:?}", monitor_data);
 
     if config.ignore_monitors {
         client_data = update_clients(client_data, Some(&workspace_data), None);

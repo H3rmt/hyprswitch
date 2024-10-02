@@ -1,5 +1,5 @@
 use anyhow::Context;
-use log::{debug, info};
+use log::{debug, info, trace};
 
 use crate::{ACTIVE, Active, Command, Config, GuiConfig, Share};
 use crate::cli::SwitchType;
@@ -14,7 +14,7 @@ pub(crate) fn switch(share: Share, command: Command) -> anyhow::Result<()> {
 
     let (clients_data, _) = collect_data(lock.simple_config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;
-    debug!("Clients data: {:?}", clients_data);
+    trace!("Clients data: {:?}", clients_data);
 
     lock.clients_data = clients_data;
     lock.active = active;
@@ -47,7 +47,7 @@ pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
 pub(crate) fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyhow::Result<()> {
     let (clients_data, active) = collect_data(config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", config.clone()))?;
-    debug!("Clients data: {:?}", clients_data);
+    trace!("Clients data: {:?}", clients_data);
 
     let active = match config.switch_type {
         SwitchType::Client => if let Some(add) = active.0 { Active::Client(add) } else { Active::Unknown },

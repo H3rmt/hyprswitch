@@ -6,7 +6,7 @@ use gtk4::gdk::Monitor;
 use gtk4::prelude::{ApplicationExt, ApplicationExtManual, DisplayExt, GtkWindowExt, ListModelExtManual, MonitorExt, WidgetExt};
 use gtk4_layer_shell::{Layer, LayerShell};
 use lazy_static::lazy_static;
-use log::{debug, warn};
+use log::{debug, trace, warn};
 
 use crate::daemon::gui::gui::update;
 use crate::Share;
@@ -97,7 +97,7 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
             });
         });
 
-        debug!("Running application");
+        trace!("Running application");
         application.run_with_args::<String>(&[]);
     });
 

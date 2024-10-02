@@ -36,7 +36,6 @@ fn collect_desktop_files() -> Vec<DirEntry> {
     let mut res = Vec::new();
     for dir in find_application_dirs() {
         if !dir.exists() {
-            // debug!("Dir {dir:?} does not exist");
             continue;
         }
         match dir.read_dir() {

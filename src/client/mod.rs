@@ -2,7 +2,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 
 use anyhow::Context;
-use log::debug;
+use log::{debug, trace};
 
 use crate::{Command, Config, get_socket_path_buff, GuiConfig, Transfer};
 
@@ -15,21 +15,21 @@ pub fn send_check_command() -> anyhow::Result<bool> {
 
 pub fn send_switch_command(command: Command) -> anyhow::Result<bool> {
     let transfer = Transfer::Switch(command);
-    debug!("Sending switch command {transfer:?}");
+    trace!("Sending switch command {transfer:?}");
     let transfer_serialized = bincode::serialize(&transfer).with_context(|| format!("Failed to serialize transfer {transfer:?}"))?;
     send(&transfer_serialized).with_context(|| format!("Failed to send switch command {transfer_serialized:?}"))
 }
 
 pub fn send_init_command(config: Config, gui_config: GuiConfig) -> anyhow::Result<bool> {
     let transfer = Transfer::Init(config, gui_config);
-    debug!("Sending init command {transfer:?}");
+    trace!("Sending init command {transfer:?}");
     let transfer_serialized = bincode::serialize(&transfer).with_context(|| format!("Failed to serialize transfer {transfer:?}"))?;
     send(&transfer_serialized).with_context(|| format!("Failed to send init command {transfer_serialized:?}"))
 }
 
 pub fn send_kill_daemon(kill: bool) -> anyhow::Result<bool> {
     let transfer = Transfer::Close(kill);
-    debug!("Sending close command {transfer:?}");
+    trace!("Sending close command {transfer:?}");
     let transfer_serialized = bincode::serialize(&transfer).with_context(|| format!("Failed to serialize transfer {transfer:?}"))?;
     send(&transfer_serialized).with_context(|| format!("Failed to send close command {transfer_serialized:?}"))
 }

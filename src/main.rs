@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use anyhow::Context;
 use clap::Parser;
-use log::{debug, info, warn};
+use log::{info, trace, warn};
 use notify_rust::{Notification, Urgency};
 
 use hyprswitch::{ACTIVE, Active, cli, Command, Config, DRY, GuiConfig};
@@ -91,7 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         cli::Command::Simple { simple_opts, simple_conf } => {
             let config = Config::from(simple_conf);
             let (clients_data, active) = collect_data(config.clone()).with_context(|| format!("Failed to collect data with config {config:?}"))?;
-            debug!("Clients data: {:?}", clients_data);
+            trace!("Clients data: {:?}", clients_data);
 
             let command = Command::from(simple_opts);
 

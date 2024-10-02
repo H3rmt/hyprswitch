@@ -41,7 +41,7 @@ pub fn switch_monitor(monitor_id: &MonitorId, dry_run: bool) -> anyhow::Result<(
             println!("switch to monitor {monitor_id}");
         }
     } else {
-        debug!("switch to monitor {monitor_id}");
+        info!("exec: switch to monitor {monitor_id}");
         Dispatch::call(FocusMonitor(MonitorIdentifier::Id(*monitor_id)))?;
     }
     Ok(())
@@ -73,7 +73,7 @@ pub fn switch_client(address: &Address, dry_run: bool) -> anyhow::Result<()> {
             println!("switch to next_client: {}", address);
         }
     } else {
-        info!("switch to next_client: {}", address);
+        info!("exec: switch to next_client: {}", address);
         Dispatch::call(FocusWindow(WindowIdentifier::Address(address.clone())))?;
         Dispatch::call(BringActiveToTop)?;
     }
@@ -88,7 +88,7 @@ fn switch_normal_workspace(workspace_id: WorkspaceId, dry_run: bool) -> anyhow::
             println!("switch to workspace {workspace_id}");
         }
     } else {
-        debug!("switch to workspace {workspace_id}");
+        info!("exec: switch to workspace {workspace_id}");
         Dispatch::call(Workspace(WorkspaceIdentifierWithSpecial::Id(
             workspace_id,
         )))?;
@@ -105,7 +105,7 @@ fn toggle_special_workspace(workspace_name: &str, dry_run: bool) -> anyhow::Resu
             println!("toggle workspace {name}");
         }
     } else {
-        debug!("toggle workspace {name}");
+        info!("exec: toggle workspace {name}");
         Dispatch::call(ToggleSpecialWorkspace(Some(name)))?;
     }
     Ok(())

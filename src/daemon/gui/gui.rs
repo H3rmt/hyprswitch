@@ -136,7 +136,6 @@ pub(super) fn update(
 fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: i16, enabled: bool, max_switch_offset: u8) -> Frame {
     let theme = IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
-        // debug!("Icon found for {}", client.class);
         theme.lookup_icon(
             &client.class,
             &[],
@@ -146,11 +145,7 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
             IconLookupFlags::PRELOAD,
         )
     } else {
-        // debug!("Icon not found for {}", client.class);
-
         icons::get_icon_name(&client.class).map(|icon| {
-            // debug!("desktop file found for {}: {icon}", client.class);
-
             // check if icon is a path or name
             if icon.contains('/') {
                 let file = File::for_path(icon);
@@ -178,10 +173,6 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
             )
         })
     };
-
-    // if let Some(f) = icon.file() {
-    //     debug!("Icon file: {:?}", f.path());
-    // }
 
     let picture = Picture::builder().css_classes(vec!["client-image"]).paintable(&icon).build();
 
