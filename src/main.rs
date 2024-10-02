@@ -40,13 +40,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled???)");
 
     match cli.command {
-        cli::Command::Init { custom_css, show_title } => {
+        cli::Command::Init { custom_css, show_title, workspaces_per_row } => {
             if daemon_running() {
                 warn!("Daemon already running");
                 return Ok(());
             }
             info!("Starting daemon");
-            start_daemon(custom_css, show_title)
+            start_daemon(custom_css, show_title, workspaces_per_row)
                 .context("Failed to run daemon")
                 .inspect_err(|_| {
                     let _ = deactivate_submap();

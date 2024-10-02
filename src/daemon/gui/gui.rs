@@ -197,7 +197,8 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
     let overlay = Overlay::builder().child(&picture).build();
 
     if enabled && max_switch_offset != 0 && index <= max_switch_offset as i16 && index >= -(max_switch_offset as i16) {
-        let label = Label::builder().css_classes(vec!["index"]).label(index.to_string()).halign(Align::End).valign(Align::End).build();
+        let label = Label::builder().css_classes(vec!["index"]).label(index.to_string()).halign(Align::End).valign(Align::End)
+            .build();
         overlay.add_overlay(&label)
     }
 

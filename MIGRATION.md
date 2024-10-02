@@ -83,14 +83,14 @@
     - `--reverse-key` Custom reverse key or mod key to reverse the switch direction
     - `--close` How to close hyprswitch (See `README Usage > Parameters > gui > --close` for options and explanations)
     - `--switch-type` Switch Windows or Workspaces or Monitors
-3. Experimental ENV var:
-    - `WORKSPACES_PER_ROW`: Limit amount of workspaces in one row (overflows to next row)
-4. Small CSS Fixes
-5. Removed some cli args
+    - `--workspaces-per-row` Limit amount of workspaces in one row (overflows to next row) replaces the
+      WORKSPACES_PER_ROW env var
+3. Small CSS Fixes
+4. Removed some cli args
     - `--do-initial-execute` (add `&& hyprswitch dispatch` to the end of the gui command to dispatch a switch on
       opening)
     - `--stay-open-on-close` (use `--close` to configure closing behaviour instead)
-6. Better error handling (more notifications)
+5. Better error handling (more notifications)
 
 To migrate your config you copy the corresponding example from the readme or [examples](./EXAMPLES.md) and change the
 $key variables to your desired key. You can also change the modifier key to your desired key. **Remember to also pass

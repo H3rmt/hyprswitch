@@ -34,6 +34,7 @@ pub(super) const CSS: &str = r#"
     padding: 5px;
     font-size: 30px;
     font-weight: bold;
+    font-family: monospace;
     border-radius: 15px;
     border: 3px solid rgba(80, 90, 120, 0.80);
     background-color: rgba(20, 20, 20, 1);

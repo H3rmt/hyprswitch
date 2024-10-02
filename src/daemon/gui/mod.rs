@@ -22,10 +22,9 @@ lazy_static! {
     static ref SIZE_FACTOR: i16 =option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
     static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(2, |s| s.parse().expect("Failed to parse ICON_SCALE"));
-    static ref WORKSPACES_PER_ROW: u32 = option_env!("WORKSPACES_PER_ROW").map_or(5, |s| s.parse().expect("Failed to parse WORKSPACES_PER_ROW"));
 }
 
-pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool) -> anyhow::Result<()> {
+pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, workspaces_per_row: u32) -> anyhow::Result<()> {
     let arc_share = share.clone();
     std::thread::spawn(move || {
         let application = Application::builder()
@@ -64,8 +63,8 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
                 let connector = monitor.connector().with_context(|| format!("Failed to get connector for monitor {monitor:?}")).expect("Failed to get connector");
                 let workspaces_flow = FlowBox::builder().css_classes(vec!["workspaces"]).selection_mode(SelectionMode::None)
                     .orientation(Orientation::Horizontal)
-                    .max_children_per_line(*WORKSPACES_PER_ROW)
-                    .min_children_per_line(*WORKSPACES_PER_ROW)
+                    .max_children_per_line(workspaces_per_row)
+                    .min_children_per_line(workspaces_per_row)
                     .build();
                 let window = ApplicationWindow::builder().application(app).child(&workspaces_flow).default_height(10).default_width(10).build();
 

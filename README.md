@@ -49,7 +49,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 - `init` Initialize and start the Daemon
     - `--custom-css <PATH>` Specify a path to custom css file
     - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
-
+    - `--workspaces-per-row` Limit amount of workspaces in one row (overflows to next row)
 - `gui` Starts/Opens the GUI + sends the command to daemon of GUI is already opened
     - `--mod-key <MODIFIER>` The modifier key to used to open the GUI (super_l, super_r, alt_l, alt_r, ctrl_l, ctrl_r,
       shift_l, shift_r)
@@ -163,22 +163,6 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
   ```
   </td><td><img src="imgs/css_client-image.png"/> </td></tr></table>
 
-- **index**
-  <table><tr><td>
-
-  ```css
-  .client-index {
-    margin: 6px;
-    padding: 5px;
-    font-size: 30px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(80, 90, 120, 0.80);
-    background-color: rgba(20, 20, 20, 1);
-  }
-  ```
-  </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
-
 - **client** + **client_active**
 
   client_active is the client that is currently focused / will be focused when exiting hyprswitch
@@ -223,6 +207,23 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
   }
   ```
   </td><td><img src="imgs/css_workspace.png"/> </td></tr></table>
+
+- **index**
+  <table><tr><td>
+
+  ```css
+  .index {
+    margin: 6px;
+    padding: 5px;
+    font-size: 30px;
+    font-weight: bold;
+    font-family: monospace;
+    border-radius: 15px;
+    border: 3px solid rgba(80, 90, 120, 0.80);
+    background-color: rgba(20, 20, 20, 1);
+  }
+  ```
+  </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
 
 - **workspaces (use experimental WORKSPACES_PER_ROW env var to change width)**
   <table><tr><td>
@@ -292,6 +293,7 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
     padding: 5px;
     font-size: 30px;
     font-weight: bold;
+    font-family: monospace;
     border-radius: 15px;
     border: 3px solid rgba(80, 90, 120, 0.80);
     background-color: rgba(20, 20, 20, 1);
@@ -311,15 +313,13 @@ window {
 ### Custom CSS Example to override default CSS values:
 
 ```css
-.client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
-    background-color: rgba(200, 9, 9, 0.80);
-}
-
 .client-image {
     margin: 10px;
 }
-
+.client_active {
+    border: 3px dotted rgba(239, 9, 9, 0.94);
+    background-color: rgba(200, 9, 9, 0.80);
+}
 window {
     opacity: 1;
     border: 6px solid rgba(0, 0, 0, 0.85);
