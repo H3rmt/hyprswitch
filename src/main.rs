@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             if !daemon_running() {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                    .body("Daemon not running (add ``exec-once = hyprswitch init &``) to your Hyprland config\n(visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see GUI configs)")
+                    .body("Daemon not running (add ``exec-once = hyprswitch init &``) to your Hyprland config or run it in a terminal\n(visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see GUI configs)")
                     .timeout(10000)
                     .hint(notify_rust::Hint::Urgency(Urgency::Critical))
                     .show();

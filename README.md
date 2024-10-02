@@ -17,6 +17,8 @@ command and update the GUI.
 
 ![image.png](imgs/image_3.png)
 
+# [Migration to 3.0.0](MIGRATION.md)
+
 # Installation
 
 ### From Source

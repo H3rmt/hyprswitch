@@ -21,7 +21,7 @@ mod switch_fns;
 lazy_static! {
     static ref SIZE_FACTOR: i16 =option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
     static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
-    static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
+    static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(2, |s| s.parse().expect("Failed to parse ICON_SCALE"));
     static ref WORKSPACES_PER_ROW: u32 = option_env!("WORKSPACES_PER_ROW").map_or(5, |s| s.parse().expect("Failed to parse WORKSPACES_PER_ROW"));
 }
 

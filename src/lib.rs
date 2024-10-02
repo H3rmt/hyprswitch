@@ -85,11 +85,17 @@ pub struct GuiConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Transfer {
+pub enum TransferType {
     Switch(Command),
     Init(Config, GuiConfig),
     Close(bool),
     Check,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Transfer {
+    pub transfer: TransferType,
+    pub version: String,
 }
 
 #[derive(Debug, Default)]

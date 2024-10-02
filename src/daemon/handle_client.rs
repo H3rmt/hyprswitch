@@ -3,8 +3,9 @@ use std::os::unix::net::UnixStream;
 
 use anyhow::Context;
 use log::{debug, error, info, trace};
+use notify_rust::{Notification, Urgency};
 
-use crate::{ACTIVE, Share, Transfer};
+use crate::{ACTIVE, Share, Transfer, TransferType};
 use crate::daemon::handle_fns::{close, init, switch};
 
 pub(super) fn handle_client(
@@ -24,14 +25,31 @@ pub(super) fn handle_client(
     let transfer: Transfer = bincode::deserialize(&buffer).with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
     trace!("Received command: {transfer:?}");
 
+    if *option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?") != transfer.version {
+        error!("Client version {} and daemon version {} not matching", transfer.version, option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"));
+        let _ = Notification::new()
+            .summary(&format!("Hyprswitch daemon ({}) and client ({}) dont match", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"), transfer.version))
+            .body("
+This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
+You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)
+
+(visit https://github.com/H3rmt/hyprswitch/releases to see latest release and new features)")
+            .timeout(20000)
+            .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+            .show();
+        // don't return (would trigger new toast)
+        // return Err(anyhow::anyhow!("Daemon out of sync"));
+        return Ok(());
+    }
+
     let active = *ACTIVE.get().expect("ACTIVE not set").lock().expect("Failed to lock ACTIVE");
 
-    match transfer {
-        Transfer::Check => {
+    match transfer.transfer {
+        TransferType::Check => {
             info!("Received running? command");
             return_success(active, &mut stream)?;
         }
-        Transfer::Init(config, gui_config) => {
+        TransferType::Init(config, gui_config) => {
             if !active {
                 info!("Received init command {config:?} and {gui_config:?}");
                 match init(share, config.clone(), gui_config.clone()).with_context(|| format!("Failed to init with config {:?} and gui_config {:?}", config, gui_config)) {
@@ -47,7 +65,7 @@ pub(super) fn handle_client(
                 return_success(false, &mut stream)?;
             }
         }
-        Transfer::Close(kill) => {
+        TransferType::Close(kill) => {
             if active {
                 info!("Received close command");
                 trace!("Received close command with kill: {kill}");
@@ -64,7 +82,7 @@ pub(super) fn handle_client(
                 return_success(false, &mut stream)?;
             }
         }
-        Transfer::Switch(command) => {
+        TransferType::Switch(command) => {
             if active {
                 info!("Received switch command {command:?}");
                 match switch(share, command).with_context(|| format!("Failed to execute with command {command:?}")) {
