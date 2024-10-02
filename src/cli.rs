@@ -21,6 +21,17 @@ pub struct App {
     pub command: Command,
 }
 
+#[derive(Args, Debug, Clone)]
+pub struct GlobalOpts {
+    /// Print the command that would be executed
+    #[arg(short = 'd', long)]
+    pub dry_run: bool,
+
+    /// Increase the verbosity level (max: -vv)
+    #[arg(short = 'v', action = clap::ArgAction::Count)]
+    pub verbose: u8,
+}
+
 #[derive(Subcommand, Debug, Clone)]
 pub enum Command {
     /// Initialize and start the Daemon
@@ -41,10 +52,10 @@ pub enum Command {
     /// Opens the GUI
     Gui {
         #[clap(flatten)]
-        gui_config: GuiConf,
+        gui_conf: GuiConf,
 
         #[clap(flatten)]
-        config: SimpleConf,
+        simple_config: SimpleConf,
     },
     /// Switch without using the GUI / Daemon (switches directly)
     Simple {
@@ -61,87 +72,6 @@ pub enum Command {
         kill: bool,
     },
 }
-
-
-// ModKey doesnt work (if pressed to fast closes instantly)
-#[derive(clap::ValueEnum, Clone, Default, Debug, Serialize, Deserialize)]
-pub enum CloseType {
-    #[default]
-    /// Close when pressing the mod key + key again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
-    ModKeyIndex,
-    /// Close when pressing an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
-    Index,
-    /// Close when pressing the mod key + key again (e.g., SUPER + TAB) or clicking on a window in GUI (or pressing escape)
-    ModKey,
-    /// Close when releasing the mod key (e.g., SUPER) or clicking on a window in GUI (or pressing escape)
-    ModKeyRelease,
-    /// Close when clicking on a window in GUI (or pressing escape)
-    None,
-}
-
-#[derive(Args, Debug, Clone)]
-pub struct GuiConf {
-    /// The modifier key to used to open the GUI
-    #[arg(long)]
-    pub mod_key: ModKey,
-
-    /// The key to used to open the GUI (e.g., tab)
-    #[arg(long)]
-    pub key: String,
-
-    /// How to close hyprswitch
-    #[clap(long, default_value_t, value_enum)]
-    pub close: CloseType,
-
-    /// The maximum offset you can switch to with number keys and is shown in the GUI
-    #[arg(long, default_value = "5")]
-    pub max_switch_offset: u8,
-
-    /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
-    #[arg(long, value_parser = ValueParser::new(ReverseKey::from_str), default_value = "mod=shift")]
-    pub reverse_key: ReverseKey,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ReverseKey {
-    Mod(String),
-    Key(String),
-}
-
-impl Default for ReverseKey {
-    fn default() -> Self {
-        ReverseKey::Mod("shift".to_string())
-    }
-}
-
-impl FromStr for ReverseKey {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split('=').collect();
-        if parts.len() != 2 {
-            return Err(format!("Invalid format for reverse: {}", s));
-        }
-        match (parts[0], parts[1]) {
-            ("mod", value) => Ok(ReverseKey::Mod(value.to_string())),
-            ("key", value) => Ok(ReverseKey::Key(value.to_string())),
-            _ => Err(format!("Invalid format for reverse: {}", s)),
-        }
-    }
-}
-
-
-#[derive(Args, Debug, Clone)]
-pub struct GlobalOpts {
-    /// Print the command that would be executed
-    #[arg(short = 'd', long)]
-    pub dry_run: bool,
-
-    /// Increase the verbosity level (max: -vv)
-    #[arg(short = 'v', action = clap::ArgAction::Count)]
-    pub verbose: u8,
-}
-
 
 #[derive(Args, Debug, Clone)]
 pub struct SimpleConf {
@@ -173,10 +103,17 @@ pub struct SimpleConf {
     #[arg(long)]
     pub sort_recent: bool,
 
-    // TODO make this enum (client, workspace, monitor)
-    /// Switches to next / previous workspace instead of client
-    #[arg(long)]
-    pub switch_workspaces: bool,
+    /// Switches to next / previous workspace / client / monitor
+    #[arg(long, default_value_t, value_enum)]
+    pub switch_type: SwitchType,
+}
+
+#[derive(ValueEnum, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub enum SwitchType {
+    #[default]
+    Client,
+    Workspace,
+    Monitor,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -190,7 +127,30 @@ pub struct SimpleOpts {
     pub offset: u8,
 }
 
-#[derive(ValueEnum, Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Args, Debug, Clone)]
+pub struct GuiConf {
+    /// The modifier key to used to open the GUI
+    #[arg(long, value_enum)]
+    pub mod_key: ModKey,
+
+    /// The key to used to open the GUI (e.g., tab)
+    #[arg(long)]
+    pub key: String,
+
+    /// How to close hyprswitch
+    #[clap(long, default_value_t, value_enum)]
+    pub close: CloseType,
+
+    /// The maximum offset you can switch to with number keys and is shown in the GUI
+    #[arg(long, default_value = "5")]
+    pub max_switch_offset: u8,
+
+    /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
+    #[arg(long, value_parser = ValueParser::new(ReverseKey::from_str), default_value = "mod=shift")]
+    pub reverse_key: ReverseKey,
+}
+
+#[derive(ValueEnum, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[value(rename_all = "snake_case")]
 pub enum ModKey {
     AltL,
@@ -200,4 +160,47 @@ pub enum ModKey {
     #[default]
     SuperL,
     SuperR,
+}
+
+#[derive(ValueEnum, Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
+pub enum CloseType {
+    #[default]
+    /// Close when pressing the mod key + key again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
+    ModKeyIndex,
+    /// Close when pressing an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
+    Index,
+    /// Close when pressing the mod key + key again (e.g., SUPER + TAB) or clicking on a window in GUI (or pressing escape)
+    ModKey,
+    /// Close when releasing the mod key (e.g., SUPER) or clicking on a window in GUI (or pressing escape)
+    ModKeyRelease,
+    /// Close when clicking on a window in GUI (or pressing escape)
+    None,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ReverseKey {
+    Mod(String),
+    Key(String),
+}
+
+impl Default for ReverseKey {
+    fn default() -> Self {
+        ReverseKey::Mod("shift".to_string())
+    }
+}
+
+impl FromStr for ReverseKey {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split('=').collect();
+        if parts.len() != 2 {
+            return Err(format!("Invalid format for reverse: {}", s));
+        }
+        match (parts[0], parts[1]) {
+            ("mod", value) => Ok(ReverseKey::Mod(value.to_string())),
+            ("key", value) => Ok(ReverseKey::Key(value.to_string())),
+            _ => Err(format!("Invalid format for reverse: {}", s)),
+        }
+    }
 }

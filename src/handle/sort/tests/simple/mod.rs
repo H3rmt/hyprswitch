@@ -1,14 +1,9 @@
-use std::collections::{BTreeMap};
 use std::time::Instant;
 
-use hyprland::shared::WorkspaceId;
+use crate::handle::sort::{sort_clients, update_clients};
+use crate::handle::sort::tests::{client_vec, create_svg_from_client_tests, function, is_sorted, monitor_map, workspace_map};
 
-use hyprswitch::{MonitorData, MonitorId, WorkspaceData};
-use hyprswitch::sort::{sort_clients, update_clients};
-
-use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClient, mon, ws};
-
-/// ```
+/// ```text
 ///    1      2  3      4
 /// 1  +------+  +------+
 /// 2  |  1   |  |  2   |
@@ -21,22 +16,23 @@ use crate::common::{create_svg_from_client_tests, function, is_sorted, MockClien
 /// ```
 #[test]
 fn simple_1() {
-    let clients = vec![
-        MockClient(1, 1, 1, 3, 0, 0, "1".to_string()),
-        MockClient(3, 1, 1, 3, 0, 0, "2".to_string()),
-        MockClient(1, 5, 1, 2, 0, 0, "3".to_string()),
-        MockClient(3, 5, 1, 2, 0, 0, "4".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 4, 7),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 1, 3, 0, 0),
+        (3, 1, 1, 3, 0, 0),
+        (1, 5, 1, 2, 0, 0),
+        (3, 5, 1, 2, 0, 0),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 4, 7));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
+    let update = Instant::now();
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
-    println!("updated clients: {clients:?}");
+    println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);
@@ -47,7 +43,7 @@ fn simple_1() {
     assert!(is_sorted(&clients));
 }
 
-/// ```
+/// ```text
 ///    1      2  3      5
 /// 1  +------+  +------+
 /// 2  |  1   |  |  2   |
@@ -60,22 +56,23 @@ fn simple_1() {
 /// /// ```
 #[test]
 fn simple_2() {
-    let clients = vec![
-        MockClient(1, 1, 1, 3, 0, 0, "1".to_string()),
-        MockClient(3, 1, 2, 3, 0, 0, "2".to_string()),
-        MockClient(1, 5, 2, 2, 0, 0, "3".to_string()),
-        MockClient(4, 5, 1, 2, 0, 0, "4".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 5, 7),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 1, 3, 0, 0),
+        (3, 1, 2, 3, 0, 0),
+        (1, 5, 2, 2, 0, 0),
+        (4, 5, 1, 2, 0, 0),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 5, 7));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
+    let update = Instant::now();
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
-    println!("updated clients: {clients:?}");
+    println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);
@@ -86,7 +83,7 @@ fn simple_2() {
     assert!(is_sorted(&clients));
 }
 
-/// ```
+/// ```text
 ///    1     2  3       6
 /// 1  +-----+  +-------+
 /// 2  |  1  |  |   2   |
@@ -99,22 +96,23 @@ fn simple_2() {
 /// ```
 #[test]
 fn simple_3() {
-    let clients = vec![
-        MockClient(1, 1, 1, 3, 0, 0, "1".to_string()),
-        MockClient(3, 1, 3, 3, 0, 0, "2".to_string()),
-        MockClient(1, 5, 3, 2, 0, 0, "3".to_string()),
-        MockClient(5, 5, 1, 2, 0, 0, "4".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 6, 7),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 1, 3, 0, 0),
+        (3, 1, 3, 3, 0, 0),
+        (1, 5, 3, 2, 0, 0),
+        (5, 5, 1, 2, 0, 0),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 6, 7));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
+    let update = Instant::now();
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
-    println!("updated clients: {clients:?}");
+    println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);
@@ -125,7 +123,7 @@ fn simple_3() {
     assert!(is_sorted(&clients));
 }
 
-/// ```
+/// ```text
 ///    1      2  3      4
 /// 1  +------+  +------+
 /// 2  |  1   |  |  2   |
@@ -138,21 +136,21 @@ fn simple_3() {
 /// ```
 #[test]
 fn simple_4() {
-    let clients = vec![
-        MockClient(1, 1, 1, 3, 0, 0, "1".to_string()),
-        MockClient(3, 1, 1, 2, 0, 0, "2".to_string()),
-        MockClient(1, 5, 1, 2, 0, 0, "3".to_string()),
-        MockClient(3, 4, 1, 3, 0, 0, "4".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 4, 7),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 1, 3, 0, 0),
+        (3, 1, 1, 2, 0, 0),
+        (1, 5, 1, 2, 0, 0),
+        (3, 4, 1, 3, 0, 0),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 4, 7));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
-
     let update = Instant::now();
+
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
@@ -165,7 +163,7 @@ fn simple_4() {
     assert!(is_sorted(&clients));
 }
 
-/// ```
+/// ```text
 ///    1      2  3      4
 /// 1  +------+  +------+
 /// 2  |  1   |  |  2   |
@@ -179,22 +177,23 @@ fn simple_4() {
 /// ```
 #[test]
 fn simple_5() {
-    let clients = vec![
-        MockClient(1, 1, 1, 4, 0, 0, "1".to_string()),
-        MockClient(3, 1, 1, 2, 0, 0, "2".to_string()),
-        MockClient(1, 6, 1, 2, 0, 0, "3".to_string()),
-        MockClient(3, 4, 1, 4, 0, 0, "4".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 4, 8),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 1, 4, 0, 0),
+        (3, 1, 1, 2, 0, 0),
+        (1, 6, 1, 2, 0, 0),
+        (3, 4, 1, 4, 0, 0),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 4, 8));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
+    let update = Instant::now();
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
-    println!("updated clients: {clients:?}");
+    println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);
@@ -206,7 +205,7 @@ fn simple_5() {
 }
 
 
-/// ```
+/// ```text
 ///    1   2  4  5  6
 /// 1  +----+ +-----+
 /// 2  | 1  | |  3  |
@@ -219,22 +218,23 @@ fn simple_5() {
 /// ```
 #[test]
 fn float_1() {
-    let clients = vec![
-        MockClient(1, 1, 2, 3, 0, 0, "1".to_string()),
-        MockClient(1, 5, 2, 2, 0, 0, "2".to_string()),
-        MockClient(2, 3, 3, 3, 0, 0, "3".to_string()),
-        MockClient(4, 1, 2, 4, 0, 0, "4".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 6, 7),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 2, 3, 0, 0, "1".to_string()),
+        (1, 5, 2, 2, 0, 0, "2".to_string()),
+        (2, 3, 3, 3, 0, 0, "3".to_string()),
+        (4, 1, 2, 4, 0, 0, "4".to_string()),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 6, 7));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
+    let update = Instant::now();
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
-    println!("updated clients: {clients:?}");
+    println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);
@@ -246,7 +246,7 @@ fn float_1() {
 }
 
 
-/// ```
+/// ```text
 ///    1      2 3      4 5      6
 /// 1  +------+          +------+
 /// 2  |  1   |          |  2   |
@@ -259,22 +259,23 @@ fn float_1() {
 /// ```
 #[test]
 fn order_1() {
-    let clients = vec![
-        MockClient(1, 1, 1, 3, 0, 0, "1".to_string()),
-        MockClient(5, 1, 1, 3, 0, 0, "2".to_string()),
-        MockClient(3, 5, 1, 2, 0, 0, "3".to_string()),
-        MockClient(5, 5, 1, 2, 0, 0, "4".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 6, 7),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 1, 3, 0, 0),
+        (5, 1, 1, 3, 0, 0),
+        (3, 5, 1, 2, 0, 0),
+        (5, 5, 1, 2, 0, 0),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 6, 7));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
+    let update = Instant::now();
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
-    println!("updated clients: {clients:?}");
+    println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);
@@ -286,7 +287,7 @@ fn order_1() {
 }
 
 
-/// ```
+/// ```text
 ///    1      2 3      4 5      6
 /// 1  +------+          +------+
 /// 2  |  1   |          |  3   |
@@ -299,22 +300,23 @@ fn order_1() {
 /// ```
 #[test]
 fn order_2() {
-    let clients = vec![
-        MockClient(1, 1, 1, 3, 0, 0, "1".to_string()),
-        MockClient(3, 3, 1, 2, 0, 0, "2".to_string()),
-        MockClient(5, 1, 1, 3, 0, 0, "3".to_string()),
-        MockClient(5, 5, 1, 2, 0, 0, "4".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 6, 7),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 1, 3, 0, 0),
+        (3, 3, 1, 2, 0, 0),
+        (5, 1, 1, 3, 0, 0),
+        (5, 5, 1, 2, 0, 0),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 6, 7));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
+    let update = Instant::now();
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
-    println!("updated clients: {clients:?}");
+    println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);
@@ -325,7 +327,7 @@ fn order_2() {
     assert!(is_sorted(&clients));
 }
 
-/// ```
+/// ```text
 ///    1 3     4 6  7 9     10 12
 /// 1  +--------+   +--------+ 
 /// 2  |   1    |   |   4    |
@@ -340,24 +342,25 @@ fn order_2() {
 /// ```
 #[test]
 fn order_3() {
-    let clients = vec![
-        MockClient(1, 1, 4, 6, 0, 0, "1".to_string()),
-        MockClient(2, 3, 2, 5, 0, 0, "2".to_string()),
-        MockClient(3, 5, 3, 4, 0, 0, "3".to_string()),
-        MockClient(7, 1, 4, 6, 0, 0, "4".to_string()),
-        MockClient(8, 3, 2, 5, 0, 0, "5".to_string()),
-        MockClient(9, 5, 3, 4, 0, 0, "6".to_string()),
+    let monitor_data = monitor_map![
+        (0, 0, 12, 9),
+    ];
+    let workspace_data = workspace_map![
+        (0, 0, 0),
+    ];
+    let clients = client_vec![
+        (1, 1, 4, 6, 0, 0),
+        (2, 3, 2, 5, 0, 0),
+        (3, 5, 3, 4, 0, 0),
+        (7, 1, 4, 6, 0, 0),
+        (8, 3, 2, 5, 0, 0),
+        (9, 5, 3, 4, 0, 0),
     ];
     let len = clients.len();
-
-    let mut monitor_data: BTreeMap<MonitorId, MonitorData> = BTreeMap::new();
-    monitor_data.insert(0, mon(0, 0, 12, 9));
-
-    let mut workspace_data: BTreeMap<WorkspaceId, WorkspaceData> = BTreeMap::new();
-    workspace_data.insert(0, ws(0, 0));
+    let update = Instant::now();
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
-    println!("updated clients: {clients:?}");
+    println!("updated clients: {clients:?} ({:?})", update.elapsed());
 
     let start = Instant::now();
     let clients = sort_clients(clients, false, false);

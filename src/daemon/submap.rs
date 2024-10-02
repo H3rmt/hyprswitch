@@ -28,6 +28,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
 
         // always bind escape to close
         keyword_list.push(("bind", format!(" ,escape , exec, {} close --kill", current_exe)));
+        keyword_list.push(("bind", format!("{} ,escape , exec, {} close --kill", main_mod, current_exe)));
 
         // repeatable presses
         match gui_config.close {
