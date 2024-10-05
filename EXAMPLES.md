@@ -1,6 +1,6 @@
 # GUI
 
-### Always remember to change the --mod-key, --key and --close options if you change the bind keys
+### Always remember to change the --mod-key, --key options if you change the bind keys
 
 **Simple**: Press super + $key(tab) to open the GUI, use mouse to click on window or press 1 / 2 / ... to switch to
 index
