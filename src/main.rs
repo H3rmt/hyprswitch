@@ -4,14 +4,20 @@ use std::sync::Mutex;
 
 use anyhow::Context;
 use clap::Parser;
+use hyprland::data::Version as HyprlandVersion;
+use hyprland::prelude::HyprData;
 use log::{info, trace, warn};
 use notify_rust::{Notification, Urgency};
+use semver::Version;
 
 use hyprswitch::cli::{App, SwitchType};
 use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
 use hyprswitch::daemon::{deactivate_submap, start_daemon};
 use hyprswitch::handle::{collect_data, get_next_active, switch_to_active};
 use hyprswitch::{cli, Active, Command, Config, GuiConfig, ACTIVE, DRY};
+
+// changed fullscreen types
+const MIN_VERSION: Version = Version::new(0, 42, 0);
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = App::try_parse()
@@ -35,6 +41,27 @@ fn main() -> Result<(), Box<dyn Error>> {
         });
     stderrlog::new().module(module_path!()).verbosity(cli.global_opts.verbose as usize + 1).init()
         .context("Failed to initialize logging :(").unwrap_or_else(|e| warn!("{:?}", e));
+
+    let version = HyprlandVersion::get()
+        .context("Failed to get version! (Hyprland is probably outdated or to new??)")?;
+
+    trace!("Hyprland {version:?}");
+    info!("Starting Hyprswitch ({}) on Hyprland {}",
+        option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"),
+        version.tag
+    );
+
+    let parsed_version = Version::parse(version.tag.trim_start_matches('v'))
+        .context("Unable to parse Hyprland Version")?;
+
+    if version.tag == "unknown" || parsed_version.lt(&MIN_VERSION) {
+        let _ = Notification::new()
+            .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+            .body("Hyprland version too old or unknown")
+            .timeout(5000)
+            .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+            .show();
+    }
 
     DRY.set(cli.global_opts.dry_run).expect("unable to set DRY (already filled???)");
     ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled???)");

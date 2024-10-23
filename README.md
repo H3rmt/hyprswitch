@@ -19,7 +19,7 @@ command and update the GUI.
 
 # [Migration to 3.0.0](MIGRATION.md)
 
-# Installation
+# Installation (Hyprland >= 0.42 required)
 
 ### From Source
 
