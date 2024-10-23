@@ -17,7 +17,7 @@ mod gui;
 mod handle_fns;
 mod submap;
 
-pub fn start_daemon(custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u32) -> anyhow::Result<()> {
+pub fn start_daemon(custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u8) -> anyhow::Result<()> {
     // we don't have any config here, so we just create a default one with no filtering
     // create arc to send to threads containing the config the daemon was initialised with and the data (clients, etc.)
     let share: Share = Arc::new((Mutex::new(SharedData::default()), Notify::new()));

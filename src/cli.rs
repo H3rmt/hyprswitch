@@ -44,8 +44,8 @@ pub enum Command {
         show_title: bool,
 
         /// Limit amount of workspaces in one row (overflows to next row)
-        #[arg(long, default_value = "5")]
-        workspaces_per_row: u32,
+        #[arg(long, default_value = "5", value_parser = clap::value_parser!(u8).range(1..))]
+        workspaces_per_row: u8,
 
         /// The size factor (float) for the GUI (original_size / 30 * size_factor)
         #[arg(long, default_value = "6")]
@@ -130,7 +130,7 @@ pub struct SimpleOpts {
     pub reverse: bool,
 
     /// Switch to a specific window offset (default 1)
-    #[arg(short = 'o', long, default_value = "1")]
+    #[arg(short = 'o', long, default_value = "1", value_parser = clap::value_parser!(u8).range(1..))]
     pub offset: u8,
 }
 
@@ -148,8 +148,8 @@ pub struct GuiConf {
     #[clap(long, default_value_t, value_enum)]
     pub close: CloseType,
 
-    /// The maximum offset you can switch to with number keys and is shown in the GUI
-    #[arg(long, default_value = "5")]
+    /// The maximum offset you can switch to with number keys and is shown in the GUI (pass 0 to disable the number keys and index)
+    #[arg(long, default_value = "5", value_parser = clap::value_parser!(u8).range(0..=9))]
     pub max_switch_offset: u8,
 
     /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)

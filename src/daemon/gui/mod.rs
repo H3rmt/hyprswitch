@@ -23,7 +23,7 @@ lazy_static! {
     static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(2, |s| s.parse().expect("Failed to parse ICON_SCALE"));
 }
 
-pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u32) -> anyhow::Result<()> {
+pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u8) -> anyhow::Result<()> {
     let arc_share = share.clone();
     std::thread::spawn(move || {
         let application = Application::builder()
@@ -62,8 +62,8 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
                 let connector = monitor.connector().with_context(|| format!("Failed to get connector for monitor {monitor:?}")).expect("Failed to get connector");
                 let workspaces_flow = FlowBox::builder().css_classes(vec!["workspaces"]).selection_mode(SelectionMode::None)
                     .orientation(Orientation::Horizontal)
-                    .max_children_per_line(workspaces_per_row)
-                    .min_children_per_line(workspaces_per_row)
+                    .max_children_per_line(workspaces_per_row as u32)
+                    .min_children_per_line(workspaces_per_row as u32)
                     .build();
                 let window = ApplicationWindow::builder().application(app).child(&workspaces_flow).default_height(10).default_width(10).build();
 
