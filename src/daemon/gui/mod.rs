@@ -23,6 +23,8 @@ lazy_static! {
     static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(2, |s| s.parse().expect("Failed to parse ICON_SCALE"));
 }
 
+pub(super) use icons::clear_icon_cache;
+
 pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u8) -> anyhow::Result<()> {
     let arc_share = share.clone();
     std::thread::spawn(move || {

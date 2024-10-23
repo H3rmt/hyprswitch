@@ -44,7 +44,7 @@ pub enum Command {
         show_title: bool,
 
         /// Limit amount of workspaces in one row (overflows to next row)
-        #[arg(long, default_value = "5", value_parser = clap::value_parser!(u8).range(1..))]
+        #[arg(long, default_value = "6", value_parser = clap::value_parser!(u8).range(1..))]
         workspaces_per_row: u8,
 
         /// The size factor (float) for the GUI (original_size / 30 * size_factor)

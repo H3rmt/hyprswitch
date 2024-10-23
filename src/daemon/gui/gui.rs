@@ -3,7 +3,7 @@ use std::sync::MutexGuard;
 use anyhow::Context;
 use gtk4::{gdk_pixbuf, gio::File, glib::clone, pango, prelude::*, Align, EventSequenceState, Fixed, FlowBox, Frame, GestureClick, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, Picture, TextDirection};
 use hyprland::data::WorkspaceBasic;
-use log::{info, warn};
+use log::{info, trace, warn};
 
 use crate::cli::SwitchType;
 use crate::daemon::gui::switch_fns::{switch_gui, switch_gui_workspace};
@@ -140,7 +140,9 @@ pub(super) fn update(
 
 fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: i16, enabled: bool, max_switch_offset: u8) -> Frame {
     let theme = IconTheme::new();
+    // trace!("[Icons] Looking for icon for {} in theme {}", client.class, theme.theme_name());
     let icon = if theme.has_icon(&client.class) {
+        trace!("[Icons] Icon found for {}", client.class);
         theme.lookup_icon(
             &client.class,
             &[],
@@ -150,14 +152,16 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
             IconLookupFlags::PRELOAD,
         )
     } else {
+        trace!("[Icons] No Icon found for {}", client.class);
         icons::get_icon_name(&client.class).map(|icon| {
+            trace!("[Icons] Icon name found for {} in desktop file", client.class);
             // check if icon is a path or name
             if icon.contains('/') {
                 let file = File::for_path(icon);
                 IconPaintable::for_file(&file, *ICON_SIZE, *ICON_SCALE)
             } else {
                 theme.lookup_icon(
-                    icon,
+                    &icon,
                     &[],
                     *ICON_SIZE,
                     *ICON_SCALE,
@@ -166,7 +170,7 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
                 )
             }
         }).unwrap_or_else(|| {
-            warn!("No Icon and no desktop file with icon found for {}",client.class);
+            warn!("[Icons] No Icon and no desktop file with icon found for {}", client.class);
             // just lookup the icon and hope for the best
             theme.lookup_icon(
                 &client.class,

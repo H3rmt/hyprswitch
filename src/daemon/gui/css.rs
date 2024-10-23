@@ -48,7 +48,7 @@ pub(super) const CSS: &str = r#"
 }
 window {
     border-radius: 15px;
-    opacity: 0.85;
+    opacity: 0.75;
     border: 6px solid rgba(15, 170, 190, 0.85);
 }
 "#;

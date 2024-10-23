@@ -41,7 +41,7 @@ command and update the GUI.
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
-## Parameters
+## Parameters (see `hyprswitch --help` / `hyprswitch init --help` / ... for more detailed info)
 
 - `--dry-run / -d` Print the command that would be executed instead of executing it
 - `-v` Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
@@ -50,6 +50,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
     - `--custom-css <PATH>` Specify a path to custom css file
     - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
     - `--workspaces-per-row` Limit amount of workspaces in one row (overflows to next row)
+    - `--size-factor` The size factor (float) for the GUI (original_size / 30 * size_factor)
 - `gui` Starts/Opens the GUI + sends the command to daemon of GUI is already opened
     - `--mod-key <MODIFIER>` The modifier key to used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r)
     - `--key <KEY>` The key to used to open the GUI (e.g., tab)
