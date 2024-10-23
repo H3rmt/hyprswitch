@@ -1,9 +1,13 @@
 pub(super) const CSS: &str = r#"
 .client-image {
-    margin: 15px;
+    margin: 10px;
+}
+.client-title {
+    font-size: 16px;
 }
 .client {
     border-radius: 15px;
+    padding-top: 5px;
     border: 3px solid rgba(80, 90, 120, 0.80);
     background-color: rgba(25, 25, 25, 0.90);
 }
@@ -31,8 +35,8 @@ pub(super) const CSS: &str = r#"
 }
 .index {
     margin: 6px;
-    padding: 5px;
-    font-size: 30px;
+    padding: 4px;
+    font-size: 18px;
     font-weight: bold;
     font-family: monospace;
     border-radius: 15px;

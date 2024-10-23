@@ -9,21 +9,21 @@ use tokio::sync::Notify;
 
 pub use submap::deactivate_submap;
 
-use crate::{get_socket_path_buff, Share, SharedData};
 use crate::daemon::handle_client::handle_client;
+use crate::{get_socket_path_buff, Share, SharedData};
 
 mod handle_client;
 mod gui;
 mod handle_fns;
 mod submap;
 
-pub fn start_daemon(custom_css: Option<PathBuf>, show_title: bool, workspaces_per_row: u32) -> anyhow::Result<()> {
+pub fn start_daemon(custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u32) -> anyhow::Result<()> {
     // we don't have any config here, so we just create a default one with no filtering
     // create arc to send to threads containing the config the daemon was initialised with and the data (clients, etc.)
     let share: Share = Arc::new((Mutex::new(SharedData::default()), Notify::new()));
 
     info!("Starting gui");
-    gui::start_gui_thread(&share, custom_css, show_title, workspaces_per_row).expect("Failed to start gui");
+    gui::start_gui_thread(&share, custom_css, show_title, size_factor, workspaces_per_row).expect("Failed to start gui");
 
     info!("Starting daemon");
     let buf = get_socket_path_buff();

@@ -1,19 +1,24 @@
 use std::sync::MutexGuard;
 
 use anyhow::Context;
-use gtk4::{Align, EventSequenceState, Fixed, FlowBox, Frame, gdk_pixbuf, GestureClick, gio::File, glib::clone, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, pango, Picture, prelude::*, TextDirection};
+use gtk4::{gdk_pixbuf, gio::File, glib::clone, pango, prelude::*, Align, EventSequenceState, Fixed, FlowBox, Frame, GestureClick, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, Picture, TextDirection};
 use hyprland::data::WorkspaceBasic;
 use log::{info, warn};
 
-use crate::{Active, ClientData, Share, SharedData};
 use crate::cli::SwitchType;
-use crate::daemon::gui::{ICON_SCALE, ICON_SIZE, icons, SIZE_FACTOR};
 use crate::daemon::gui::switch_fns::{switch_gui, switch_gui_workspace};
+use crate::daemon::gui::{icons, ICON_SCALE, ICON_SIZE};
 use crate::daemon::handle_fns::close;
+use crate::{Active, ClientData, Share, SharedData};
+
+fn scale(value: i16, size_factor: f64) -> i32 {
+    (value as f64 / 30.0 * size_factor) as i32
+}
 
 pub(super) fn update(
     share: Share,
     show_title: bool,
+    size_factor: f64,
     workspaces_flow: FlowBox,
     data: &MutexGuard<SharedData>,
     connector: &str,
@@ -31,8 +36,8 @@ pub(super) fn update(
     workspaces.sort_by(|a, b| a.0.cmp(b.0));
 
     for (wid, workspace) in workspaces {
-        let width = (workspace.width / *SIZE_FACTOR as u16) as i32;
-        let height = (workspace.height / *SIZE_FACTOR as u16) as i32;
+        let width = scale(workspace.width as i16, size_factor);
+        let height = scale(workspace.height as i16, size_factor);
 
         let clients = {
             let mut clients = data.clients_data.clients.iter()
@@ -105,11 +110,11 @@ pub(super) fn update(
                 data.clients_data.clients.iter().any(|c| c.active && c.address == client.address),
                 if data.simple_config.switch_type == SwitchType::Client { data.gui_config.max_switch_offset } else { 0 },
             );
-            let x = ((client.x - workspace.x as i16) / *SIZE_FACTOR) as f64;
-            let y = ((client.y - workspace.y as i16) / *SIZE_FACTOR) as f64;
-            let width = (client.width / *SIZE_FACTOR) as i32;
-            let height = (client.height / *SIZE_FACTOR) as i32;
+            let width = scale(client.width, size_factor);
+            let height = scale(client.height, size_factor);
             frame.set_size_request(width, height);
+            let x = scale(client.x - workspace.x as i16, size_factor) as f64;
+            let y = scale(client.y - workspace.y as i16, size_factor) as f64;
             workspace_fixed.put(&frame, x, y);
 
             let gesture = GestureClick::new();
@@ -203,7 +208,7 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
     }
 
     let title = if show_title && !client.title.trim().is_empty() { &client.title } else { &client.class };
-    let label = Label::builder().overflow(Overflow::Visible).margin_start(6).ellipsize(pango::EllipsizeMode::End).label(title).build();
+    let label = Label::builder().css_classes(vec!["client-title"]).overflow(Overflow::Visible).margin_start(6).ellipsize(pango::EllipsizeMode::End).label(title).build();
 
     let client_frame = Frame::builder().css_classes(vec!["client"]).label_xalign(0.5).label_widget(&label).child(&overlay).build();
 

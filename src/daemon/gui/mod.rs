@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use gtk4::{Application, ApplicationWindow, CssProvider, FlowBox, gdk, glib, Orientation, SelectionMode, style_context_add_provider_for_display, STYLE_PROVIDER_PRIORITY_APPLICATION, STYLE_PROVIDER_PRIORITY_USER};
 use gtk4::gdk::Monitor;
 use gtk4::prelude::{ApplicationExt, ApplicationExtManual, DisplayExt, GtkWindowExt, ListModelExtManual, MonitorExt, WidgetExt};
+use gtk4::{gdk, glib, style_context_add_provider_for_display, Application, ApplicationWindow, CssProvider, FlowBox, Orientation, SelectionMode, STYLE_PROVIDER_PRIORITY_APPLICATION, STYLE_PROVIDER_PRIORITY_USER};
 use gtk4_layer_shell::{Layer, LayerShell};
 use lazy_static::lazy_static;
 use log::{trace, warn};
@@ -19,12 +19,11 @@ mod css;
 mod switch_fns;
 
 lazy_static! {
-    static ref SIZE_FACTOR: i16 =option_env!("SIZE_FACTOR").map_or(7, |s| s.parse().expect("Failed to parse SIZE_FACTOR"));
-    static ref ICON_SIZE: i32 =option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
-    static ref ICON_SCALE: i32 =option_env!("ICON_SCALE").map_or(2, |s| s.parse().expect("Failed to parse ICON_SCALE"));
+    static ref ICON_SIZE: i32 = option_env!("ICON_SIZE").map_or(128, |s| s.parse().expect("Failed to parse ICON_SIZE"));
+    static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(2, |s| s.parse().expect("Failed to parse ICON_SCALE"));
 }
 
-pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, workspaces_per_row: u32) -> anyhow::Result<()> {
+pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u32) -> anyhow::Result<()> {
     let arc_share = share.clone();
     std::thread::spawn(move || {
         let application = Application::builder()
@@ -70,6 +69,10 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
 
                 window.init_layer_shell();
                 window.set_layer(Layer::Overlay);
+                #[cfg(debug_assertions)] {
+                    // window.set_anchor(gtk4_layer_shell::Edge::Bottom, true);
+                    // window.set_margin(gtk4_layer_shell::Edge::Bottom, 30);
+                }
                 window.set_monitor(&monitor);
                 window.present();
                 window.hide();
@@ -85,7 +88,7 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
                     let share_unlocked = data_mut.lock().expect("Failed to lock");
                     for (workspaces_flow, connector, window) in monitor_data_list.iter() {
                         if share_unlocked.gui_show {
-                            let _ = update(arc_share_share.clone(), show_title, workspaces_flow.clone(), &share_unlocked, connector)
+                            let _ = update(arc_share_share.clone(), show_title, size_factor, workspaces_flow.clone(), &share_unlocked, connector)
                                 .with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
                             window.show();
                         } else {

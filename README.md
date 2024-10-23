@@ -51,8 +51,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
     - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
     - `--workspaces-per-row` Limit amount of workspaces in one row (overflows to next row)
 - `gui` Starts/Opens the GUI + sends the command to daemon of GUI is already opened
-    - `--mod-key <MODIFIER>` The modifier key to used to open the GUI (super_l, super_r, alt_l, alt_r, ctrl_l, ctrl_r,
-      shift_l, shift_r)
+    - `--mod-key <MODIFIER>` The modifier key to used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r)
     - `--key <KEY>` The key to used to open the GUI (e.g., tab)
     - `--reverse-key <KEYTYPE>=<KEY>` The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
       reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
@@ -158,10 +157,21 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
   ```css
   .client-image {
-    margin: 15px;
+    margin: 10px;
   }
   ```
-  </td><td><img src="imgs/css_client-image.png"/> </td></tr></table>
+  </td><td><img src="imgs/css_client_image.png"/> </td></tr></table>
+
+- **client-title**
+  <table><tr><td>
+
+  ```css
+  .client-title {
+    font-size: 16px;
+  }
+  ```
+  </td><td><img src="imgs/css_client_title.png"/> </td></tr></table>
+
 
 - **client** + **client_active**
 
@@ -171,6 +181,7 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
   ```css
   .client {
     border-radius: 15px;
+    padding-top: 5px;
     border: 3px solid rgba(80, 90, 120, 0.80);
     background-color: rgba(25, 25, 25, 0.90);
   }
@@ -214,8 +225,8 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
   ```css
   .index {
     margin: 6px;
-    padding: 5px;
-    font-size: 30px;
+    padding: 4px;
+    font-size: 18px;
     font-weight: bold;
     font-family: monospace;
     border-radius: 15px;
@@ -251,11 +262,16 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
 ```css
 .client-image {
-    margin: 15px;
+    margin: 10px;
+}
+
+.client-title {
+    font-size: 16px;
 }
 
 .client {
     border-radius: 15px;
+    padding-top: 5px;
     border: 3px solid rgba(80, 90, 120, 0.80);
     background-color: rgba(25, 25, 25, 0.90);
 }
@@ -290,8 +306,8 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
 .index {
     margin: 6px;
-    padding: 5px;
-    font-size: 30px;
+    padding: 4px;
+    font-size: 18px;
     font-weight: bold;
     font-family: monospace;
     border-radius: 15px;
@@ -314,12 +330,14 @@ window {
 
 ```css
 .client-image {
-    margin: 10px;
+    margin: 15px;
 }
+
 .client_active {
     border: 3px dotted rgba(239, 9, 9, 0.94);
     background-color: rgba(200, 9, 9, 0.80);
 }
+
 window {
     opacity: 1;
     border: 6px solid rgba(0, 0, 0, 0.85);
@@ -440,9 +458,7 @@ See [tests](/tests) for more details on how windows get sorted
 
 ### Experimental Environment Variables
 
-- `SIZE_FACTOR` i16 [default: 7]: Factor window and workspace size get divided by to shrink them
 - `ICON_SIZE` i32 [default: 128]: Argument passed to the theme.lookup_icon function (Determines the resolution of the
   Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
 - `ICON_SCALE` i32 [default: 1]: Argument passed to the theme.lookup_icon function (IDK what this does, setting it to
   anything other than 1 changes nothing)
-- `WORKSPACES_PER_ROW` u32 [default: 5]: Number of workspaces per row in the GUI

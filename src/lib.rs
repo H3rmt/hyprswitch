@@ -160,7 +160,7 @@ impl From<GuiConf> for GuiConfig {
     fn from(opts: GuiConf) -> Self {
         Self {
             max_switch_offset: opts.max_switch_offset,
-            mod_key: opts.mod_key,
+            mod_key: ModKey::from(opts.mod_key),
             key: opts.key,
             close: opts.close,
             reverse_key: opts.reverse_key,
