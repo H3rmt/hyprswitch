@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use hyprland::shared::MonitorId;
 use random_color::RandomColor;
-use svg::node::element::{Group, Rectangle, SVG, Text};
+use svg::node::element::{Group, Rectangle, Text, SVG};
 
 use crate::{ClientData, MonitorData};
 
@@ -15,7 +15,7 @@ mod simple;
 
 pub fn is_sorted(data: &[ClientData]) -> bool {
     data.windows(2).all(|w| {
-        w[0].address.to_string().parse::<u16>().unwrap() < w[1].address.to_string().parse::<u16>().unwrap()
+        w[0].address.to_string().trim_start_matches("0x").parse::<u16>().unwrap() < w[1].address.to_string().trim_start_matches("0x").parse::<u16>().unwrap()
     })
 }
 
