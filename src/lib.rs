@@ -1,17 +1,25 @@
 #![deny(clippy::print_stdout)]
 
+use anyhow::Context;
+use hyprland::data::Version as HyprlandVersion;
+use hyprland::data::WorkspaceBasic;
+use hyprland::prelude::HyprData;
+use hyprland::shared::{Address, MonitorId, WorkspaceId};
+use log::{info, trace};
+use notify_rust::{Notification, Urgency};
+use semver::Version;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::env::var;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
-
-use hyprland::data::WorkspaceBasic;
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use serde::{Deserialize, Serialize};
 use tokio::sync::Notify;
 
 use crate::cli::{CloseType, GuiConf, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
+
+// changed fullscreen types
+const MIN_VERSION: Version = Version::new(0, 42, 0);
 
 pub mod daemon;
 pub mod cli;
@@ -201,4 +209,29 @@ pub fn get_socket_path_buff() -> PathBuf {
 
     buf.push("hyprswitch.sock");
     buf
+}
+
+pub fn check_version() -> anyhow::Result<()> {
+    let version = HyprlandVersion::get()
+        .context("Failed to get version! (Hyprland is probably outdated or too new??)")?;
+
+    trace!("Hyprland {version:?}");
+    info!("Starting Hyprswitch ({}) on Hyprland {}",
+        option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"),
+        version.tag
+    );
+
+    let parsed_version = Version::parse(version.tag.trim_start_matches('v'))
+        .context("Unable to parse Hyprland Version")?;
+
+    if version.tag == "unknown" || parsed_version.lt(&MIN_VERSION) {
+        let _ = Notification::new()
+            .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+            .body("Hyprland version too old or unknown")
+            .timeout(5000)
+            .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+            .show();
+    }
+
+    Ok(())
 }
