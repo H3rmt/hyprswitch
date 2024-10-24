@@ -4,10 +4,8 @@ use std::sync::Mutex;
 
 use anyhow::Context;
 use clap::Parser;
-use hyprland::prelude::HyprData;
 use log::{info, trace, warn};
 use notify_rust::{Notification, Urgency};
-use semver::Version;
 
 use hyprswitch::cli::{App, SwitchType};
 use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
