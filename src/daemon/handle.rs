@@ -4,9 +4,9 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 
-use crate::{ACTIVE, Command, Config, Share};
-use crate::daemon::{INIT_COMMAND_LEN, SWITCH_COMMAND_LEN};
 use crate::daemon::funcs::{close, init, switch};
+use crate::daemon::{INIT_COMMAND_LEN, SWITCH_COMMAND_LEN};
+use crate::{Command, Config, Share, ACTIVE};
 
 pub async fn handle_client(
     mut stream: UnixStream, share: Share,
@@ -95,7 +95,7 @@ pub async fn handle_client(
             }
         }
         _ => {
-            error!("Unknown command");
+            error!("Unknown command (hyprswitch daemon is probably outdated)");
         }
     };
 

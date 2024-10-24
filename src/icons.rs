@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, env, fs::DirEntry, ops::Deref, path::PathBuf, sync::OnceLock};
 
-use log::warn;
+use log::{debug, warn};
 
 pub fn get_icon_name(icon: &str) -> Option<&str> {
     static LOADER: OnceLock<HashMap<Box<str>, Box<str>>> = OnceLock::new();
@@ -11,12 +11,9 @@ pub fn get_icon_name(icon: &str) -> Option<&str> {
 }
 
 fn find_application_dirs() -> Vec<PathBuf> {
-    let mut dirs = env::var_os("XDG_DATA_DIRS").map(|val| env::split_paths(&val).map(PathBuf::from).collect()).unwrap_or_else(|| {
-        vec![
-            PathBuf::from("/usr/local/share"),
-            PathBuf::from("/usr/share"),
-        ]
-    });
+    let mut dirs = env::var_os("XDG_DATA_DIRS")
+        .map(|val| env::split_paths(&val).map(PathBuf::from).collect())
+        .unwrap_or_else(|| { vec![PathBuf::from("/usr/local/share"), PathBuf::from("/usr/share")] });
 
     if let Some(data_home) = env::var_os("XDG_DATA_HOME").map(PathBuf::from).map_or_else(|| {
         env::var_os("HOME").map(|p| PathBuf::from(p).join(".local/share")).or_else(|| {
@@ -31,6 +28,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
     for dir in dirs {
         res.push(dir.join("applications"));
     }
+    debug!("[Icons] searching for icons in dirs: {:?}", res);
     res
 }
 
@@ -38,7 +36,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
     let mut res = Vec::new();
     for dir in find_application_dirs() {
         if !dir.exists() {
-            // debug!("Dir {dir:?} does not exist");
+            debug!("Dir {dir:?} does not exist");
             continue;
         }
         match dir.read_dir() {
@@ -51,11 +49,12 @@ fn collect_desktop_files() -> Vec<DirEntry> {
                 }
             }
             Err(e) => {
-                warn!("Failed to read dir {dir:?}: {e}");
+                warn!("[Icons] Failed to read dir {dir:?}: {e}");
                 continue;
             }
         }
     }
+    debug!("[Icons] found {} desktop files", res.len());
     res
 }
 
@@ -84,7 +83,7 @@ fn create_desktop_file_map() -> HashMap<Box<str>, Box<str>> {
                 }
             }
             Err(e) => {
-                warn!("Failed to read file {}: {e}", entry.path().display());
+                warn!("[Icons] Failed to read file {}: {e}", entry.path().display());
             }
         }
     }

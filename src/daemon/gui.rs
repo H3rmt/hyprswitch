@@ -68,7 +68,7 @@ lazy_static! {
 fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32, enabled: bool) -> Frame {
     let theme = IconTheme::new();
     let icon = if theme.has_icon(&client.class) {
-        // debug!("Icon found for {}", client.class);
+        debug!("Icon found for {}", client.class);
         theme.lookup_icon(
             &client.class,
             &[],
@@ -78,10 +78,9 @@ fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32,
             IconLookupFlags::PRELOAD,
         )
     } else {
-        // debug!("Icon not found for {}", client.class);
-
+        debug!("[Icons] No Icon found for {}", client.class);
         icons::get_icon_name(&client.class).map(|icon| {
-            // debug!("desktop file found for {}: {icon}", client.class);
+            debug!("[Icons] Icon name found for {} in desktop file", client.class);
 
             // check if icon is a path or name
             if icon.contains('/') {
@@ -98,7 +97,7 @@ fn client_ui(client: &Client, client_active: bool, show_title: bool, index: i32,
                 )
             }
         }).unwrap_or_else(|| {
-            warn!("No Icon and no desktop file with icon found for {}",client.class);
+            warn!("[Icons] No Icon and no desktop file with icon found for {}", client.class);
             // just lookup the icon and hope for the best
             theme.lookup_icon(
                 &client.class,
