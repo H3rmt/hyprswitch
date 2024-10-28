@@ -151,6 +151,19 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
 # CSS
 
+### CSS Variables
+
+```css
+window {
+    --border-color:        rgba(70, 80, 90, 0.30);
+    --border-color-active: rgba(239, 9, 9, 0.94);
+    --bg-color:            rgba(20, 20, 20, 1);
+    --bg-color-hover:      rgba(40, 40, 50, 1);
+    --index-border-color:  rgba(100, 100, 100, 1);
+    --border-radius:       15px;
+}
+```
+
 ### Class used in GUI + default css:
 
 - **client-image**
@@ -181,16 +194,17 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
   ```css
   .client {
-    border-radius: 15px;
     padding-top: 5px;
-    border: 3px solid rgba(80, 90, 120, 0.80);
-    background-color: rgba(25, 25, 25, 0.90);
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 3px solid var(--border-color);
   }
   .client:hover {
-    background-color: rgba(40, 40, 50, 1);
+    background-color: var(--bg-color-hover);
   }
   .client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
+    border: 3px solid var(--border-color-active);
   }
   ```
   </td><td><img src="imgs/css_client.png"/> </td></tr></table>
@@ -204,64 +218,73 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
   .workspace {
     font-size: 25px;
     font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(70, 80, 90, 0.80);
-    background-color: rgba(20, 20, 25, 0.90);
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 3px solid var(--border-color);
   }
   .workspace:hover {
-    background-color: rgba(40, 40, 50, 1);
+    background-color: var(--bg-color-hover);
+  }
+  .workspace_active {
+    border: 3px solid var(--border-color-active);
   }
   .workspace_special {
     border: 3px solid rgba(0, 255, 0, 0.4);
   }
-  .workspace_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
-  }
   ```
   </td><td><img src="imgs/css_workspace.png"/> </td></tr></table>
+
+- **monitor** + **monitor_active**
+  <table><tr><td>
+
+  ```css
+  .monitor {
+    opacity: 0.75;
+    padding: 2px;
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 4px solid var(--border-color);
+  }
+  .monitor:hover {
+    background-color: var(--bg-color-hover);
+  }
+  .monitor_active {
+    border: 3px solid var(--border-color-active);
+  }
+  ```
+  </td><td><img src="imgs/css_monitor.png"/> </td></tr></table>
 
 - **index**
   <table><tr><td>
 
   ```css
   .index {
-    margin: 6px;
-    padding: 4px;
+    margin: 3px;
+    padding: 2px 4px;
     font-size: 18px;
     font-weight: bold;
     font-family: monospace;
-    border-radius: 15px;
-    border: 3px solid rgba(80, 90, 120, 0.80);
-    background-color: rgba(20, 20, 20, 1);
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 3px solid var(--index-border-color);
   }
   ```
   </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
 
-- **workspaces (use experimental WORKSPACES_PER_ROW env var to change width)**
-  <table><tr><td>
-
-  ```css
-  .workspaces {
-    margin: 10px;
-  }
-  ```
-  </td><td><img src="imgs/css_workspaces.png"/> </td></tr></table>
-
-- **window**
-  <table><tr><td>
-
-  ```css
-  window {
-    border-radius: 15px;
-    opacity: 0.85;
-    border: 6px solid rgba(15, 170, 190, 0.85);
-  }
-  ```
-  </td><td><img src="imgs/css_window.png"/> </td></tr></table>
-
-### Default CSS:
+### [Default CSS](src/daemon/gui/css.rs):
 
 ```css
+window {
+    --border-color:        rgba(70, 80, 90, 0.30);
+    --border-color-active: rgba(239, 9, 9, 0.94);
+    --bg-color:            rgba(20, 20, 20, 1);
+    --bg-color-hover:      rgba(40, 40, 50, 1);
+    --index-border-color:  rgba(100, 100, 100, 1);
+    --border-radius:       15px;
+}
+
 .client-image {
     margin: 10px;
 }
@@ -271,30 +294,33 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 }
 
 .client {
-    border-radius: 15px;
     padding-top: 5px;
-    border: 3px solid rgba(80, 90, 120, 0.80);
-    background-color: rgba(25, 25, 25, 0.90);
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 3px solid var(--border-color);
 }
 
 .client:hover {
-    background-color: rgba(40, 40, 50, 1);
+    background-color: var(--bg-color-hover);
 }
 
 .client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
+    border: 3px solid var(--border-color-active);
 }
+
 
 .workspace {
     font-size: 25px;
     font-weight: bold;
-    border-radius: 15px;
-    border: 3px solid rgba(70, 80, 90, 0.80);
-    background-color: rgba(20, 20, 25, 0.90);
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 3px solid var(--border-color);
 }
 
 .workspace:hover {
-    background-color: rgba(40, 40, 50, 1);
+    background-color: var(--bg-color-hover);
 }
 
 .workspace_special {
@@ -302,46 +328,57 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 }
 
 .workspace_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
+    border: 3px solid var(--border-color-active);
 }
 
+
+.monitor {
+    opacity: 0.75;
+    padding: 2px;
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 4px solid var(--border-color);
+}
+
+.monitor:hover {
+    background-color: var(--bg-color-hover);
+}
+
+.window_active {
+    border: 3px solid var(--border-color-active);
+}
+
+
 .index {
-    margin: 6px;
-    padding: 4px;
+    margin: 3px;
+    padding: 2px 4px;
     font-size: 18px;
     font-weight: bold;
     font-family: monospace;
-    border-radius: 15px;
-    border: 3px solid rgba(80, 90, 120, 0.80);
-    background-color: rgba(20, 20, 20, 1);
-}
-
-.workspaces {
-    margin: 10px;
-}
-
-window {
-    border-radius: 15px;
-    opacity: 0.85;
-    border: 6px solid rgba(15, 170, 190, 0.85);
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 3px solid var(--index-border-color);
 }
 ```
 
 ### Custom CSS Example to override default CSS values:
 
 ```css
+/* light blue borders for active */
+window {
+    --border-color-active: rgba(17, 170, 217, 0.94);
+}
+
+/* more margin around image for 4K screen */
 .client-image {
     margin: 15px;
 }
 
-.client_active {
-    border: 3px dotted rgba(239, 9, 9, 0.94);
-    background-color: rgba(200, 9, 9, 0.80);
-}
-
-window {
-    opacity: 1;
-    border: 6px solid rgba(0, 0, 0, 0.85);
+/* increased index for 4K screen */
+.index {
+    margin: 10px;
+    font-size: 25px;
 }
 ```
 
@@ -349,7 +386,7 @@ window {
 
 ### Sorting of windows
 
-See [tests](/tests) for more details on how windows get sorted
+See [tests](/src/handle/sort/tests) for more details on how windows get sorted
 
 ```
    1      2  3      4

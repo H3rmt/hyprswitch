@@ -11,13 +11,13 @@ pub(crate) fn switch(share: Share, command: Command) -> anyhow::Result<()> {
     let (latest, notify) = &*share;
     let mut lock = latest.lock().expect("Failed to lock");
 
-    let active = get_next_active(&lock.simple_config.switch_type, command, &lock.clients_data, &lock.active)?;
+    let active = get_next_active(&lock.simple_config.switch_type, command, &lock.data, &lock.active)?;
 
     let (clients_data, _) = collect_data(lock.simple_config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;
     trace!("Clients data: {:?}", clients_data);
 
-    lock.clients_data = clients_data;
+    lock.data = clients_data;
     lock.active = active;
     notify.notify_one(); // trigger GUI update
 
@@ -30,7 +30,7 @@ pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
     let mut lock = latest.lock().expect("Failed to lock");
 
     if !kill {
-        switch_to_active(&lock.active, &lock.clients_data)?;
+        switch_to_active(&lock.active, &lock.data)?;
     } else {
         info!("Not executing switch on close");
     }
@@ -64,7 +64,7 @@ pub(crate) fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyho
     lock.active = active;
     lock.simple_config = config.clone();
     lock.gui_config = gui_config.clone();
-    lock.clients_data = clients_data;
+    lock.data = clients_data;
     lock.gui_show = true;
     notify.notify_one(); // trigger GUI update
 

@@ -67,7 +67,7 @@ pub fn daemon_running() -> bool {
     if buf.exists() {
         debug!("Checking if daemon is running");
         UnixStream::connect(buf).map_err(|e| {
-            debug!("Daemon not running: {e}");
+            trace!("Daemon not running: {e}");
             e
         }).is_ok()
     } else {

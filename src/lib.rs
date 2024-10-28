@@ -117,7 +117,7 @@ pub struct Data {
 pub struct SharedData {
     pub simple_config: Config,
     pub gui_config: GuiConfig,
-    pub clients_data: Data,
+    pub data: Data,
     pub active: Active,
     pub gui_show: bool,
 }
