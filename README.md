@@ -17,7 +17,34 @@ command and update the GUI.
 
 ![image.png](imgs/image_3.png)
 
-# [Migration to 3.0.0](MIGRATION.md)
+Table of Contents
+=================
+
+* [Migration to 3.0.0](#migration-to-300)
+* [Installation](#installation-hyprland--042-required)
+    * [From Source](#from-source)
+    * [Arch](#arch)
+    * [Nixos](#nixos)
+* [Usage](#usage)
+    * [Parameters](#parameters-see-hyprswitch---help--hyprswitch-init---help---for-more-detailed-info)
+    * [Examples](./EXAMPLES.md)
+* [Theming](#theming)
+    * [CSS Variables](#css-variables)
+    * [Class used in GUI + default css:](#class-used-in-gui--default-css)
+    * [Custom CSS Example to override default CSS values:](#custom-css-example-to-override-default-css-values)
+* [Other](#other)
+    * [Sorting of windows](#sorting-of-windows)
+    * [--ignore-workspaces](#--ignore-workspaces)
+    * [--ignore-monitors](#--ignore-monitors)
+    * [Experimental Environment Variables](#experimental-environment-variables)
+
+# Migration to 3.0.0
+
+1. The complex Config has been removed in favor of a simpler config.
+2. More GUI - CLI options added. (`--mod-key` / `--switch-type` / ...)
+3. Removed some cli args. (`--do-initial-execute`, `--stay-open-on-close`)
+
+### See [Migration.md](MIGRATION.md) for more details
 
 # Installation (Hyprland >= 0.42 required)
 
@@ -149,12 +176,12 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
 ```css
 window {
-    --border-color:        rgba(70, 80, 90, 0.30);
+    --border-color: rgba(70, 80, 90, 0.30);
     --border-color-active: rgba(239, 9, 9, 0.94);
-    --bg-color:            rgba(20, 20, 20, 1);
-    --bg-color-hover:      rgba(40, 40, 50, 1);
-    --index-border-color:  rgba(100, 100, 100, 1);
-    --border-radius:       15px;
+    --bg-color: rgba(20, 20, 20, 1);
+    --bg-color-hover: rgba(40, 40, 50, 1);
+    --index-border-color: rgba(100, 100, 100, 1);
+    --border-radius: 15px;
 }
 ```
 
@@ -271,12 +298,12 @@ window {
 
 ```css
 window {
-    --border-color:        rgba(70, 80, 90, 0.30);
+    --border-color: rgba(70, 80, 90, 0.30);
     --border-color-active: rgba(239, 9, 9, 0.94);
-    --bg-color:            rgba(20, 20, 20, 1);
-    --bg-color-hover:      rgba(40, 40, 50, 1);
-    --index-border-color:  rgba(100, 100, 100, 1);
-    --border-radius:       15px;
+    --bg-color: rgba(20, 20, 20, 1);
+    --bg-color-hover: rgba(40, 40, 50, 1);
+    --index-border-color: rgba(100, 100, 100, 1);
+    --border-radius: 15px;
 }
 
 .client-image {
