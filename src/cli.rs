@@ -130,7 +130,8 @@ pub struct SimpleOpts {
     pub reverse: bool,
 
     /// Switch to a specific window offset (default 1)
-    #[arg(short = 'o', long, default_value = "1", value_parser = clap::value_parser!(u8).range(1..))]
+    #[arg(short = 'o', long, default_value = "1", value_parser = clap::value_parser!(u8).range(1..)
+    )]
     pub offset: u8,
 }
 
@@ -158,6 +159,7 @@ pub struct GuiConf {
 }
 
 #[derive(ValueEnum, Clone, Debug)]
+#[clap(rename_all = "snake_case")]
 pub enum ModKeyInput {
     // = alt_l
     Alt,

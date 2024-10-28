@@ -96,25 +96,22 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 - `close` Close the GUI, executes the command to switch window
     - `--kill` Don't switch to the selected window, just close the GUI
 
-## Examples:
+## [Examples:](./EXAMPLES.md)
 
 (Modify the $... variables to use the keys you prefer)
 
 ### GUI
 
-**Simple**: Press super + $key(tab) to open the GUI, use mouse to click on window or press 1 / 2 / ... to switch to
-index
+**Simple**: Press `super` + `$key(tab)` to open the GUI, use mouse to click on window or press `1` / `2` / ... to switch to index
 
 ```ini
-exec-once = hyprswitch init --show-title &
+exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
 
 $key = tab
 bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-switch-offset 9
 ```
 
-**Keyboard (reverse = grave / \` )**: Press alt + $key(tab) to open the GUI _(and switch to next window)_, hold alt,
-press $key(tab) repeatedly to switch
-to the next window, press $reverse(**\`**) to switch backwards, release alt to switch
+**Keyboard (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to next window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the next window, press ``$reverse(`)`` to switch backwards, release alt to switch
 
 ```ini
 exec-once = hyprswitch init --show-title &
@@ -129,10 +126,7 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 #bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse
 ```
 
-**Keyboard recent (reverse = grave / \` )**: Press alt + $key(tab) to open the GUI _(and switch to previously used
-window)_, hold alt,
-press $key(tab) repeatedly to switch to the less and less previously used window, press $reverse(**\`**) to switch to
-more recent used windows, release alt to switch
+**Keyboard recent (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to previously used window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the less and less previously used window, press ``$reverse(`)`` to switch to more recent used windows, release alt to switch
 
 ```ini
 exec-once = hyprswitch init --show-title &
@@ -143,13 +137,13 @@ bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-ke
 bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse --sort-recent && hyprswitch dispatch -r
 
 # use the if switching to the next window with the opening keypress is unwanted
-#bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse --sort-recent
-#bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse --sort-recent
+#bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse
+#bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse
 ```
 
 ### More Examples in [Examples.md](./EXAMPLES.md)
 
-# CSS
+# Theming
 
 ### CSS Variables
 

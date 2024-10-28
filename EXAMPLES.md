@@ -7,7 +7,7 @@
 **Simple**: Press `super` + `$key(tab)` to open the GUI, use mouse to click on window or press `1` / `2` / ... to switch to index
 
 ```ini
-exec-once = hyprswitch init --show-title &
+exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
 
 $key = tab
 bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-switch-offset 9
