@@ -33,7 +33,7 @@ pub(super) fn update(
     while let Some(child) = workspaces_flow.first_child() {
         workspaces_flow.remove(&child);
         // get parent(Overlay) -> parent(ApplicationWindow)
-        workspaces_overlay.parent().map(|p| p.remove_css_class("monitor_active"));
+        if let Some(p) = workspaces_overlay.parent() { p.remove_css_class("monitor_active") }
     }
     // get monitor data by connector
     let (monitor_id, monitor_data) = data.data.monitors.iter().find(|(_, v)| v.connector == connector)
@@ -49,7 +49,7 @@ pub(super) fn update(
         if let Active::Monitor(mid) = &data.active {
             if mid == monitor_id {
                 // get parent(Overlay) -> parent(ApplicationWindow)
-                workspaces_overlay.parent().map(|p| p.add_css_class("monitor_active"));
+                if let Some(p) = workspaces_overlay.parent() { p.add_css_class("monitor_active") }
             }
 
             if monitor_data.active {
