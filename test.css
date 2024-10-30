@@ -1,27 +1,13 @@
-/* light blue borders for active, more transparent bg and more border-radius */
-window {
-    --border-color-active: rgba(17, 170, 217, 0.9);
-    --bg-color:            rgba(20, 20, 20, 0.8);
-    --border-radius:       15px;
-}
-
-/* more margin around image for 4K screen */
-.client-image {
-    margin: 15px;
-}
-
-/* increased index for 4K screen */
-.index {
-    margin: 10px;
-    font-size: 25px;
-}
-
-/* increased font size for 4K screen */
 .workspace {
-    font-size: 35px;
+    /* remove workspace name */
+    font-size: 0;
+    font-weight: lighter;
+
+    background-color: transparent;
+    border: unset;
 }
 
-/* increased font size for 4K screen */
-.client {
-    font-size: 25px;
+.monitor {
+    background-color: transparent;
+    border: unset;
 }

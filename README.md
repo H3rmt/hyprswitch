@@ -28,10 +28,7 @@ Table of Contents
 * [Usage](#usage)
     * [Parameters](#parameters-see-hyprswitch---help--hyprswitch-init---help---for-more-detailed-info)
     * [Examples](./EXAMPLES.md)
-* [Theming](#theming)
-    * [CSS Variables](#css-variables)
-    * [Class used in GUI + default css:](#class-used-in-gui--default-css)
-    * [Custom CSS Example to override default CSS values:](#custom-css-example-to-override-default-css-values)
+* [Theming](#theming---custom-css)
 * [Other](#other)
     * [Sorting of windows](#sorting-of-windows)
     * [--ignore-workspaces](#--ignore-workspaces)
@@ -123,7 +120,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 - `close` Close the GUI, executes the command to switch window
     - `--kill` Don't switch to the selected window, just close the GUI
 
-## [Examples:](./EXAMPLES.md)
+## Examples:
 
 (Modify the $... variables to use the keys you prefer)
 
@@ -170,13 +167,13 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
 ### More Examples in [Examples.md](./EXAMPLES.md)
 
-# Theming
+# [Theming](./CSS.md) (`--custom-css`)
 
 ### CSS Variables
 
 ```css
 window {
-    --border-color:        rgba(90, 90,110, 0.6);
+    --border-color:        rgba(90, 90,110, 0.4);
     --border-color-active: rgba(239, 9,  9, 0.9);
     --bg-color:            rgba(20, 20, 20, 1);
     --bg-color-hover:      rgba(40, 40, 50, 1);
@@ -185,199 +182,14 @@ window {
 }
 ```
 
-### Class used in GUI + default css:
-
-- **client-image**
-  <table><tr><td>
-
-  ```css
-  .client-image {
-    margin: 10px;
-  }
-  ```
-  </td><td><img src="imgs/css_client_image.png"/> </td></tr></table>
-
-- **client** + **client_active**
-
-  client_active is the client that is currently focused / will be focused when exiting hyprswitch
-  <table><tr><td>
-
-  ```css
-  .client {
-    font-size: 16px;
-    padding-top: 5px;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--border-color);
-  }
-  .client:hover {
-    background-color: var(--bg-color-hover);
-  }
-  .client_active {
-    border: 3px solid var(--border-color-active);
-  }
-  ```
-  </td><td><img src="imgs/css_client.png"/> </td></tr></table>
-
-- **workspace_frame** + **workspace_frame_special** + **workspace_active**
-
-  workspace_frame_special is added when workspaceId is < 0 (e.g., scratchpad)
-  <table><tr><td>
-
-  ```css
-  .workspace {
-    font-size: 24px;
-    font-weight: bold;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--border-color);
-  }
-  .workspace:hover {
-    background-color: var(--bg-color-hover);
-  }
-  .workspace_active {
-    border: 3px solid var(--border-color-active);
-  }
-  .workspace_special {
-    border: 3px solid rgba(0, 255, 0, 0.4);
-  }
-  ```
-  </td><td><img src="imgs/css_workspace.png"/> </td></tr></table>
-
-- **monitor** + **monitor_active**
-  <table><tr><td>
-
-  ```css
-  .monitor {
-    opacity: 0.75;
-    padding: 2px;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 4px solid var(--border-color);
-  }
-  .monitor:hover {
-    background-color: var(--bg-color-hover);
-  }
-  .monitor_active {
-    border: 3px solid var(--border-color-active);
-  }
-  ```
-  </td><td><img src="imgs/css_monitor.png"/> </td></tr></table>
-
-- **index**
-  <table><tr><td>
-
-  ```css
-  .index {
-    margin: 3px;
-    padding: 2px 4px;
-    font-size: 18px;
-    font-weight: bold;
-    font-family: monospace;
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--index-border-color);
-  }
-  ```
-  </td><td><img src="imgs/css_client-index.png"/> </td></tr></table>
-
-### [Default CSS](src/daemon/gui/css.rs):
-
-```css
-window {
-    --border-color:        rgba(90, 90,110, 0.6);
-    --border-color-active: rgba(239, 9,  9, 0.9);
-    --bg-color:            rgba(20, 20, 20, 1);
-    --bg-color-hover:      rgba(40, 40, 50, 1);
-    --index-border-color:  rgba(20,170,170,0.7);
-    --border-radius:       12px;
-}
-
-.client-image {
-    margin: 10px;
-}
-
-.client {
-    font-size: 16px;
-    padding-top: 5px;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--border-color);
-}
-
-.client:hover {
-    background-color: var(--bg-color-hover);
-}
-
-.client_active {
-    border: 3px solid var(--border-color-active);
-}
-
-
-.workspace {
-    font-size: 24px;
-    font-weight: bold;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--border-color);
-}
-
-.workspace:hover {
-    background-color: var(--bg-color-hover);
-}
-
-.workspace_special {
-    border: 3px solid rgba(0, 255, 0, 0.4);
-}
-
-.workspace_active {
-    border: 3px solid var(--border-color-active);
-}
-
-
-.monitor {
-    opacity: 0.75;
-    padding: 2px;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 4px solid var(--border-color);
-}
-
-.monitor:hover {
-    background-color: var(--bg-color-hover);
-}
-
-.window_active {
-    border: 3px solid var(--border-color-active);
-}
-
-
-.index {
-    margin: 3px;
-    padding: 2px 4px;
-    font-size: 18px;
-    font-weight: bold;
-    font-family: monospace;
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--index-border-color);
-}
-```
-
-### Custom CSS Example to override default CSS values:
+### Custom CSS Example for 4K screen to override default CSS values:
 
 ```css
 /* light blue borders for active, more transparent bg and more border-radius */
 window {
     --border-color-active: rgba(17, 170, 217, 0.9);
-    --bg-color:            rgba(20, 20, 20, 0.8);
-    --border-radius:       15px;
+    --bg-color: rgba(20, 20, 20, 0.8);
+    --border-radius: 15px;
 }
 
 /* more margin around image for 4K screen */
@@ -401,6 +213,8 @@ window {
     font-size: 25px;
 }
 ```
+
+### See [CSS.md](./CSS.md) for more info
 
 # Other
 

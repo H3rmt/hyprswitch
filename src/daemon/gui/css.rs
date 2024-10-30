@@ -1,7 +1,11 @@
 // language=CSS
 pub(super) const CSS: &str = r#"
+* {
+    border: unset;
+}
+
 window {
-    --border-color:        rgba(90, 90,110, 0.6);
+    --border-color:        rgba(90, 90,110, 0.4);
     --border-color-active: rgba(239, 9,  9, 0.9);
     --bg-color:            rgba(20, 20, 20, 1);
     --bg-color-hover:      rgba(40, 40, 50, 1);
@@ -15,7 +19,7 @@ window {
 
 .client {
     font-size: 16px;
-    padding-top: 5px;
+    font-weight: normal;
 
     border-radius: var(--border-radius);
     background-color: var(--bg-color);
