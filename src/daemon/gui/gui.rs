@@ -249,7 +249,7 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
     }
 
     let title = if show_title && !client.title.trim().is_empty() { &client.title } else { &client.class };
-    let label = Label::builder().css_classes(vec!["client-title"]).overflow(Overflow::Visible).margin_start(6).ellipsize(pango::EllipsizeMode::End).label(title).build();
+    let label = Label::builder().overflow(Overflow::Visible).margin_start(6).ellipsize(pango::EllipsizeMode::End).label(title).build();
 
     let client_frame = Frame::builder().css_classes(vec!["client", "background"]).label_xalign(0.5).label_widget(&label).child(&overlay).build();
 

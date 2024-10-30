@@ -176,12 +176,12 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
 ```css
 window {
-    --border-color: rgba(70, 80, 90, 0.30);
-    --border-color-active: rgba(239, 9, 9, 0.94);
-    --bg-color: rgba(20, 20, 20, 1);
-    --bg-color-hover: rgba(40, 40, 50, 1);
-    --index-border-color: rgba(100, 100, 100, 1);
-    --border-radius: 15px;
+    --border-color:        rgba(90, 90,110, 0.6);
+    --border-color-active: rgba(239, 9,  9, 0.9);
+    --bg-color:            rgba(20, 20, 20, 1);
+    --bg-color-hover:      rgba(40, 40, 50, 1);
+    --index-border-color:  rgba(20,170,170,0.7);
+    --border-radius:       12px;
 }
 ```
 
@@ -197,17 +197,6 @@ window {
   ```
   </td><td><img src="imgs/css_client_image.png"/> </td></tr></table>
 
-- **client-title**
-  <table><tr><td>
-
-  ```css
-  .client-title {
-    font-size: 16px;
-  }
-  ```
-  </td><td><img src="imgs/css_client_title.png"/> </td></tr></table>
-
-
 - **client** + **client_active**
 
   client_active is the client that is currently focused / will be focused when exiting hyprswitch
@@ -215,6 +204,7 @@ window {
 
   ```css
   .client {
+    font-size: 16px;
     padding-top: 5px;
 
     border-radius: var(--border-radius);
@@ -237,7 +227,7 @@ window {
 
   ```css
   .workspace {
-    font-size: 25px;
+    font-size: 24px;
     font-weight: bold;
 
     border-radius: var(--border-radius);
@@ -298,23 +288,20 @@ window {
 
 ```css
 window {
-    --border-color: rgba(70, 80, 90, 0.30);
-    --border-color-active: rgba(239, 9, 9, 0.94);
-    --bg-color: rgba(20, 20, 20, 1);
-    --bg-color-hover: rgba(40, 40, 50, 1);
-    --index-border-color: rgba(100, 100, 100, 1);
-    --border-radius: 15px;
+    --border-color:        rgba(90, 90,110, 0.6);
+    --border-color-active: rgba(239, 9,  9, 0.9);
+    --bg-color:            rgba(20, 20, 20, 1);
+    --bg-color-hover:      rgba(40, 40, 50, 1);
+    --index-border-color:  rgba(20,170,170,0.7);
+    --border-radius:       12px;
 }
 
 .client-image {
     margin: 10px;
 }
 
-.client-title {
-    font-size: 16px;
-}
-
 .client {
+    font-size: 16px;
     padding-top: 5px;
 
     border-radius: var(--border-radius);
@@ -332,7 +319,7 @@ window {
 
 
 .workspace {
-    font-size: 25px;
+    font-size: 24px;
     font-weight: bold;
 
     border-radius: var(--border-radius);
@@ -386,9 +373,11 @@ window {
 ### Custom CSS Example to override default CSS values:
 
 ```css
-/* light blue borders for active */
+/* light blue borders for active, more transparent bg and more border-radius */
 window {
-    --border-color-active: rgba(17, 170, 217, 0.94);
+    --border-color-active: rgba(17, 170, 217, 0.9);
+    --bg-color:            rgba(20, 20, 20, 0.8);
+    --border-radius:       15px;
 }
 
 /* more margin around image for 4K screen */
@@ -399,6 +388,16 @@ window {
 /* increased index for 4K screen */
 .index {
     margin: 10px;
+    font-size: 25px;
+}
+
+/* increased font size for 4K screen */
+.workspace {
+    font-size: 35px;
+}
+
+/* increased font size for 4K screen */
+.client {
     font-size: 25px;
 }
 ```

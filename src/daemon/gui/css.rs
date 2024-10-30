@@ -1,23 +1,20 @@
 // language=CSS
 pub(super) const CSS: &str = r#"
 window {
-    --border-color:        rgba(70, 80, 90, 0.30);
-    --border-color-active: rgba(239, 9, 9, 0.94);
+    --border-color:        rgba(90, 90,110, 0.6);
+    --border-color-active: rgba(239, 9,  9, 0.9);
     --bg-color:            rgba(20, 20, 20, 1);
     --bg-color-hover:      rgba(40, 40, 50, 1);
-    --index-border-color:  rgba(100, 100, 100, 1);
-    --border-radius:       15px;
+    --index-border-color:  rgba(20,170,170,0.7);
+    --border-radius:       12px;
 }
 
 .client-image {
     margin: 10px;
 }
 
-.client-title {
-    font-size: 16px;
-}
-
 .client {
+    font-size: 16px;
     padding-top: 5px;
 
     border-radius: var(--border-radius);
@@ -35,7 +32,7 @@ window {
 
 
 .workspace {
-    font-size: 25px;
+    font-size: 24px;
     font-weight: bold;
 
     border-radius: var(--border-radius);

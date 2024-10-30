@@ -1,12 +1,27 @@
-.workspace_frame_special {
-    border: 3px solid rgba(14, 234, 14, 0.60);
+/* light blue borders for active, more transparent bg and more border-radius */
+window {
+    --border-color-active: rgba(17, 170, 217, 0.9);
+    --bg-color:            rgba(20, 20, 20, 0.8);
+    --border-radius:       15px;
 }
 
-.client_active {
-    border: 3px solid rgba(239, 9, 9, 0.94);
-    background-color: rgba(200, 9, 9, 0.80);
+/* more margin around image for 4K screen */
+.client-image {
+    margin: 15px;
 }
 
-.workspaces {
-    background-color: #b80db1;
+/* increased index for 4K screen */
+.index {
+    margin: 10px;
+    font-size: 25px;
+}
+
+/* increased font size for 4K screen */
+.workspace {
+    font-size: 35px;
+}
+
+/* increased font size for 4K screen */
+.client {
+    font-size: 25px;
 }
