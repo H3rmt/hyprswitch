@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::warn;
+use log::{trace, warn};
 
 use crate::{ClientData, Command, MonitorData, WorkspaceData};
 
@@ -42,10 +42,11 @@ pub(crate) fn find_next_monitor<'a>(
             if command.reverse {
                 filtered_monitors.len() - command.offset as usize
             } else {
-                command.offset as usize
+                command.offset as usize - 1
             }
         }
     };
+    trace!("index: {}", index);
 
     let next_monitor = filtered_monitors
         .iter()
@@ -92,10 +93,11 @@ pub(crate) fn find_next_workspace<'a>(
             if command.reverse {
                 filtered_workspaces.len() - command.offset as usize
             } else {
-                command.offset as usize
+                command.offset as usize - 1
             }
         }
     };
+    trace!("index: {}", index);
 
     let next_workspace = filtered_workspaces
         .iter()
@@ -142,10 +144,11 @@ pub(crate) fn find_next_client<'a>(
             if command.reverse {
                 filtered_clients.len() - command.offset as usize
             } else {
-                command.offset as usize
+                command.offset as usize - 1
             }
         }
     };
+    trace!("index: {}", index);
 
     let next_client = filtered_clients
         .iter()

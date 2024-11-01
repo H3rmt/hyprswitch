@@ -3,7 +3,7 @@ use std::env;
 use anyhow::Context;
 use hyprland::dispatch::{Dispatch, DispatchType};
 use hyprland::keyword::Keyword;
-use log::{debug, error, trace};
+use log::{error, trace};
 
 use crate::cli::{CloseType, ModKey};
 use crate::cli::ReverseKey::{Key, Mod};
@@ -24,7 +24,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
             .with_context(|| format!("unable to convert path {:?} to string", current_exe))?
             .to_string();
         let main_mod = get_mod_from_mod_key(gui_config.mod_key.clone());
-        debug!("current_exe: {}", current_exe);
+        trace!("current_exe: {}", current_exe);
 
         // always bind escape to close
         keyword_list.push(("bind", format!(" ,escape , exec, {} close --kill", current_exe)));
