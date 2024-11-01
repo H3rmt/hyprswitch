@@ -1,13 +1,23 @@
-#![allow(clippy::redundant_closure)]
+use log::{debug, trace, warn};
+use std::sync::Mutex;
+use std::{collections::HashMap, env, fs::DirEntry, path::PathBuf, sync::OnceLock};
 
-use std::{collections::HashMap, env, fs::DirEntry, ops::Deref, path::PathBuf, sync::OnceLock};
+fn get_desktop_file_map() -> &'static Mutex<HashMap<Box<str>, Box<str>>> {
+    static MAP_LOCK: OnceLock<Mutex<HashMap<Box<str>, Box<str>>>> = OnceLock::new();
+    MAP_LOCK.get_or_init(|| { Mutex::new(HashMap::new()) })
+}
 
-use log::{debug, warn};
+pub(super) fn get_icon_name(icon: &str) -> Option<String> {
+    let mut map = get_desktop_file_map().lock().expect("Failed to lock icon map");
+    if map.is_empty() {
+        fill_desktop_file_map(&mut map);
+    }
+    map.get(icon.to_ascii_lowercase().as_str()).map(|s| s.clone().into_string())
+}
 
-pub fn get_icon_name(icon: &str) -> Option<&str> {
-    static LOADER: OnceLock<HashMap<Box<str>, Box<str>>> = OnceLock::new();
-    let map = LOADER.get_or_init(create_desktop_file_map);
-    map.get(icon.to_ascii_lowercase().as_str()).map(Deref::deref)
+pub fn clear_icon_cache() {
+    let mut map = get_desktop_file_map().lock().expect("Failed to lock icon map");
+    map.clear()
 }
 
 fn find_application_dirs() -> Vec<PathBuf> {
@@ -15,12 +25,16 @@ fn find_application_dirs() -> Vec<PathBuf> {
         .map(|val| env::split_paths(&val).map(PathBuf::from).collect())
         .unwrap_or_else(|| { vec![PathBuf::from("/usr/local/share"), PathBuf::from("/usr/share")] });
 
-    if let Some(data_home) = env::var_os("XDG_DATA_HOME").map(PathBuf::from).map_or_else(|| {
-        env::var_os("HOME").map(|p| PathBuf::from(p).join(".local/share")).or_else(|| {
-            warn!("No XDG_DATA_HOME and HOME environment variable found");
-            None
-        })
-    }, Some) {
+    if let Some(data_home) = env::var_os("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .map_or_else(|| {
+            env::var_os("HOME")
+                .map(|p| PathBuf::from(p).join(".local/share"))
+                .or_else(|| {
+                    warn!("No XDG_DATA_HOME and HOME environment variable found");
+                    None
+                })
+        }, Some) {
         dirs.push(data_home);
     }
 
@@ -28,7 +42,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
     for dir in dirs {
         res.push(dir.join("applications"));
     }
-    debug!("[Icons] searching for icons in dirs: {:?}", res);
+    trace!("searching for icons in dirs: {:?}", res);
     res
 }
 
@@ -36,7 +50,6 @@ fn collect_desktop_files() -> Vec<DirEntry> {
     let mut res = Vec::new();
     for dir in find_application_dirs() {
         if !dir.exists() {
-            debug!("Dir {dir:?} does not exist");
             continue;
         }
         match dir.read_dir() {
@@ -49,7 +62,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
                 }
             }
             Err(e) => {
-                warn!("[Icons] Failed to read dir {dir:?}: {e}");
+                warn!("Failed to read dir {dir:?}: {e}");
                 continue;
             }
         }
@@ -58,9 +71,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
     res
 }
 
-fn create_desktop_file_map() -> HashMap<Box<str>, Box<str>> {
-    let mut map = HashMap::new();
-
+fn fill_desktop_file_map(map: &mut HashMap<Box<str>, Box<str>>) {
     for entry in collect_desktop_files() {
         let file = std::fs::read_to_string(entry.path());
         match file {
@@ -87,6 +98,4 @@ fn create_desktop_file_map() -> HashMap<Box<str>, Box<str>> {
             }
         }
     }
-
-    map
 }
