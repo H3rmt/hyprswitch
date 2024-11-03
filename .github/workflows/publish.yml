@@ -23,7 +23,7 @@ jobs:
       - name: update projects
         run: |
           # trim the v from the tag an use it as the version
-          export VERSION=$(echo ${{ github.ref }} | sed 's/^v//')
+          export VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
           
           # replace the version = "x.x.x" with the latest version
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" ./Cargo.toml
