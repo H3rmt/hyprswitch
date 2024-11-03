@@ -82,7 +82,8 @@ pub(super) fn update(
         };
 
         let workspace_fixed = Fixed::builder().width_request(width).height_request(height).build();
-        let title = if show_title && !workspace.name.trim().is_empty() { &workspace.name } else { &workspace.id.to_string() };
+        let id_string = workspace.id.to_string();
+        let title = if show_title && !workspace.name.trim().is_empty() { &workspace.name } else { &id_string };
         let workspace_frame = Frame::builder().label(title).label_xalign(0.5).child(&workspace_fixed).build();
         let workspace_frame_overlay = Overlay::builder().css_classes(vec!["workspace", "background"]).child(&workspace_frame).build();
 
