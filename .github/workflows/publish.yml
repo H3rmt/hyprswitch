@@ -28,6 +28,9 @@ jobs:
           # replace the version = "x.x.x" with the latest version
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" ./Cargo.toml
           cargo update hyprswitch
+          
+          # replace the version in the PKGBUILD
+          sed -i "s/^pkgver=.*$/pkgver=$VERSION/" ./PKGBUILD
       - uses: EndBug/add-and-commit@v9
         id: commit
         with:
