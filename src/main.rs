@@ -37,7 +37,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     stderrlog::new().module(module_path!()).verbosity(cli.global_opts.verbose as usize + 1).init()
         .context("Failed to initialize logging :(").unwrap_or_else(|e| warn!("{:?}", e));
 
-    check_version()?;
+    let _ = check_version().map_err(|e| {
+        warn!("{:?}", e);
+    });
 
     DRY.set(cli.global_opts.dry_run).expect("unable to set DRY (already filled???)");
     ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled???)");
