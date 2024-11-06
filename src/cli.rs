@@ -39,7 +39,7 @@ pub enum Command {
         #[arg(long)]
         custom_css: Option<PathBuf>,
 
-        /// Show the window title in the GUI (fallback to class if title is empty)
+        /// Show the windows title instead of its class in Overview (fallback to class if title is empty)
         #[arg(long)]
         show_title: bool,
 

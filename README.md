@@ -72,7 +72,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 
 - `init` Initialize and start the Daemon
     - `--custom-css <PATH>` Specify a path to custom css file
-    - `--show-title` Show the window title in the GUI (fallback to class if title is empty)
+    - `--show-title` Show the windows title instead of its class in Overview (fallback to class if title is empty)
     - `--workspaces-per-row` Limit amount of workspaces in one row (overflows to next row)
     - `--size-factor` The size factor (float) for the GUI (original_size / 30 * size_factor)
 - `gui` Starts/Opens the GUI + sends the command to daemon of GUI is already opened
