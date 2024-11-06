@@ -3,7 +3,7 @@ use hyprland::data::{Workspace, WorkspaceBasic};
 use hyprland::dispatch::{Dispatch, DispatchType, MonitorIdentifier, WindowIdentifier, WorkspaceIdentifierWithSpecial};
 use hyprland::prelude::HyprDataActive;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{debug, info};
+use log::{debug, info, warn};
 
 use crate::{Active, Data, DRY};
 
@@ -27,26 +27,26 @@ pub fn switch_to_active(active: &Active, clients_data: &Data) -> anyhow::Result<
             })?;
         }
         Active::Unknown => {
-            info!("Not executing switch (active = Unknown)");
+            warn!("Not executing switch (active = Unknown)");
         }
     };
     Ok(())
 }
 
-pub fn switch_monitor(monitor_id: &MonitorId, dry_run: bool) -> anyhow::Result<()> {
+fn switch_monitor(monitor_id: &MonitorId, dry_run: bool) -> anyhow::Result<()> {
     if dry_run {
         #[allow(clippy::print_stdout)]
         {
             println!("switch to monitor {monitor_id}");
         }
     } else {
-        info!("exec: switch to monitor {monitor_id}");
+        debug!("exec: switch to monitor {monitor_id}");
         Dispatch::call(DispatchType::FocusMonitor(MonitorIdentifier::Id(*monitor_id)))?;
     }
     Ok(())
 }
 
-pub fn switch_workspace(next_workspace: &WorkspaceBasic, dry_run: bool) -> anyhow::Result<()> {
+fn switch_workspace(next_workspace: &WorkspaceBasic, dry_run: bool) -> anyhow::Result<()> {
     // check if already on workspace (if so, don't switch because it throws an error `Previous workspace doesn't exist`)
     let current_workspace = Workspace::get_active();
     if let Ok(workspace) = current_workspace {
@@ -66,14 +66,14 @@ pub fn switch_workspace(next_workspace: &WorkspaceBasic, dry_run: bool) -> anyho
     Ok(())
 }
 
-pub fn switch_client(address: &Address, dry_run: bool) -> anyhow::Result<()> {
+fn switch_client(address: &Address, dry_run: bool) -> anyhow::Result<()> {
     if dry_run {
         #[allow(clippy::print_stdout)]
         {
             println!("switch to next_client: {}", address);
         }
     } else {
-        info!("exec: switch to next_client: {}", address);
+        debug!("exec: switch to next_client: {}", address);
         Dispatch::call(DispatchType::FocusWindow(WindowIdentifier::Address(address.clone())))?;
         Dispatch::call(DispatchType::BringActiveToTop)?;
     }
@@ -88,7 +88,7 @@ fn switch_normal_workspace(workspace_id: WorkspaceId, dry_run: bool) -> anyhow::
             println!("switch to workspace {workspace_id}");
         }
     } else {
-        info!("exec: switch to workspace {workspace_id}");
+        debug!("exec: switch to workspace {workspace_id}");
         Dispatch::call(DispatchType::Workspace(WorkspaceIdentifierWithSpecial::Id(
             workspace_id,
         )))?;
@@ -105,7 +105,7 @@ fn toggle_special_workspace(workspace_name: &str, dry_run: bool) -> anyhow::Resu
             println!("toggle workspace {name}");
         }
     } else {
-        info!("exec: toggle workspace {name}");
+        debug!("exec: toggle workspace {name}");
         Dispatch::call(DispatchType::ToggleSpecialWorkspace(Some(name)))?;
     }
     Ok(())

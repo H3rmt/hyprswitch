@@ -10,7 +10,7 @@ use notify_rust::{Notification, Urgency};
 use hyprswitch::cli::{App, SwitchType};
 use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
 use hyprswitch::daemon::{deactivate_submap, start_daemon};
-use hyprswitch::handle::{collect_data, get_next_active, switch_to_active};
+use hyprswitch::handle::{collect_data, find_next, switch_to_active};
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, ACTIVE, DRY};
 
 
@@ -106,7 +106,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 SwitchType::Monitor => if let Some(mon) = active.2 { Active::Monitor(mon) } else { Active::Unknown },
             };
             info!("Active: {:?}", active);
-            let next_active = get_next_active(&config.switch_type, command, &clients_data, &active);
+            let next_active = find_next(&config.switch_type, command, &clients_data, &active);
             if let Ok(next_active) = next_active {
                 switch_to_active(&next_active, &clients_data)?;
             }

@@ -6,18 +6,18 @@ use hyprland::shared::Address;
 use log::info;
 
 pub use data::collect_data;
-pub use exec::{switch_client, switch_monitor, switch_to_active, switch_workspace};
+pub use exec::switch_to_active;
 
-use crate::{Active, Command, Data};
 use crate::cli::SwitchType;
 use crate::handle::next::{find_next_client, find_next_monitor, find_next_workspace};
+use crate::{Active, Command, Data};
 
 mod next;
 mod exec;
 mod data;
 mod sort;
 
-pub fn get_next_active(switch_type: &SwitchType, command: Command, clients_data: &Data, active: &Active) -> anyhow::Result<Active> {
+pub fn find_next(switch_type: &SwitchType, command: Command, clients_data: &Data, active: &Active) -> anyhow::Result<Active> {
     match switch_type {
         SwitchType::Client => {
             let client = find_next_client(command, &clients_data.clients,

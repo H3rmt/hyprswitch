@@ -4,14 +4,14 @@ use log::{info, trace};
 use crate::cli::SwitchType;
 use crate::daemon::gui::clear_icon_cache;
 use crate::daemon::submap::{activate_submap, deactivate_submap};
-use crate::handle::{clear_recent_clients, collect_data, get_next_active, switch_to_active};
+use crate::handle::{clear_recent_clients, collect_data, find_next, switch_to_active};
 use crate::{Active, Command, Config, GuiConfig, Share, ACTIVE};
 
 pub(crate) fn switch(share: Share, command: Command) -> anyhow::Result<()> {
     let (latest, notify) = &*share;
     let mut lock = latest.lock().expect("Failed to lock");
 
-    let active = get_next_active(&lock.simple_config.switch_type, command, &lock.data, &lock.active)?;
+    let active = find_next(&lock.simple_config.switch_type, command, &lock.data, &lock.active)?;
 
     let (clients_data, _) = collect_data(lock.simple_config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", lock.simple_config))?;

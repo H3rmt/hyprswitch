@@ -6,7 +6,7 @@ use hyprland::data::WorkspaceBasic;
 use log::{info, trace, warn};
 
 use crate::cli::SwitchType;
-use crate::daemon::gui::switch_fns::{switch_gui, switch_gui_workspace};
+use crate::daemon::gui::switch_fns::{switch_gui_client, switch_gui_workspace};
 use crate::daemon::gui::{icons, ICON_SCALE, ICON_SIZE};
 use crate::daemon::handle_fns::close;
 use crate::{Active, ClientData, Share, SharedData};
@@ -158,14 +158,17 @@ pub(super) fn update(
             let gesture = GestureClick::new();
             gesture.connect_pressed(clone!(#[strong] client, #[strong] share, move |gesture, _, _, _| {
                 gesture.set_state(EventSequenceState::Claimed);
-                let _ = switch_gui(share.clone(), client.address.clone())
-                    .with_context(|| format!("Failed to focus client {}", client.class))
-                    .map_err(|e| warn!("{:?}", e));
 
-                info!("Exiting on click of client window");
-                let _ = close(share.clone(), false)
-                    .with_context(|| "Failed to close daemon".to_string())
-                    .map_err(|e| warn!("{:?}", e));
+                // gtk4::glib::MainContext::default().spawn_local(clone!(#[strong] client, #[strong] share, async move {
+                    let _ = switch_gui_client(share.clone(), client.address.clone())
+                        .with_context(|| format!("Failed to focus client {}", client.class))
+                        .map_err(|e| warn!("{:?}", e));
+
+                    info!("Exiting on click of client window");
+                    let _ = close(share.clone(), false)
+                        .with_context(|| "Failed to close daemon".to_string())
+                        .map_err(|e| warn!("{:?}", e));
+                // }));
             }));
             frame.add_controller(gesture);
         }

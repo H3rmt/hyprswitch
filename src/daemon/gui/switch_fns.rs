@@ -3,15 +3,11 @@ use hyprland::data::WorkspaceBasic;
 use hyprland::shared::{Address, MonitorId};
 use log::trace;
 
-use crate::{Active, DRY, Share};
-use crate::handle::{collect_data, switch_client, switch_monitor, switch_workspace};
+use crate::handle::collect_data;
+use crate::{Active, Share};
 
 /// don't close anything, close is called after this function
-pub(crate) fn switch_gui(share: Share, address: Address) -> anyhow::Result<()> {
-    switch_client(&address, *DRY.get().expect("DRY not set")).with_context(|| {
-        format!("Failed to execute with address {address:?}")
-    })?;
-
+pub(crate) fn switch_gui_client(share: Share, address: Address) -> anyhow::Result<()> {
     let (latest, notify) = &*share;
     let mut lock = latest.lock().expect("Failed to lock");
 
@@ -28,9 +24,6 @@ pub(crate) fn switch_gui(share: Share, address: Address) -> anyhow::Result<()> {
 
 /// don't close anything, close is called after this function
 pub(crate) fn switch_gui_workspace(share: Share, ws_data: &WorkspaceBasic) -> anyhow::Result<()> {
-    switch_workspace(ws_data, *DRY.get().expect("DRY not set"))
-        .with_context(|| format!("Failed to execute switch workspace with ws_data {ws_data:?}"))?;
-
     let (latest, notify) = &*share;
     let mut lock = latest.lock().expect("Failed to lock");
 
@@ -48,9 +41,6 @@ pub(crate) fn switch_gui_workspace(share: Share, ws_data: &WorkspaceBasic) -> an
 /// don't close anything, close is called after this function
 #[allow(dead_code)]
 pub(crate) fn switch_gui_monitor(share: Share, id: MonitorId) -> anyhow::Result<()> {
-    switch_monitor(&id, *DRY.get().expect("DRY not set"))
-        .with_context(|| format!("Failed to execute switch monitor with id {id:?}"))?;
-
     let (latest, notify) = &*share;
     let mut lock = latest.lock().expect("Failed to lock");
 
