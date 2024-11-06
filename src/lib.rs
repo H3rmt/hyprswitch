@@ -90,6 +90,7 @@ pub struct GuiConfig {
     pub key: String,
     pub close: CloseType,
     pub reverse_key: ReverseKey,
+    pub hide_active_window_border: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -172,6 +173,7 @@ impl From<GuiConf> for GuiConfig {
             key: opts.key,
             close: opts.close,
             reverse_key: opts.reverse_key,
+            hide_active_window_border: opts.hide_active_window_border,
         }
     }
 }

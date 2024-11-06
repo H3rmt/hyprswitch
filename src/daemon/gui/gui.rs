@@ -47,7 +47,7 @@ pub(super) fn update(
     if data.simple_config.switch_type == SwitchType::Monitor {
         // border of selected monitor
         if let Active::Monitor(mid) = &data.active {
-            if mid == monitor_id {
+            if !data.gui_config.hide_active_window_border && mid == monitor_id {
                 // get parent(Overlay) -> parent(ApplicationWindow)
                 if let Some(p) = workspaces_overlay.parent() { p.add_css_class("monitor_active") }
             }
@@ -110,7 +110,7 @@ pub(super) fn update(
         if data.simple_config.switch_type == SwitchType::Workspace {
             // border of selected workspace
             if let Active::Workspace(wwid) = &data.active {
-                if wwid == wid {
+                if !data.gui_config.hide_active_window_border && wwid == wid {
                     workspace_frame_overlay.add_css_class("workspace_active");
                 }
 
@@ -132,7 +132,7 @@ pub(super) fn update(
             data.data.clients.iter().filter(|c| c.active).position(|c| c.address == *addr)
         } else { None };
         for client in clients {
-            let client_active = if data.simple_config.switch_type == SwitchType::Client {
+            let client_active = !data.gui_config.hide_active_window_border && if data.simple_config.switch_type == SwitchType::Client {
                 if let Active::Client(addr) = &data.active {
                     *addr == client.address
                 } else { false }

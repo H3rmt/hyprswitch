@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 e.to_string().starts_with("Close the GUI, executes the command to switch window") || e.to_string() == format!("hyprswitch {}\n", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"))) {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                    .body("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see config)")
+                    .body("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see all CLI Args)")
                     .timeout(10000)
                     .hint(notify_rust::Hint::Urgency(Urgency::Critical))
                     .show();
@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             if !daemon_running() {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                    .body("Daemon not running (add ``exec-once = hyprswitch init &``) to your Hyprland config or run it in a terminal\n(visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see GUI configs)")
+                    .body("Daemon not running (add ``exec-once = hyprswitch init &`` to your Hyprland config or run ``hyprswitch init &`` it in a terminal)\nvisit https://github.com/H3rmt/hyprswitch/blob/main/EXAMPLES.md to see Example configs")
                     .timeout(10000)
                     .hint(notify_rust::Hint::Urgency(Urgency::Critical))
                     .show();

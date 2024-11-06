@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
     author,
     version,
     about,
-    long_about = "A CLI/GUI that allows switching between windows in Hyprland\nvisit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see example configs"
+    long_about = "A CLI/GUI that allows switching between windows in Hyprland\nvisit https://github.com/H3rmt/hyprswitch/blob/main/EXAMPLES.md to see Example configs"
 )]
 pub struct App {
     #[clap(flatten)]
@@ -156,6 +156,10 @@ pub struct GuiConf {
     /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
     #[arg(long, value_parser = clap::value_parser!(ReverseKey), default_value = "mod=shift")]
     pub reverse_key: ReverseKey,
+
+    /// Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
+    #[arg(long, default_value = "false")]
+    pub hide_active_window_border: bool,
 }
 
 #[derive(ValueEnum, Clone, Debug)]

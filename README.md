@@ -92,6 +92,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
         - `none` Close when clicking on a window in GUI (or pressing escape)
     - `--max-switch-offset <MAX_SWITCH_OFFSET>` The maximum offset you can switch to with number keys and is shown in
       the GUI
+    - `--hide-active-window-border` Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
     - Same options as `simple` except `--offset` and `--reverse`
 
 - `simple` Switch without using the GUI / Daemon (switches directly)
@@ -173,12 +174,12 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 
 ```css
 window {
-    --border-color:        rgba(90, 90,110, 0.4);
-    --border-color-active: rgba(239, 9,  9, 0.9);
-    --bg-color:            rgba(20, 20, 20, 1);
-    --bg-color-hover:      rgba(40, 40, 50, 1);
-    --index-border-color:  rgba(20,170,170,0.7);
-    --border-radius:       12px;
+    --border-color: rgba(90, 90, 110, 0.4);
+    --border-color-active: rgba(239, 9, 9, 0.9);
+    --bg-color: rgba(20, 20, 20, 1);
+    --bg-color-hover: rgba(40, 40, 50, 1);
+    --index-border-color: rgba(20, 170, 170, 0.7);
+    --border-radius: 12px;
 }
 ```
 

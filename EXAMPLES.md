@@ -10,7 +10,7 @@
 exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
 
 $key = tab
-bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-switch-offset 9
+bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --hide-active-window-border
 ```
 
 **Keyboard (reverse = shift)**: Press `alt` + `$key(tab)` to open the GUI _(and switch to next window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the next window, press `$reverse(shift)` + `$key(tab)` to switch backwards, release alt to switch
@@ -75,7 +75,7 @@ bind = alt, $reverse, exec, hyprswitch gui --mod-key alt_l --key $key --close mo
 exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
 
 # Simple Gui
-bind = super, tab, exec, hyprswitch gui --mod-key super_l --key tab
+bind = super, tab, exec, hyprswitch gui --mod-key super_l --key tab --hide-active-window-border
 
 # Keyboard workspace Monitor
 bind = alt, tab, exec, hyprswitch gui --mod-key alt_l --key tab --close mod-key-release --reverse-key=key=grave --switch-type=workspace --filter-current-monitor && hyprswitch dispatch
