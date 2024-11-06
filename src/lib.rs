@@ -224,6 +224,7 @@ pub fn check_version() -> anyhow::Result<()> {
     let parsed_version = Version::parse(version.tag.trim_start_matches('v'))
         .context("Unable to parse Hyprland Version")?;
 
+    // TODO use .version in future and fall back to tag (only parse tag if version is not found => <v0.41.?)
     if version.tag == "unknown" || parsed_version.lt(&MIN_VERSION) {
         let _ = Notification::new()
             .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
