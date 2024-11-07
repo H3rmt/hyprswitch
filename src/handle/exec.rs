@@ -3,7 +3,7 @@ use hyprland::data::{Workspace, WorkspaceBasic};
 use hyprland::dispatch::{Dispatch, DispatchType, MonitorIdentifier, WindowIdentifier, WorkspaceIdentifierWithSpecial};
 use hyprland::prelude::HyprDataActive;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{debug, info, warn};
+use log::{debug, warn};
 
 use crate::{Active, Data, DRY};
 
