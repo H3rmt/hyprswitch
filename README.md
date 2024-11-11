@@ -12,7 +12,7 @@ Windows are sorted by their position on the screen, and can be filtered by class
 
 To use the GUI, you need to start the daemon once at the start of Hyprland with `exec-once = hyprswitch init &` in your
 config.
-Subsequent calls to hyprswitch (with the `gui` command) will send the command to the daemon which will execute the
+Subsequent calls to hyprswitch (with the `gui`, `dispatch` or `close` command) will send the command to the daemon which will execute the
 command and update the GUI.
 
 ![image.png](imgs/image_3.png)
