@@ -15,9 +15,10 @@ pub(super) fn get_icon_name(icon: &str) -> Option<String> {
     map.get(icon.to_ascii_lowercase().as_str()).map(|s| s.clone().into_string())
 }
 
-pub fn clear_icon_cache() {
+pub fn reload_icon_cache() {
     let mut map = get_desktop_file_map().lock().expect("Failed to lock icon map");
-    map.clear()
+    map.clear();
+    fill_desktop_file_map(&mut map);
 }
 
 fn find_application_dirs() -> Vec<PathBuf> {
@@ -76,12 +77,19 @@ fn fill_desktop_file_map(map: &mut HashMap<Box<str>, Box<str>>) {
         let file = std::fs::read_to_string(entry.path());
         match file {
             Ok(file) => {
-                let name = file.lines().find(|l| l.starts_with("Name=")).and_then(|l| l.split('=').nth(1));
                 let icon = file.lines().find(|l| l.starts_with("Icon=")).and_then(|l| l.split('=').nth(1));
+                let name = file.lines().find(|l| l.starts_with("Name=")).and_then(|l| l.split('=').nth(1));
+                let exec = file.lines().find(|l| l.starts_with("Exec=")).and_then(|l| l.split('=').nth(1));
                 let startup_wm_class = file.lines().find(|l| l.starts_with("StartupWMClass=")).and_then(|l| l.split('=').nth(1));
 
                 if let (Some(name), Some(icon)) = (name, icon) {
                     let mut n: Box<str> = Box::from(name);
+                    n.make_ascii_lowercase();
+                    let i = Box::from(icon);
+                    map.insert(n, i);
+                }
+                if let (Some(exec), Some(icon)) = (exec, icon) {
+                    let mut n: Box<str> = Box::from(exec);
                     n.make_ascii_lowercase();
                     let i = Box::from(icon);
                     map.insert(n, i);

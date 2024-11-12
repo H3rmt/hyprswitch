@@ -1,15 +1,16 @@
-use std::sync::MutexGuard;
-
-use anyhow::Context;
-use gtk4::{gdk_pixbuf, gio::File, glib::clone, pango, prelude::*, Align, EventSequenceState, Fixed, FlowBox, Frame, GestureClick, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, Picture, TextDirection};
-use hyprland::data::WorkspaceBasic;
-use log::{info, trace, warn};
-
 use crate::cli::SwitchType;
 use crate::daemon::gui::switch_fns::{switch_gui_client, switch_gui_workspace};
 use crate::daemon::gui::{icons, ICON_SCALE, ICON_SIZE};
 use crate::daemon::handle_fns::close;
 use crate::{Active, ClientData, Share, SharedData};
+use anyhow::Context;
+use gtk4::gdk_pixbuf::Pixbuf;
+use gtk4::{glib::clone, pango, prelude::*, Align, EventSequenceState, Fixed, FlowBox, Frame, GestureClick, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, Picture, TextDirection};
+use hyprland::data::WorkspaceBasic;
+use log::{debug, info, trace, warn};
+use std::fs;
+use std::sync::MutexGuard;
+use std::time::Instant;
 
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
@@ -180,69 +181,8 @@ pub(super) fn update(
 }
 
 fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: i16, enabled: bool, max_switch_offset: u8) -> Frame {
-    let theme = IconTheme::new();
-    // trace!("[Icons] Looking for icon for {}", client.class);
-    let icon = if theme.has_icon(&client.class) {
-        trace!("[Icons] Icon found for {}", client.class);
-        theme.lookup_icon(
-            &client.class,
-            &[],
-            *ICON_SIZE,
-            *ICON_SCALE,
-            TextDirection::None,
-            IconLookupFlags::PRELOAD,
-        )
-    } else {
-        trace!("[Icons] No Icon found for {}", client.class);
-        icons::get_icon_name(&client.class).map(|icon| {
-            trace!("[Icons] Icon name found for {} in desktop file", client.class);
-            // check if icon is a path or name
-            if icon.contains('/') {
-                let file = File::for_path(icon);
-                IconPaintable::for_file(&file, *ICON_SIZE, *ICON_SCALE)
-            } else {
-                theme.lookup_icon(
-                    &icon,
-                    &[],
-                    *ICON_SIZE,
-                    *ICON_SCALE,
-                    TextDirection::None,
-                    IconLookupFlags::PRELOAD,
-                )
-            }
-        }).unwrap_or_else(|| {
-            warn!("[Icons] No Icon and no desktop file with icon found for {}", client.class);
-            // just lookup the icon and hope for the best
-            theme.lookup_icon(
-                &client.class,
-                &[],
-                *ICON_SIZE,
-                *ICON_SCALE,
-                TextDirection::None,
-                IconLookupFlags::PRELOAD,
-            )
-        })
-    };
-
-    let picture = Picture::builder().css_classes(vec!["client-image"]).paintable(&icon).build();
-
-    // create a pixelated and saturated version of the icon
-    if !enabled {
-        if let Some(file) = icon.file() {
-            if let Some(path) = file.path() {
-                if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
-                    pixbuf.saturate_and_pixelate(&pixbuf, 0.1, false);
-                    picture.set_pixbuf(Some(&pixbuf));
-                } else {
-                    warn!("Failed to create Pixbuf from icon file from {path:?}");
-                }
-            } else {
-                warn!("Failed to get path from icon file from {file:?}");
-            }
-        } else {
-            warn!("Failed to get icon file from {icon:?}");
-        }
-    }
+    let picture = Picture::builder().css_classes(vec!["client-image"]).build();
+    set_icon(client, &picture, enabled);
 
     let overlay = Overlay::builder().child(&picture).build();
 
@@ -263,3 +203,77 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
 
     client_frame
 }
+
+fn set_icon(client: &ClientData, pic: &Picture, enabled: bool) {
+    // gtk4::glib::MainContext::default().spawn_local(clone!(#[strong] client, #[strong] pic, async move {
+    let now = Instant::now();
+
+    let theme = IconTheme::new();
+    // trace!("[Icons] Looking for icon for {}", client.class);
+    if theme.has_icon(&client.class) {
+        trace!("[Icons]|{:.2?}| Icon found for {}", now.elapsed(), client.class);
+        let icon = theme.lookup_icon(
+            &client.class,
+            &[],
+            *ICON_SIZE,
+            *ICON_SCALE,
+            TextDirection::None,
+            IconLookupFlags::PRELOAD,
+        );
+        pic.set_paintable(Some(&icon));
+    } else {
+        trace!("[Icons]|{:.2?}| No Icon found for {}, looking in desktop file by class-name", now.elapsed(),client.class);
+        let icon_name = icons::get_icon_name(&client.class)
+            .or_else(|| {
+                if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", client.pid)) {
+                    // convert x00 to space
+                    trace!("[Icons]|{:.2?}| No Icon found for {}, using Icon by cmdline {} by PID ({})", now.elapsed(), client.class, cmdline, client.pid);
+                    let cmd = cmdline.split('\x00').next().unwrap_or_default().split('/').last().unwrap_or_default();
+                    if cmd.is_empty() {
+                        warn!("[Icons] Failed to read cmdline for PID {}", client.pid);
+                        None
+                    } else {
+                        trace!("[Icons]|{:.2?}| Searching for icon for {} with CMD {} in desktop files", now.elapsed(), client.class, cmd);
+                        icons::get_icon_name(cmd).or_else(|| {
+                            warn!("[Icons] Failed to find icon for CMD {}", cmd);
+                            None
+                        })
+                    }
+                } else {
+                    warn!("[Icons] Failed to read cmdline for PID {}", client.pid);
+                    None
+                }
+            });
+
+        if let Some(icon_name) = icon_name {
+            trace!("[Icons]|{:.2?}| Icon name found for {} in desktop file", now.elapsed(), client.class);
+            if icon_name.contains('/') {
+                if let Ok(buff) = Pixbuf::from_file_at_scale(icon_name, *ICON_SIZE, *ICON_SIZE, true) {
+                    pic.set_pixbuf(Some(&buff));
+                }
+            } else {
+                let icon = theme.lookup_icon(
+                    &icon_name,
+                    &[],
+                    *ICON_SIZE,
+                    *ICON_SCALE,
+                    TextDirection::None,
+                    IconLookupFlags::PRELOAD,
+                );
+                pic.set_paintable(Some(&icon));
+            }
+        } else {
+            // let icon = theme.lookup_icon(
+            //     "application-x-executable",
+            //     &[],
+            //     *ICON_SIZE,
+            //     *ICON_SCALE,
+            //     TextDirection::None,
+            //     IconLookupFlags::PRELOAD,
+            // );
+            // pic.set_paintable(Some(&icon));
+        }
+    }
+}
+
+// TODO make theme lookup function smaller

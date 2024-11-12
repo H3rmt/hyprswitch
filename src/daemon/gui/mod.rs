@@ -26,7 +26,7 @@ lazy_static! {
 
 use crate::daemon::gui::switch_fns::switch_gui_monitor;
 use crate::daemon::handle_fns::close;
-pub(super) use icons::clear_icon_cache;
+pub(super) use icons::reload_icon_cache;
 
 pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u8) -> anyhow::Result<()> {
     let arc_share = share.clone();
@@ -121,9 +121,11 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
                     let share_unlocked = data_mut.lock().expect("Failed to lock");
                     for (workspaces_flow, connector, window, overlay_ref) in &mut monitor_data_list {
                         if share_unlocked.gui_show {
+                            window.show(); // update first to start showing the window (useful for animations)
+                            let now = std::time::Instant::now();
                             let _ = update(arc_share_share.clone(), show_title, size_factor, workspaces_flow.clone(), overlay_ref, &share_unlocked, connector)
                                 .with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
-                            window.show();
+                            trace!("[GUI] Updated workspaces for monitor {connector:?} in {:?}", now.elapsed());
                         } else {
                             window.hide();
                         }

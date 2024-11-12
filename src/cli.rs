@@ -160,6 +160,8 @@ pub struct GuiConf {
     /// Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
     #[arg(long, default_value = "false")]
     pub hide_active_window_border: bool,
+
+    // pub tile_floating_windows: bool,
 }
 
 #[derive(ValueEnum, Clone, Debug)]

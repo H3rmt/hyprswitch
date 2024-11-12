@@ -63,6 +63,7 @@ pub struct ClientData {
     pub focus_history_id: i8,
     pub floating: bool,
     pub active: bool,
+    pub pid: i32,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

@@ -92,6 +92,7 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
                     focus_history_id: client.focus_history_id,
                     title: client.title.clone(),
                     floating: client.floating,
+                    pid: client.pid,
                     active: true, // gets updated later
                 });
             } else {

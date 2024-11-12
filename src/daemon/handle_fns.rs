@@ -2,7 +2,7 @@ use anyhow::Context;
 use log::{info, trace};
 
 use crate::cli::SwitchType;
-use crate::daemon::gui::clear_icon_cache;
+use crate::daemon::gui::reload_icon_cache;
 use crate::daemon::submap::{activate_submap, deactivate_submap};
 use crate::handle::{clear_recent_clients, collect_data, find_next, switch_to_active};
 use crate::{Active, Command, Config, GuiConfig, Share, ACTIVE};
@@ -42,7 +42,7 @@ pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
 
     *(ACTIVE.get().expect("ACTIVE not set").lock().expect("Failed to lock")) = false;
     clear_recent_clients();
-    clear_icon_cache();
+    reload_icon_cache();
     Ok(())
 }
 
