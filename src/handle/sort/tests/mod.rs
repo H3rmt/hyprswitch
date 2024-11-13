@@ -152,6 +152,7 @@ macro_rules! client_vec {
                 title: "test".to_string(),
                 floating: false,
                 active: true,
+                pid: 0,
             });
         )+
         map
