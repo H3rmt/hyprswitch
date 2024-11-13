@@ -5,9 +5,9 @@ use crate::daemon::handle_fns::close;
 use crate::{Active, ClientData, Share, SharedData};
 use anyhow::Context;
 use gtk4::gdk_pixbuf::Pixbuf;
-use gtk4::{glib::clone, pango, prelude::*, Align, EventSequenceState, Fixed, FlowBox, Frame, GestureClick, IconLookupFlags, IconPaintable, IconTheme, Label, Overflow, Overlay, Picture, TextDirection};
+use gtk4::{glib::clone, pango, prelude::*, Align, EventSequenceState, Fixed, FlowBox, Frame, GestureClick, IconLookupFlags, IconTheme, Label, Overflow, Overlay, Picture, TextDirection};
 use hyprland::data::WorkspaceBasic;
-use log::{debug, info, trace, warn};
+use log::{info, trace, warn};
 use std::fs;
 use std::sync::MutexGuard;
 use std::time::Instant;
@@ -249,6 +249,9 @@ fn set_icon(client: &ClientData, pic: &Picture, enabled: bool) {
             trace!("[Icons]|{:.2?}| Icon name found for {} in desktop file", now.elapsed(), client.class);
             if icon_name.contains('/') {
                 if let Ok(buff) = Pixbuf::from_file_at_scale(icon_name, *ICON_SIZE, *ICON_SIZE, true) {
+                    if !enabled {
+                        buff.saturate_and_pixelate(&buff, 0.08, false);
+                    }
                     pic.set_pixbuf(Some(&buff));
                 }
             } else {
@@ -266,8 +269,8 @@ fn set_icon(client: &ClientData, pic: &Picture, enabled: bool) {
             // let icon = theme.lookup_icon(
             //     "application-x-executable",
             //     &[],
-            //     *ICON_SIZE,
-            //     *ICON_SCALE,
+            //     32,
+            //     20,
             //     TextDirection::None,
             //     IconLookupFlags::PRELOAD,
             // );

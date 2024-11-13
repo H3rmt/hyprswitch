@@ -79,7 +79,7 @@ fn fill_desktop_file_map(map: &mut HashMap<Box<str>, Box<str>>) {
             Ok(file) => {
                 let icon = file.lines().find(|l| l.starts_with("Icon=")).and_then(|l| l.split('=').nth(1));
                 let name = file.lines().find(|l| l.starts_with("Name=")).and_then(|l| l.split('=').nth(1));
-                let exec = file.lines().find(|l| l.starts_with("Exec=")).and_then(|l| l.split('=').nth(1));
+                let exec = file.lines().find(|l| l.starts_with("Exec=")).and_then(|l| l.split('=').nth(1)).and_then(|l| l.split(' ').next());
                 let startup_wm_class = file.lines().find(|l| l.starts_with("StartupWMClass=")).and_then(|l| l.split('=').nth(1));
 
                 if let (Some(name), Some(icon)) = (name, icon) {
