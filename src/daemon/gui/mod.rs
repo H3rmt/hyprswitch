@@ -26,6 +26,7 @@ lazy_static! {
 
 use crate::daemon::gui::switch_fns::switch_gui_monitor;
 use crate::daemon::handle_fns::close;
+pub use icons::{get_icon_name_debug, get_desktop_files_debug};
 pub(super) use icons::reload_icon_cache;
 
 pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u8) -> anyhow::Result<()> {

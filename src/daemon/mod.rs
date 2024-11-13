@@ -7,6 +7,7 @@ use log::{info, warn};
 use notify_rust::{Notification, Urgency};
 use tokio::sync::Notify;
 
+pub use gui::{get_desktop_files_debug, get_icon_name_debug};
 pub use submap::deactivate_submap;
 
 use crate::daemon::handle_client::handle_client;

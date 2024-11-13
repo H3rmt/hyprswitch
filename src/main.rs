@@ -4,14 +4,14 @@ use std::sync::Mutex;
 
 use anyhow::Context;
 use clap::Parser;
-use log::{info, trace, warn};
-use notify_rust::{Notification, Urgency};
-
+use gtk4::IconTheme;
 use hyprswitch::cli::{App, SwitchType};
 use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
-use hyprswitch::daemon::{deactivate_submap, start_daemon};
+use hyprswitch::daemon::{deactivate_submap, get_desktop_files_debug, get_icon_name_debug, start_daemon};
 use hyprswitch::handle::{collect_data, find_next, switch_to_active};
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, ACTIVE, DRY};
+use log::{info, trace, warn};
+use notify_rust::{Notification, Urgency};
 
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -109,6 +109,53 @@ fn main() -> Result<(), Box<dyn Error>> {
             let next_active = find_next(&config.switch_type, command, &clients_data, &active);
             if let Ok(next_active) = next_active {
                 switch_to_active(&next_active, &clients_data)?;
+            }
+        }
+        cli::Command::Icon { class, desktop_files, list } => {
+            println!("use with -vvv icon ... to see full logs!");
+            match (list, desktop_files) {
+                (true, false) => {
+                    gtk4::init().context("Failed to init gtk")?;
+                    let theme = IconTheme::new();
+                    for icon in theme.icon_names() {
+                        info!("[ICON] Icon: {icon}");
+                    }
+                }
+                (false, true) => {
+                    let map = get_desktop_files_debug();
+
+                    for (name, file) in map {
+                        info!("[ICON] Desktop file: {name} -> {} ({})", file.0, match file.1 {
+                            0 => "Name",
+                            1 => "Exec",
+                            2 => "StartupWMClass",
+                            _ => "Unknown",
+                        });
+                    }
+                }
+                _ => {
+                    info!("[ICON] Icon for class {class}");
+                    gtk4::init().context("Failed to init gtk")?;
+                    let theme = IconTheme::new();
+                    if theme.has_icon(&class) {
+                        info!("[ICON] Theme contains icon for class {class}");
+                    } else {
+                        info!("[ICON] Theme does not contain icon for class {class}");
+                        let name = get_icon_name_debug(&class)
+                            .with_context(|| format!("Failed to get icon name for class {class}"))?;
+                        info!("[ICON] name from desktop file: {} from {}", name.0, match name.1 {
+                            0 => "Name",
+                            1 => "Exec",
+                            2 => "StartupWMClass",
+                            _ => "Unknown",
+                        });
+                        if theme.has_icon(&name.0) {
+                            info!("[ICON] Theme contains icon for name {}", name.0);
+                        } else {
+                            info!("[ICON] Theme does not contain icon for name {}", name.0);
+                        }
+                    }
+                }
             }
         }
     };

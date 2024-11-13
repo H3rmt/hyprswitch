@@ -78,6 +78,20 @@ pub enum Command {
         #[arg(long)]
         kill: bool,
     },
+    /// Test command to debug finding icons for the GUI, doesn't interact with the Daemon
+    Icon {
+        /// The class of the window to find an icon for
+        #[arg(long)]
+        class: String,
+
+        /// List all icons in the theme
+        #[arg(long)]
+        list: bool,
+
+        /// List all desktop files
+        #[arg(long)]
+        desktop_files: bool,
+    },
 }
 
 #[derive(Args, Debug, Clone)]

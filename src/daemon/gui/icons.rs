@@ -1,18 +1,32 @@
 use log::{debug, trace, warn};
+use std::collections::BTreeMap;
 use std::sync::Mutex;
-use std::{collections::HashMap, env, fs::DirEntry, path::PathBuf, sync::OnceLock};
+use std::{env, fs::DirEntry, path::PathBuf, sync::OnceLock};
 
-fn get_desktop_file_map() -> &'static Mutex<HashMap<Box<str>, Box<str>>> {
-    static MAP_LOCK: OnceLock<Mutex<HashMap<Box<str>, Box<str>>>> = OnceLock::new();
-    MAP_LOCK.get_or_init(|| { Mutex::new(HashMap::new()) })
+type IconMap = BTreeMap<Box<str>, (Box<str>, u8)>;
+
+fn get_desktop_file_map() -> &'static Mutex<IconMap> {
+    static MAP_LOCK: OnceLock<Mutex<IconMap>> = OnceLock::new();
+    MAP_LOCK.get_or_init(|| { Mutex::new(BTreeMap::new()) })
 }
 
-pub(super) fn get_icon_name(icon: &str) -> Option<String> {
+pub fn get_icon_name(icon: &str) -> Option<String> {
     let mut map = get_desktop_file_map().lock().expect("Failed to lock icon map");
     if map.is_empty() {
         fill_desktop_file_map(&mut map);
     }
-    map.get(icon.to_ascii_lowercase().as_str()).map(|s| s.clone().into_string())
+    map.get(icon.to_ascii_lowercase().as_str()).map(|s| s.clone().0.into_string())
+}
+
+pub fn get_icon_name_debug(icon: &str) -> Option<(Box<str>, u8)> {
+    let mut map = BTreeMap::new();
+    fill_desktop_file_map(&mut map);
+    map.get(icon.to_ascii_lowercase().as_str()).cloned()
+}
+pub fn get_desktop_files_debug() -> BTreeMap<Box<str>, (Box<str>, u8)> {
+    let mut map = BTreeMap::new();
+    fill_desktop_file_map(&mut map);
+    map
 }
 
 pub fn reload_icon_cache() {
@@ -72,33 +86,33 @@ fn collect_desktop_files() -> Vec<DirEntry> {
     res
 }
 
-fn fill_desktop_file_map(map: &mut HashMap<Box<str>, Box<str>>) {
+fn fill_desktop_file_map(map: &mut BTreeMap<Box<str>, (Box<str>, u8)>) {
     for entry in collect_desktop_files() {
         let file = std::fs::read_to_string(entry.path());
         match file {
             Ok(file) => {
                 let icon = file.lines().find(|l| l.starts_with("Icon=")).and_then(|l| l.split('=').nth(1));
                 let name = file.lines().find(|l| l.starts_with("Name=")).and_then(|l| l.split('=').nth(1));
-                let exec = file.lines().find(|l| l.starts_with("Exec=")).and_then(|l| l.split('=').nth(1)).and_then(|l| l.split(' ').next());
+                let exec = file.lines().find(|l| l.starts_with("Exec=")).and_then(|l| l.split('=').nth(1)).and_then(|l| l.split(' ').next()).and_then(|l| l.split('/').last());
                 let startup_wm_class = file.lines().find(|l| l.starts_with("StartupWMClass=")).and_then(|l| l.split('=').nth(1));
 
                 if let (Some(name), Some(icon)) = (name, icon) {
                     let mut n: Box<str> = Box::from(name);
                     n.make_ascii_lowercase();
                     let i = Box::from(icon);
-                    map.insert(n, i);
+                    map.insert(n, (i, 0));
                 }
                 if let (Some(exec), Some(icon)) = (exec, icon) {
                     let mut n: Box<str> = Box::from(exec);
                     n.make_ascii_lowercase();
                     let i = Box::from(icon);
-                    map.insert(n, i);
+                    map.insert(n, (i, 1));
                 }
                 if let (Some(startup_wm_class), Some(icon)) = (startup_wm_class, icon) {
                     let mut s: Box<str> = Box::from(startup_wm_class);
                     s.make_ascii_lowercase();
                     let i = Box::from(icon);
-                    map.insert(s, i);
+                    map.insert(s, (i, 2));
                 }
             }
             Err(e) => {
