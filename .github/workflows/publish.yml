@@ -68,7 +68,4 @@ jobs:
           updpkgsums: true
           ssh_keyscan_types: rsa,ecdsa,ed25519
       - name: Update Release branch
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          branch: release
-          push_options: '--force'
+        run: git push origin main:release
