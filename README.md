@@ -15,7 +15,7 @@ config.
 Subsequent calls to hyprswitch (with the `gui`, `dispatch` or `close` command) will send the command to the daemon which will execute the
 command and update the GUI.
 
-![image.png](imgs/image_3.png)
+![image.png](imgs/image_4.png)
 
 Table of Contents
 =================
