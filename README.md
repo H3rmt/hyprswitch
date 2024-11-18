@@ -27,7 +27,7 @@ Table of Contents
     * [Nixos](#nixos)
 * [Usage](#usage)
     * [Parameters](#parameters-see-hyprswitch---help--hyprswitch-init---help---for-more-detailed-info)
-    * [Examples](./EXAMPLES.md)
+    * [Examples](#examples)
 * [Theming](#theming---custom-css)
 * [Other](#other)
     * [Sorting of windows](#sorting-of-windows)
@@ -41,7 +41,7 @@ Table of Contents
 2. More GUI - CLI options added. (`--mod-key` / `--switch-type` / ...)
 3. Removed some cli args. (`--do-initial-execute`, `--stay-open-on-close`)
 
-### See [Migration.md](MIGRATION.md) for more details
+### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/Migration-from-2.x.x-to-3.0.0) for more details
 
 # Installation (Hyprland >= 0.42 required)
 
@@ -165,9 +165,9 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 #bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse
 ```
 
-### More Examples in [Examples.md](./EXAMPLES.md)
+### More Examples in [Wiki](https://github.com/H3rmt/hyprswitch/wiki/Examples)
 
-# [Theming](./CSS.md) (`--custom-css`)
+# Theming (`--custom-css`)
 
 ### CSS Variables
 
@@ -214,7 +214,7 @@ window {
 }
 ```
 
-### See [CSS.md](./CSS.md) for more info
+### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/CSS) for more info
 
 # Other
 
