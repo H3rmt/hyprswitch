@@ -43,8 +43,8 @@ Daemon most likely out of sync (<3.0.0)
 This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
 You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)
 
-visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see GUI configs
-and visit https://github.com/H3rmt/hyprswitch/blob/main/MIGRATION.md to see migration guide
+visit https://github.com/H3rmt/hyprswitch/wiki/Examples to see Examples
+and visit https://github.com/H3rmt/hyprswitch/wiki/Migration-from-2.x.x-to-3.0.0 to see migration guide
 ")
                 .timeout(20000)
                 .hint(notify_rust::Hint::Urgency(Urgency::Critical))

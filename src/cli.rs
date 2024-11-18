@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
     author,
     version,
     about,
-    long_about = "A CLI/GUI that allows switching between windows in Hyprland\nvisit https://github.com/H3rmt/hyprswitch/blob/main/EXAMPLES.md to see Example configs"
+    long_about = "A CLI/GUI that allows switching between windows in Hyprland\nvisit https://github.com/H3rmt/hyprswitch/wiki/Examples to see Example configs"
 )]
 pub struct App {
     #[clap(flatten)]
