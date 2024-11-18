@@ -5,8 +5,8 @@ use anyhow::Context;
 use log::{debug, error, info, trace};
 use notify_rust::{Notification, Urgency};
 
-use crate::{ACTIVE, Share, Transfer, TransferType};
 use crate::daemon::handle_fns::{close, init, switch};
+use crate::{Share, Transfer, TransferType, ACTIVE};
 
 pub(super) fn handle_client(
     mut stream: UnixStream, share: Share,
@@ -25,7 +25,7 @@ pub(super) fn handle_client(
     let transfer: Transfer = bincode::deserialize(&buffer).with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
     trace!("Received command: {transfer:?}");
 
-    if *option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?") != transfer.version {
+    if *env!("CARGO_PKG_VERSION").split('.').take(2).collect::<Vec<_>>() != transfer.version.split('.').take(2).collect::<Vec<_>>() {
         error!("Client version {} and daemon version {} not matching", transfer.version, option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"));
         let _ = Notification::new()
             .summary(&format!("Hyprswitch daemon ({}) and client ({}) dont match", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"), transfer.version))
