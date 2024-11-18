@@ -26,9 +26,9 @@ pub(super) fn handle_client(
     trace!("Received command: {transfer:?}");
 
     if *env!("CARGO_PKG_VERSION").split('.').take(2).collect::<Vec<_>>() != transfer.version.split('.').take(2).collect::<Vec<_>>() {
-        error!("Client version {} and daemon version {} not matching", transfer.version, option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"));
+        error!("Client version {} and daemon version {} not matching", transfer.version, env!("CARGO_PKG_VERSION"));
         let _ = Notification::new()
-            .summary(&format!("Hyprswitch daemon ({}) and client ({}) dont match", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"), transfer.version))
+            .summary(&format!("Hyprswitch daemon ({}) and client ({}) dont match", env!("CARGO_PKG_VERSION"), transfer.version))
             .body("
 This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
 You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)
