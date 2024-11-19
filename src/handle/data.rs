@@ -44,7 +44,7 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
                 width: (monitor.width as f32 / monitor.scale) as u16,
                 height: (monitor.height as f32 / monitor.scale) as u16,
                 connector: monitor.name.clone(),
-                active: true, // gets updated later
+                enabled: true, // gets updated later
             });
         });
         md
@@ -67,7 +67,7 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
                     monitor: *monitor_id,
                     height: monitor_data.height,
                     width: monitor_data.width,
-                    active: true, // gets updated later
+                    enabled: true, // gets updated later
                 });
                 x_offset += monitor_data.width as i32;
             });
@@ -93,7 +93,7 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
                     title: client.title.clone(),
                     floating: client.floating,
                     pid: client.pid,
-                    active: true, // gets updated later
+                    enabled: true, // gets updated later
                 });
             } else {
                 error!("workspace {:?} not found for client {:?}", client.workspace, client);
@@ -148,19 +148,19 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
         });
 
     for client in client_data.iter_mut() {
-        client.active = (!config.filter_same_class || active.as_ref().map_or(true, |active| client.class == *active.0))
+        client.enabled = (!config.filter_same_class || active.as_ref().map_or(true, |active| client.class == *active.0))
             && (!config.filter_current_workspace || active.as_ref().map_or(true, |active| client.workspace == active.1))
             && (!config.filter_current_monitor || active.as_ref().map_or(true, |active| client.monitor == active.2));
     }
 
     // iterate over all workspaces and set active to false if no client is on the workspace is active
     for (_, workspace) in workspace_data.iter_mut() {
-        workspace.active = client_data.iter().any(|c| c.active && c.workspace == workspace.id);
+        workspace.enabled = client_data.iter().any(|c| c.enabled && c.workspace == workspace.id);
     }
 
     // iterate over all monitors and set active to false if no client is on the monitor is active
     for (id, monitor) in monitor_data.iter_mut() {
-        monitor.active = client_data.iter().any(|c| c.active && c.monitor == *id);
+        monitor.enabled = client_data.iter().any(|c| c.enabled && c.monitor == *id);
     }
 
     Ok((

@@ -151,7 +151,7 @@ macro_rules! client_vec {
                 class: "test".to_string(),
                 title: "test".to_string(),
                 floating: false,
-                active: true,
+                enabled: true,
                 pid: 0,
             });
         )+
@@ -183,7 +183,7 @@ macro_rules! monitor_map {
                 width: $x.2,
                 height: $x.3,
                 connector: "test".to_string(),
-                active: true,
+                enabled: true,
             });
         )+
         map
@@ -215,7 +215,7 @@ macro_rules! workspace_map {
                 id: count,
                 name: "test".to_string(),
                 monitor: $x.2,
-                active: true,
+                enabled: true,
             });
         )+
         map

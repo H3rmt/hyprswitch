@@ -8,6 +8,7 @@ use gtk4::gdk_pixbuf::Pixbuf;
 use gtk4::{glib::clone, pango, prelude::*, Align, EventSequenceState, Fixed, FlowBox, Frame, GestureClick, IconLookupFlags, IconTheme, Label, Overflow, Overlay, Picture, TextDirection};
 use hyprland::data::WorkspaceBasic;
 use log::{info, trace, warn};
+use std::cmp::min;
 use std::fs;
 use std::sync::MutexGuard;
 use std::time::Instant;
@@ -41,9 +42,8 @@ pub(super) fn update(
         .with_context(|| format!("Failed to find monitor with connector {connector}"))?;
 
     // remove previous overlay from monitor
-    if let Some(overlay_ref_label) = overlay_ref {
-        workspaces_overlay.remove_overlay(overlay_ref_label);
-        overlay_ref.take();
+    if let Some(overlay_ref_label) = overlay_ref.take() {
+        workspaces_overlay.remove_overlay(&overlay_ref_label);
     }
     if data.simple_config.switch_type == SwitchType::Monitor {
         // border of selected monitor
@@ -53,7 +53,20 @@ pub(super) fn update(
                 if let Some(p) = workspaces_overlay.parent() { p.add_css_class("monitor_active") }
             }
 
-            if monitor_data.active {
+            if monitor_data.enabled {
+                let position = data.data.monitors.iter().filter(|m| m.1.enabled).position(|(id, _)| id == monitor_id).unwrap_or(0);
+                let selected_client_position = data.data.monitors.iter().filter(|m| m.1.enabled).position(|(id, _)| id == mid).unwrap_or(0);
+                let offset = calc_offset(data.data.monitors.iter().filter(|m| m.1.enabled).count(), position,
+                                         selected_client_position, data.gui_config.max_switch_offset, true);
+
+                if let Some(offset) = offset {
+                    let label = Label::builder().css_classes(vec!["index"]).label(offset.to_string()).halign(Align::End).valign(Align::Start)
+                        .build();
+                    overlay_ref.replace(label.clone());
+                    workspaces_flow.parent().and_then(|p| p.downcast_ref::<Overlay>().map(|p| p.add_overlay(&label)));
+                }
+
+
                 // index of selected monitor
                 let index = data.data.monitors.iter().position(|(id, _)| id == monitor_id).map_or(0, |i| i as i32);
                 let selected_workspace_index = data.data.monitors.iter().position(|(id, _)| id == mid);
@@ -115,13 +128,15 @@ pub(super) fn update(
                     workspace_frame_overlay.add_css_class("workspace_active");
                 }
 
-                if workspace.active {
-                    // index of selected workspace
-                    let index = data.data.workspaces.iter().position(|(id, _)| id == wid).map_or(0, |i| i as i32);
-                    let selected_workspace_index = data.data.workspaces.iter().position(|(id, _)| id == wwid);
-                    let idx = index - selected_workspace_index.unwrap_or(0) as i32;
-                    if data.gui_config.max_switch_offset != 0 && idx <= data.gui_config.max_switch_offset as i32 && idx >= -(data.gui_config.max_switch_offset as i32) {
-                        let label = Label::builder().css_classes(vec!["index"]).label(idx.to_string()).halign(Align::End).valign(Align::Start).build();
+                if workspace.enabled {
+                    let position = data.data.workspaces.iter().filter(|w| w.1.enabled).position(|(id, _)| id == wid).unwrap_or(0);
+                    let selected_client_position = data.data.workspaces.iter().filter(|w| w.1.enabled).position(|(id, _)| id == wwid).unwrap_or(0);
+                    let offset = calc_offset(data.data.workspaces.iter().filter(|w| w.1.enabled).count(), position,
+                                             selected_client_position, data.gui_config.max_switch_offset, true);
+
+                    if let Some(offset) = offset {
+                        let label = Label::builder().css_classes(vec!["index"]).label(offset.to_string()).halign(Align::End).valign(Align::Start)
+                            .build();
                         workspace_frame_overlay.add_overlay(&label)
                     }
                 }
@@ -129,9 +144,10 @@ pub(super) fn update(
         }
 
         // index of selected client (offset for selecting)
-        let selected_client_index = if let Active::Client(addr) = &data.active {
-            data.data.clients.iter().filter(|c| c.active).position(|c| c.address == *addr)
-        } else { None };
+        let selected_client_position = if let Active::Client(addr) = &data.active {
+            data.data.clients.iter().filter(|c| c.enabled).position(|c| c.address == *addr)
+        } else { None }.unwrap_or(0); // 0 if not found? and none selected
+
         for client in clients {
             let client_active = !data.gui_config.hide_active_window_border && if data.simple_config.switch_type == SwitchType::Client {
                 if let Active::Client(addr) = &data.active {
@@ -139,15 +155,23 @@ pub(super) fn update(
                 } else { false }
             } else { false };
 
-            let index: i16 = data.data.clients.iter().filter(|c| c.active)
-                .position(|c| c.address == client.address).map_or(0, |i| i as i16);
+
+            let offset = if client.enabled && data.simple_config.switch_type == SwitchType::Client {
+                let position = data.data.clients.iter().filter(|c| c.enabled)
+                    .position(|c| c.address == client.address)
+                    .unwrap_or(0);
+
+                calc_offset(data.data.clients.iter().filter(|c| c.enabled).count(), position,
+                            selected_client_position, data.gui_config.max_switch_offset, true)
+            } else {
+                None
+            };
+
             let frame = client_ui(
                 client,
                 client_active,
                 show_title,
-                index - selected_client_index.unwrap_or(0) as i16,
-                data.data.clients.iter().any(|c| c.active && c.address == client.address),
-                if data.simple_config.switch_type == SwitchType::Client { data.gui_config.max_switch_offset } else { 0 },
+                offset,
             );
             let width = scale(client.width, size_factor);
             let height = scale(client.height, size_factor);
@@ -180,14 +204,14 @@ pub(super) fn update(
     Ok(())
 }
 
-fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: i16, enabled: bool, max_switch_offset: u8) -> Frame {
+fn client_ui(client: &ClientData, client_active: bool, show_title: bool, offset: Option<i16>) -> Frame {
     let picture = Picture::builder().css_classes(vec!["client-image"]).build();
-    set_icon(client, &picture, enabled);
+    set_icon(client, &picture);
 
     let overlay = Overlay::builder().child(&picture).build();
 
-    if enabled && max_switch_offset != 0 && index <= max_switch_offset as i16 && index >= -(max_switch_offset as i16) {
-        let label = Label::builder().css_classes(vec!["index"]).label(index.to_string()).halign(Align::End).valign(Align::End)
+    if let Some(offset) = offset {
+        let label = Label::builder().css_classes(vec!["index"]).label(offset.to_string()).halign(Align::End).valign(Align::End)
             .build();
         overlay.add_overlay(&label)
     }
@@ -204,7 +228,7 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, index: 
     client_frame
 }
 
-fn set_icon(client: &ClientData, pic: &Picture, enabled: bool) {
+fn set_icon(client: &ClientData, pic: &Picture) {
     // gtk4::glib::MainContext::default().spawn_local(clone!(#[strong] client, #[strong] pic, async move {
     let now = Instant::now();
 
@@ -249,7 +273,7 @@ fn set_icon(client: &ClientData, pic: &Picture, enabled: bool) {
             trace!("[Icons]|{:.2?}| Icon name found for {} in desktop file", now.elapsed(), client.class);
             if icon_name.contains('/') {
                 if let Ok(buff) = Pixbuf::from_file_at_scale(icon_name, *ICON_SIZE, *ICON_SIZE, true) {
-                    if !enabled {
+                    if !client.enabled {
                         buff.saturate_and_pixelate(&buff, 0.08, false);
                     }
                     pic.set_pixbuf(Some(&buff));
@@ -266,6 +290,8 @@ fn set_icon(client: &ClientData, pic: &Picture, enabled: bool) {
                 pic.set_paintable(Some(&icon));
             }
         } else {
+            // application-x-executable doesnt scale, idk why (it even is an svg)
+
             // let icon = theme.lookup_icon(
             //     "application-x-executable",
             //     &[],
@@ -276,6 +302,64 @@ fn set_icon(client: &ClientData, pic: &Picture, enabled: bool) {
             // );
             // pic.set_paintable(Some(&icon));
         }
+    }
+}
+
+// calculate offset from selected_client_position and position, "overflow" at end of list, prefer positive offset over negative
+fn calc_offset(total_clients: usize, selected_client_position: usize, position: usize, max_offset: u16, prefer_higher_positive_number: bool) -> Option<i16> {
+    // println!("Checking for {position} and {selected_client_position} in {total_clients} with offset: {max_offset}");
+    debug_assert!(total_clients > position);
+    debug_assert!(total_clients > selected_client_position);
+    let position = position as u16;
+    let selected_client_position = selected_client_position as u16;
+    let total_clients = total_clients as u16;
+    let max_offset = min(max_offset, total_clients);
+
+    let mut ret = None;
+    for offset in 0..=max_offset {
+        let max = (selected_client_position + offset) % total_clients;
+        if max == position {
+            return Some(offset as i16);
+        }
+        let min = (selected_client_position - offset) % total_clients;
+        if min == position {
+            if prefer_higher_positive_number {
+                // only return a negative offset if no positive was found
+                ret = Some(-(offset as i16));
+            } else {
+                // return negative number instantly as no smaller positive number was found
+                return Some(-(offset as i16));
+            }
+        }
+    }
+    ret
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::calc_offset;
+
+    #[test]
+    fn test_calc_offset_prefer_higher_positive_number() {
+        assert_eq!(calc_offset(5, 2, 4, 9, true), Some(2));
+        assert_eq!(calc_offset(5, 2, 4, 2, true), Some(2));
+        assert_eq!(calc_offset(5, 2, 3, 2, true), Some(1));
+        assert_eq!(calc_offset(5, 2, 1, 2, true), Some(-1));
+        assert_eq!(calc_offset(5, 2, 0, 2, true), Some(-2));
+        assert_eq!(calc_offset(5, 2, 0, 5, true), Some(3));
+        assert_eq!(calc_offset(5, 2, 0, 1, true), None);
+    }
+
+    #[test]
+    fn test_calc_offset_no_prefer_higher_positive_number() {
+        assert_eq!(calc_offset(5, 2, 4, 9, false), Some(2));
+        assert_eq!(calc_offset(5, 2, 4, 2, false), Some(2));
+        assert_eq!(calc_offset(5, 2, 3, 2, false), Some(1));
+        assert_eq!(calc_offset(5, 2, 1, 2, false), Some(-1));
+        assert_eq!(calc_offset(5, 2, 0, 2, false), Some(-2));
+        assert_eq!(calc_offset(5, 2, 0, 5, false), Some(-2));
+        assert_eq!(calc_offset(5, 2, 0, 1, false), None);
     }
 }
 

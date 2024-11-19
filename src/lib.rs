@@ -33,7 +33,7 @@ pub struct MonitorData {
     pub width: u16,
     pub height: u16,
     pub connector: String,
-    pub active: bool,
+    pub enabled: bool,
 }
 
 /// we need both id and name for the workspace (special workspaces need the name)
@@ -46,7 +46,7 @@ pub struct WorkspaceData {
     pub width: u16,
     pub height: u16,
     pub monitor: MonitorId,
-    pub active: bool,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -62,7 +62,7 @@ pub struct ClientData {
     pub monitor: MonitorId,
     pub focus_history_id: i8,
     pub floating: bool,
-    pub active: bool,
+    pub enabled: bool,
     pub pid: i32,
 }
 
@@ -86,7 +86,7 @@ pub struct Config {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GuiConfig {
-    pub max_switch_offset: u8,
+    pub max_switch_offset: u16,
     pub mod_key: ModKey,
     pub key: String,
     pub close: CloseType,

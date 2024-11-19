@@ -11,11 +11,11 @@ pub(crate) fn find_next_monitor<'a>(
     monitor_data: &'a BTreeMap<MonitorId, MonitorData>,
     selected_id: Option<&MonitorId>,
 ) -> anyhow::Result<(&'a MonitorId, &'a MonitorData)> {
-    let filtered_monitors = monitor_data.iter().filter(|(_, w)| w.active).collect::<Vec<_>>();
+    let filtered_monitors = monitor_data.iter().filter(|(_, w)| w.enabled).collect::<Vec<_>>();
 
     let index = match selected_id {
         Some(mid) => {
-            let ind = filtered_monitors.iter().filter(|(_, w)| w.active).position(|(id, _)| *id == mid);
+            let ind = filtered_monitors.iter().filter(|(_, w)| w.enabled).position(|(id, _)| *id == mid);
             match ind {
                 Some(si) => if command.reverse {
                     if si == 0 {
@@ -62,7 +62,7 @@ pub(crate) fn find_next_workspace<'a>(
     workspace_data: &'a BTreeMap<WorkspaceId, WorkspaceData>,
     selected_id: Option<&WorkspaceId>,
 ) -> anyhow::Result<(&'a WorkspaceId, &'a WorkspaceData)> {
-    let filtered_workspaces = workspace_data.iter().filter(|(_, w)| w.active).collect::<Vec<_>>();
+    let filtered_workspaces = workspace_data.iter().filter(|(_, w)| w.enabled).collect::<Vec<_>>();
 
     let index = match selected_id {
         Some(wid) => {
@@ -113,7 +113,7 @@ pub(crate) fn find_next_client<'a>(
     clients: &'a [ClientData],
     selected_addr: Option<&Address>,
 ) -> anyhow::Result<&'a ClientData> {
-    let filtered_clients = clients.iter().filter(|c| c.active).collect::<Vec<_>>();
+    let filtered_clients = clients.iter().filter(|c| c.enabled).collect::<Vec<_>>();
 
     let index = match selected_addr {
         Some(add) => {
