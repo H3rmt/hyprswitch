@@ -62,7 +62,8 @@ You must manually start the new version (run `pkill hyprswitch && hyprswitch ini
                     }
                 };
             } else {
-                return_success(false, &mut stream)?;
+                // don't cause notification on client
+                return_success(true, &mut stream)?;
             }
         }
         TransferType::Close(kill) => {
