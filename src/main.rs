@@ -10,7 +10,7 @@ use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, se
 use hyprswitch::daemon::{deactivate_submap, get_desktop_files_debug, get_icon_name_debug, start_daemon};
 use hyprswitch::handle::{collect_data, find_next, switch_to_active};
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, ACTIVE, DRY};
-use log::{info, trace, warn};
+use log::{debug, info, trace, warn};
 use notify_rust::{Notification, Urgency};
 
 
@@ -38,7 +38,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         .context("Failed to initialize logging :(").unwrap_or_else(|e| warn!("{:?}", e));
 
     let _ = check_version().map_err(|e| {
-        warn!("{:?}", e);
+        warn!("Unable to check Hyprland version, continuing anyway");
+        debug!("{:?}", e);
     });
 
     DRY.set(cli.global_opts.dry_run).expect("unable to set DRY (already filled???)");
