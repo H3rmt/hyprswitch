@@ -86,7 +86,7 @@ pub struct Config {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GuiConfig {
-    pub max_switch_offset: u16,
+    pub max_switch_offset: u8,
     pub mod_key: ModKey,
     pub key: String,
     pub close: CloseType,

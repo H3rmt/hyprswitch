@@ -56,23 +56,12 @@ pub(super) fn update(
             if monitor_data.enabled {
                 let position = data.data.monitors.iter().filter(|m| m.1.enabled).position(|(id, _)| id == monitor_id).unwrap_or(0);
                 let selected_client_position = data.data.monitors.iter().filter(|m| m.1.enabled).position(|(id, _)| id == mid).unwrap_or(0);
-                let offset = calc_offset(data.data.monitors.iter().filter(|m| m.1.enabled).count(), position,
-                                         selected_client_position, data.gui_config.max_switch_offset, true);
+                let offset = calc_offset(data.data.monitors.iter().filter(|m| m.1.enabled).count(),
+                                         selected_client_position, position, data.gui_config.max_switch_offset, true);
 
                 if let Some(offset) = offset {
                     let label = Label::builder().css_classes(vec!["index"]).label(offset.to_string()).halign(Align::End).valign(Align::Start)
                         .build();
-                    overlay_ref.replace(label.clone());
-                    workspaces_flow.parent().and_then(|p| p.downcast_ref::<Overlay>().map(|p| p.add_overlay(&label)));
-                }
-
-
-                // index of selected monitor
-                let index = data.data.monitors.iter().position(|(id, _)| id == monitor_id).map_or(0, |i| i as i32);
-                let selected_workspace_index = data.data.monitors.iter().position(|(id, _)| id == mid);
-                let idx = index - selected_workspace_index.unwrap_or(0) as i32;
-                if data.gui_config.max_switch_offset != 0 && idx <= data.gui_config.max_switch_offset as i32 && idx >= -(data.gui_config.max_switch_offset as i32) {
-                    let label = Label::builder().css_classes(vec!["index"]).label(idx.to_string()).halign(Align::End).valign(Align::Start).build();
                     overlay_ref.replace(label.clone());
                     workspaces_flow.parent().and_then(|p| p.downcast_ref::<Overlay>().map(|p| p.add_overlay(&label)));
                 }
@@ -131,8 +120,8 @@ pub(super) fn update(
                 if workspace.enabled {
                     let position = data.data.workspaces.iter().filter(|w| w.1.enabled).position(|(id, _)| id == wid).unwrap_or(0);
                     let selected_client_position = data.data.workspaces.iter().filter(|w| w.1.enabled).position(|(id, _)| id == wwid).unwrap_or(0);
-                    let offset = calc_offset(data.data.workspaces.iter().filter(|w| w.1.enabled).count(), position,
-                                             selected_client_position, data.gui_config.max_switch_offset, true);
+                    let offset = calc_offset(data.data.workspaces.iter().filter(|w| w.1.enabled).count(),
+                                             selected_client_position, position, data.gui_config.max_switch_offset, true);
 
                     if let Some(offset) = offset {
                         let label = Label::builder().css_classes(vec!["index"]).label(offset.to_string()).halign(Align::End).valign(Align::Start)
@@ -161,8 +150,8 @@ pub(super) fn update(
                     .position(|c| c.address == client.address)
                     .unwrap_or(0);
 
-                calc_offset(data.data.clients.iter().filter(|c| c.enabled).count(), position,
-                            selected_client_position, data.gui_config.max_switch_offset, true)
+                calc_offset(data.data.clients.iter().filter(|c| c.enabled).count(),
+                            selected_client_position, position, data.gui_config.max_switch_offset, true)
             } else {
                 None
             };
@@ -306,13 +295,14 @@ fn set_icon(client: &ClientData, pic: &Picture) {
 }
 
 // calculate offset from selected_client_position and position, "overflow" at end of list, prefer positive offset over negative
-fn calc_offset(total_clients: usize, selected_client_position: usize, position: usize, max_offset: u16, prefer_higher_positive_number: bool) -> Option<i16> {
+fn calc_offset(total_clients: usize, selected_client_position: usize, position: usize, max_offset: u8, prefer_higher_positive_number: bool) -> Option<i16> {
     // println!("Checking for {position} and {selected_client_position} in {total_clients} with offset: {max_offset}");
     debug_assert!(total_clients > position);
     debug_assert!(total_clients > selected_client_position);
     let position = position as u16;
     let selected_client_position = selected_client_position as u16;
     let total_clients = total_clients as u16;
+    let max_offset = max_offset as u16;
     let max_offset = min(max_offset, total_clients);
 
     let mut ret = None;

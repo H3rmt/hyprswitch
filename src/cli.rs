@@ -164,8 +164,8 @@ pub struct GuiConf {
     pub close: CloseType,
 
     /// The maximum offset you can switch to with number keys and is shown in the GUI (pass 0 to disable the number keys and index)
-    #[arg(long, default_value = "5", value_parser = clap::value_parser!(u16).range(0..=9))]
-    pub max_switch_offset: u16,
+    #[arg(long, default_value = "5", value_parser = clap::value_parser!(u8).range(0..=9))]
+    pub max_switch_offset: u8,
 
     /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
     #[arg(long, value_parser = clap::value_parser!(ReverseKey), default_value = "mod=shift")]
