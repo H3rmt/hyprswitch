@@ -72,4 +72,4 @@ jobs:
           git fetch origin release
           git checkout release
           git rebase main
-          git push origin release --force
+          git push --force origin release
