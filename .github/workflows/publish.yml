@@ -68,4 +68,8 @@ jobs:
           updpkgsums: true
           ssh_keyscan_types: rsa,ecdsa,ed25519
       - name: Update Release branch
-        run: git push origin main:release
+        run: |
+          git fetch origin release
+          git checkout release
+          git rebase main
+          git push origin release --force
