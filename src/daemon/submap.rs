@@ -5,8 +5,8 @@ use hyprland::dispatch::{Dispatch, DispatchType};
 use hyprland::keyword::Keyword;
 use log::{error, trace};
 
-use crate::cli::{CloseType, ModKey};
 use crate::cli::ReverseKey::{Key, Mod};
+use crate::cli::{CloseType, ModKey};
 use crate::GuiConfig;
 
 fn generate_submap_name() -> String {
@@ -87,6 +87,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                 }
             }
             CloseType::Index | CloseType::ModKeyIndex => {
+                keyword_list.push(("bind", format!(",0, exec, {} close", current_exe)));
                 for i in 1..=gui_config.max_switch_offset {
                     keyword_list.push(("bind", format!(",{}, exec, {} dispatch -o={} && {} close", i, current_exe, i, current_exe)));
                     if let Mod(modkey) = gui_config.reverse_key.clone() {
