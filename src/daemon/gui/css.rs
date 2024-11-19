@@ -4,7 +4,7 @@ pub(super) const CSS: &str = r#"
     border: unset;
 }
 
-window {
+:root {
     --border-color:        rgba(90, 90,110, 0.4);
     --border-color-active: rgba(239, 9,  9, 0.9);
     --bg-color:            rgba(20, 20, 20, 1);
@@ -58,7 +58,6 @@ window {
 
 
 .monitor {
-    opacity: 0.75;
     padding: 2px;
 
     border-radius: var(--border-radius);

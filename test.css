@@ -1,13 +1,3 @@
-.workspace {
-    /* remove workspace name */
-    font-size: 0;
-    font-weight: lighter;
-
-    background-color: transparent;
-    border: unset;
-}
-
-.monitor {
-    background-color: transparent;
-    border: unset;
+window {
+    opacity: 0.6;
 }
