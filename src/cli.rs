@@ -190,6 +190,18 @@ pub struct GuiConf {
 
     // pub tile_floating_windows: bool,
 
+    /// Show the GUI only on this monitor(s) [default: display on all monitors]
+    ///
+    /// Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1`
+    ///
+    /// Available values: `hyprctl monitors -j | jq '.[].name'`
+    #[arg(long, value_delimiter = ',')]
+    pub monitors: Option<Vec<String>>,
+
+    /// Show all workspaces on all monitors [default: only show workspaces on the corresponding monitor]
+    #[arg(long, default_value = "false")]
+    pub show_workspaces_on_all_monitors: bool,
+
     #[arg(long, value_parser = clap::value_parser!(Monitor))]
     pub monitor: Option<String>,
 }

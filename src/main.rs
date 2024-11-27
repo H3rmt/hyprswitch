@@ -6,7 +6,7 @@ use anyhow::Context;
 use clap::Parser;
 use gtk4::IconTheme;
 use hyprswitch::cli::{App, SwitchType};
-use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
+use hyprswitch::client::{daemon_running, send_close_daemon, send_init_command, send_switch_command};
 use hyprswitch::daemon::{deactivate_submap, get_desktop_files_debug, get_icon_name_debug, start_daemon};
 use hyprswitch::handle::{collect_data, find_next, switch_to_active};
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
@@ -67,8 +67,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 warn!("Daemon not running");
                 return Ok(());
             }
-
-            send_kill_daemon(kill).context("Failed to send kill command to daemon")?;
+            send_close_daemon(kill).context("Failed to send kill command to daemon")?;
         }
         cli::Command::Dispatch { simple_opts } => {
             let command = Command::from(simple_opts);

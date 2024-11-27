@@ -55,8 +55,10 @@ pub(super) fn start_gui_thread(share: &Share, init_config: InitConfig) -> anyhow
                     // TODO remove
                     warn!("[GUI] Waiting for notify_new: {notify_new:?}");
                     let a = notify_new.notified();
-                    warn!("[GUI] Got notify_new: {a:?}");
-                    let u = a.await;
+                    let mut pinned = std::pin::pin!(a);
+                    pinned.as_mut().enable();
+                    warn!("[GUI] Got notify_new: {pinned:?}");
+                    let u = pinned.await;
                     warn!("[GUI] Rebuilding GUI {u:?}");
                     let share_unlocked = data_mut.lock().expect("Failed to lock, data_mut");
                     let mut monitor_data_list_unlocked = monitor_data_list.lock().expect("Failed to lock, monitor_data_list");

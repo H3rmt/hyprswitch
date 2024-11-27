@@ -89,6 +89,8 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
         - `index` Close when pressing an index key (1, 2, 3, ...)
     - `--max-switch-offset <MAX_SWITCH_OFFSET>` [default=6] The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
     - `--hide-active-window-border` [default=false] Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
+  - `--monitors` Show the GUI only on this monitor(s) [default: display on all monitors] Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1` Available values: `hyprctl monitors -j | jq '.[].name'`
+  - `--show-workspaces-on-all-monitors` Show all workspaces on all monitors [default: only show workspaces on the corresponding monitor]
     - Same options as `simple` except `--offset` and `--reverse`
 
 - `simple` Switch without using the GUI / Daemon (switches directly)
