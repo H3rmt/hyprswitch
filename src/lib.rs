@@ -92,6 +92,8 @@ pub struct GuiConfig {
     pub close: CloseType,
     pub reverse_key: ReverseKey,
     pub hide_active_window_border: bool,
+    pub monitors: Option<Vec<String>>,
+    pub show_workspaces_on_all_monitors: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,6 +177,8 @@ impl From<GuiConf> for GuiConfig {
             close: opts.close,
             reverse_key: opts.reverse_key,
             hide_active_window_border: opts.hide_active_window_border,
+            monitors: opts.monitors,
+            show_workspaces_on_all_monitors: opts.show_workspaces_on_all_monitors,
         }
     }
 }

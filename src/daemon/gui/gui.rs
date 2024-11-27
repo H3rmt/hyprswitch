@@ -185,6 +185,8 @@ pub(super) fn update(
                 // }));
             }));
             frame.add_controller(gesture);
+
+            // let hover = EventControllerMotion
         }
 
         workspaces_flow.insert(&workspace_frame_overlay, -1);

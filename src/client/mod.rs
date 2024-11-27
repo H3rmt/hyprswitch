@@ -5,7 +5,7 @@ use anyhow::Context;
 use log::{debug, trace};
 use notify_rust::{Notification, Urgency};
 
-use crate::{Command, Config, get_socket_path_buff, GuiConfig, Transfer, TransferType};
+use crate::{get_socket_path_buff, Command, Config, GuiConfig, Transfer, TransferType, DRY};
 
 pub fn send_check_command() -> anyhow::Result<bool> {
     let send_struct = Transfer {
@@ -17,22 +17,28 @@ pub fn send_check_command() -> anyhow::Result<bool> {
     send(&serialized).with_context(|| format!("Failed to send switch command {serialized:?}"))
 }
 
+///
+/// calls [`crate::daemon::handle_fns::switch`]
+///
 pub fn send_switch_command(command: Command) -> anyhow::Result<bool> {
     let send_struct = Transfer {
         transfer: TransferType::Switch(command),
         version: option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?").to_string(),
     };
-    trace!("Sending switch command {send_struct:?}");
+    debug!("Sending switch command {send_struct:?}");
     let serialized = bincode::serialize(&send_struct).with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
     send(&serialized).with_context(|| format!("Failed to send switch command {serialized:?}"))
 }
 
+///
+/// calls [`crate::daemon::handle_fns::init`]
+///
 pub fn send_init_command(config: Config, gui_config: GuiConfig) -> anyhow::Result<bool> {
     let send_struct = Transfer {
         transfer: TransferType::Init(config, gui_config),
         version: option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?").to_string(),
     };
-    trace!("Sending init command {send_struct:?}");
+    debug!("Sending init command {send_struct:?}");
     let serialized = bincode::serialize(&send_struct).with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
     send(&serialized).with_context(|| format!("Failed to send init command {serialized:?}"))
         .inspect_err(|_| { // TODO should be removed in the future as daemon now checks versions and informs the user with notification itself
@@ -52,15 +58,19 @@ and visit https://github.com/H3rmt/hyprswitch/wiki/Migration-from-2.x.x-to-3.0.0
         })
 }
 
-pub fn send_kill_daemon(kill: bool) -> anyhow::Result<bool> {
+///
+/// calls [`crate::daemon::handle_fns::close`]
+///
+pub fn send_close_daemon(kill: bool) -> anyhow::Result<bool> {
     let send_struct = Transfer {
         transfer: TransferType::Close(kill),
         version: option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?").to_string(),
     };
-    trace!("Sending close command {send_struct:?}");
+    debug!("Sending close command {send_struct:?}");
     let serialized = bincode::serialize(&send_struct).with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
     send(&serialized).with_context(|| format!("Failed to send close command {serialized:?}"))
 }
+
 pub fn daemon_running() -> bool {
     // check if socket exists and socket is open
     let buf = get_socket_path_buff();
@@ -77,6 +87,11 @@ pub fn daemon_running() -> bool {
 }
 
 fn send(buffer: &[u8]) -> anyhow::Result<bool> {
+    if *DRY.get().expect("DRY not set") {
+        debug!("DRY RUN: Would have sent {buffer:?}");
+        return Ok(true);
+    }
+
     let path_buf = get_socket_path_buff();
     let path = path_buf.as_path();
     let mut stream = UnixStream::connect(path).with_context(|| format!("Failed to connect to socket {path:?}"))?;
