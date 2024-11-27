@@ -301,26 +301,26 @@ fn calc_offset(total_clients: usize, selected_client_position: usize, position: 
     // println!("Checking for {position} and {selected_client_position} in {total_clients} with offset: {max_offset}");
     debug_assert!(total_clients > position);
     debug_assert!(total_clients > selected_client_position);
-    let position = position as u16;
-    let selected_client_position = selected_client_position as u16;
-    let total_clients = total_clients as u16;
-    let max_offset = max_offset as u16;
+    let position = position as i16;
+    let selected_client_position = selected_client_position as i16;
+    let total_clients = total_clients as i16;
+    let max_offset = max_offset as i16;
     let max_offset = min(max_offset, total_clients);
 
     let mut ret = None;
     for offset in 0..=max_offset {
         let max = (selected_client_position + offset) % total_clients;
         if max == position {
-            return Some(offset as i16);
+            return Some(offset);
         }
         let min = (selected_client_position - offset) % total_clients;
         if min == position {
             if prefer_higher_positive_number {
                 // only return a negative offset if no positive was found
-                ret = Some(-(offset as i16));
+                ret = Some(-offset);
             } else {
                 // return negative number instantly as no smaller positive number was found
-                return Some(-(offset as i16));
+                return Some(-offset);
             }
         }
     }
