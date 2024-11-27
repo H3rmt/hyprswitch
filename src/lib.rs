@@ -213,7 +213,9 @@ pub fn get_socket_path_buff() -> PathBuf {
     } else {
         PathBuf::from("/tmp")
     };
-
+    #[cfg(debug_assertions)]
+    buf.push("hyprswitch.debug.sock");
+    #[cfg(not(debug_assertions))]
     buf.push("hyprswitch.sock");
     buf
 }
