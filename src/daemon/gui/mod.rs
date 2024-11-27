@@ -38,6 +38,11 @@ pub use icons::{get_desktop_files_debug, get_icon_name_debug};
 pub(super) fn start_gui_thread(share: &Share, init_config: InitConfig) -> anyhow::Result<()> {
     let share_clone = share.clone();
     std::thread::spawn(move || {
+        #[cfg(debug_assertions)]
+        let application = Application::builder()
+            .application_id("com.github.h3rmt.hyprswitch.debug")
+            .build();
+        #[cfg(not(debug_assertions))]
         let application = Application::builder()
             .application_id("com.github.h3rmt.hyprswitch")
             .build();
