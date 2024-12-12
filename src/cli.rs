@@ -23,11 +23,11 @@ pub struct App {
 #[derive(Args, Debug, Clone)]
 pub struct GlobalOpts {
     /// Print the command that would be executed instead of executing it
-    #[arg(short = 'd', long)]
+    #[arg(short = 'd', long, global = true)]
     pub dry_run: bool,
 
     /// Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
-    #[arg(short = 'v', action = clap::ArgAction::Count)]
+    #[arg(short = 'v', action = clap::ArgAction::Count, global = true)]
     pub verbose: u8,
 }
 
@@ -40,7 +40,7 @@ pub enum Command {
         custom_css: Option<PathBuf>,
 
         /// Show the windows title instead of its class in Overview (fallback to class if title is empty)
-        #[arg(long), default_value = "true"]
+        #[arg(long, default_value = "true", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1)]
         show_title: bool,
 
         /// Limit amount of workspaces in one row (overflows to next row)
@@ -97,15 +97,15 @@ pub enum Command {
 #[derive(Args, Debug, Clone)]
 pub struct SimpleConf {
     /// Include special workspaces (e.g., scratchpad)
-    #[arg(long)]
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1)]
     pub include_special_workspaces: bool,
 
     /// Sort all windows on every monitor like one contiguous workspace
-    #[arg(long)]
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1)]
     pub ignore_workspaces: bool,
 
     /// Sort all windows on matching workspaces on monitors like one big monitor
-    #[arg(long)]
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1)]
     pub ignore_monitors: bool,
 
     /// Only show/switch between windows that have the same class/type as the currently focused window
@@ -144,8 +144,7 @@ pub struct SimpleOpts {
     pub reverse: bool,
 
     /// Switch to a specific window offset (default 1)
-    #[arg(short = 'o', long, default_value = "1", value_parser = clap::value_parser!(u8).range(1..)
-    )]
+    #[arg(short = 'o', long, default_value = "1", value_parser = clap::value_parser!(u8).range(1..))]
     pub offset: u8,
 }
 
@@ -172,7 +171,7 @@ pub struct GuiConf {
     pub reverse_key: ReverseKey,
 
     /// Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
-    #[arg(long, default_value = "false")]
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1)]
     pub hide_active_window_border: bool,
 
     // pub tile_floating_windows: bool,

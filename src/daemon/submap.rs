@@ -9,15 +9,13 @@ use crate::cli::ReverseKey::{Key, Mod};
 use crate::cli::{CloseType, ModKey};
 use crate::GuiConfig;
 
-fn generate_submap_name() -> String {
+// TODO in the future generate a hash and reuse the old keymap (check if it has been deleted)
+fn generate_submap_name(_keyword_list: &Vec<(&str, String)>) -> String {
     format!("hyprswitch-{}-{}", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"), rand::random::<u32>())
 }
 
 pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
-    let name = generate_submap_name();
     let mut keyword_list = Vec::<(&str, String)>::new();
-
-    keyword_list.push(("submap", name.clone()));
     (|| -> anyhow::Result<()> {
         let current_exe = env::current_exe()?;
         let current_exe = current_exe.to_str()
@@ -26,9 +24,13 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         let main_mod = get_mod_from_mod_key(gui_config.mod_key.clone());
         trace!("current_exe: {}", current_exe);
 
-        // always bind escape to close
+        // always bind escape to kill
         keyword_list.push(("bind", format!(" ,escape , exec, {} close --kill", current_exe)));
         keyword_list.push(("bind", format!("{} ,escape , exec, {} close --kill", main_mod, current_exe)));
+
+        // always bind return to close
+        keyword_list.push(("bind", format!(" ,return , exec, {} close", current_exe)));
+        keyword_list.push(("bind", format!("{} ,return , exec, {} close", main_mod, current_exe)));
 
         // repeatable presses
         match gui_config.close {
@@ -96,7 +98,20 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                 }
             }
         };
+
+        // use arrow keys to navigate
+        match gui_config.close {
+            CloseType::None | CloseType::ModKey | CloseType::Index | CloseType::ModKeyIndex => {
+                keyword_list.push(("bind", format!(",right, exec, {} dispatch", current_exe)));
+                keyword_list.push(("bind", format!(",left, exec, {} dispatch -r", current_exe)));
+            }
+            CloseType::ModKeyRelease => {}
+        }
+
         keyword_list.push(("submap", "reset".to_string()));
+
+        let name = generate_submap_name(&keyword_list);
+        Keyword::set("submap", name.clone())?;
 
         trace!("keyword_list: ");
         for (key, value) in keyword_list {
@@ -129,49 +144,3 @@ fn get_mod_from_mod_key(mod_key: ModKey) -> &'static str {
         ModKey::CtrlL | ModKey::CtrlR => "ctrl"
     }
 }
-
-
-// macro_rules! bind_exec {
-//     ($( $flag:ident ) *|$( $mod:ident ) *, $key:expr => $arg:expr) => {{
-//         let fmt = $arg.to_string();
-//         let keyy = $key.to_string();
-//         hyprland::bind_raw!(
-//             sync
-//             vec![$(Mod::$mod), *],
-//             Key::Key(&keyy),
-//             vec![$(Flag::$flag), *],
-//             DispatchType::Exec(&fmt)
-//         )
-//     }};
-//     ($( $mod:ident ) *, $key:expr => $arg:expr) => {{
-//         let fmt = $arg.to_string();
-//         let keyy = $key.to_string();
-//         hyprland::bind_raw!(
-//             sync
-//             vec![$(Mod::$mod), *],
-//             Key::Key(&keyy),
-//             vec![],
-//             DispatchType::Exec(&fmt)
-//         )
-//     }};
-//     ($( $flag:ident ) *|$( $mod:ident ) *, $keyt:ident, $( $key:expr ), * => $arg:expr) => {{
-//         let fmt = $arg.to_string();
-//         hyprland::bind_raw!(
-//             sync
-//             vec![$(Mod::$mod), *],
-//             Key::$keyt( $( $key ), * ),
-//             vec![$(Flag::$flag), *],
-//             DispatchType::Exec(&fmt)
-//         )
-//     }};
-//     ($( $mod:ident ) *,$keyt:ident, $( $key:expr ), * => $arg:expr) => {{
-//         let fmt = $arg.to_string();
-//         hyprland::bind_raw!(
-//             sync
-//             vec![$(Mod::$mod), *],
-//             Key::$keyt( $( $key ), * ),
-//             vec![],
-//             DispatchType::Exec(&fmt)
-//         )
-//     }};
-// }

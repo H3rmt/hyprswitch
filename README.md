@@ -82,8 +82,9 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
     - `--key <KEY>` [required] The key to used to open the GUI (e.g., tab)
     - `--reverse-key <KEYTYPE>=<KEY>` [default=shift] The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
       reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
-    - `--close <TYPE>` How to close hyprswitch (ESC or pressing window always closes)
+    - `--close <TYPE>` How to close hyprswitch (`Return` or pressing window always closes, ESC always kills)
         - `mod-key-index` [default] Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...)
+        - `mod-key` Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB)
         - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER)
         - `index` Close when pressing an index key (1, 2, 3, ...)
     - `--max-switch-offset <MAX_SWITCH_OFFSET>` [default=6] The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
@@ -119,8 +120,16 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
 
 $key = tab
-$mod = super
-bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9
+bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-switch-offset 9 --hide-active-window-border
+```
+
+**Simple Arrow keys**: Press `super` + `$key(tab)` to open the GUI, or press `1` / `2` / ... or arrow keys to change selected window, `return` to switch
+
+```ini
+exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
+
+$key = tab
+bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-switch-offset 9 --close mod-key
 ```
 
 **Keyboard (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to next window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the next window, press ``$reverse(`)`` to switch backwards, release alt to switch

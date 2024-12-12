@@ -129,6 +129,8 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
                         if share_unlocked.gui_show {
                             window.show(); // update first to start showing the window (useful for animations)
                             let now = std::time::Instant::now();
+
+                            // TODO instead of removing all windows make the repaint more efficient
                             let _ = update(arc_share_share.clone(), show_title, size_factor, workspaces_flow.clone(), overlay_ref, &share_unlocked, connector)
                                 .with_context(|| format!("Failed to update workspaces for monitor {connector:?}")).map_err(|e| warn!("{:?}", e));
                             trace!("[GUI] Updated workspaces for monitor {connector:?} in {:?}", now.elapsed());
