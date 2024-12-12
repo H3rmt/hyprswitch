@@ -120,7 +120,8 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
 
 $key = tab
-bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-switch-offset 9 --hide-active-window-border
+$mod = super
+bind = $mod , $key, exec, hyprswitch gui --mod-key $mod  --key $key --max-switch-offset 9 --hide-active-window-border
 ```
 
 **Simple Arrow keys**: Press `super` + `$key(tab)` to open the GUI, or press `1` / `2` / ... or arrow keys to change selected window, `return` to switch
@@ -129,7 +130,8 @@ bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-swit
 exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
 
 $key = tab
-bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-switch-offset 9 --close mod-key
+$mod = super
+bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9 --close mod-key
 ```
 
 **Keyboard (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to next window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the next window, press ``$reverse(`)`` to switch backwards, release alt to switch
