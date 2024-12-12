@@ -12,6 +12,7 @@ pub use submap::deactivate_submap;
 
 use crate::daemon::handle_client::handle_client;
 use crate::handle::collect_data;
+use crate::daemon::gui::reload_icon_cache;
 use crate::{get_socket_path_buff, Config, Share, SharedData};
 
 mod handle_client;
@@ -31,7 +32,7 @@ pub fn start_daemon(custom_css: Option<PathBuf>, show_title: bool, size_factor: 
         lock.data = clients_data;
     }
 
-
+    reload_icon_cache();
     info!("Starting gui");
     gui::start_gui_thread(&share, custom_css, show_title, size_factor, workspaces_per_row).expect("Failed to start gui");
 

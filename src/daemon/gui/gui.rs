@@ -1,6 +1,6 @@
 use crate::cli::SwitchType;
 use crate::daemon::gui::switch_fns::{switch_gui_client, switch_gui_workspace};
-use crate::daemon::gui::{icons, ICON_SCALE, ICON_SIZE};
+use crate::daemon::gui::{icons, ICON_SCALE, ICON_SIZE, SHOW_DEFAULT_ICON};
 use crate::daemon::handle_fns::close;
 use crate::{Active, ClientData, Share, SharedData};
 use anyhow::Context;
@@ -217,81 +217,92 @@ fn client_ui(client: &ClientData, client_active: bool, show_title: bool, offset:
     client_frame
 }
 
-fn set_icon(client: &ClientData, pic: &Picture) {
-    // gtk4::glib::MainContext::default().spawn_local(clone!(#[strong] client, #[strong] pic, async move {
-    let now = Instant::now();
-
-    let theme = IconTheme::new();
-    // trace!("[Icons] Looking for icon for {}", client.class);
-    if theme.has_icon(&client.class) {
-        trace!("[Icons]|{:.2?}| Icon found for {}", now.elapsed(), client.class);
-        let icon = theme.lookup_icon(
-            &client.class,
-            &[],
-            *ICON_SIZE,
-            *ICON_SCALE,
-            TextDirection::None,
-            IconLookupFlags::PRELOAD,
+macro_rules! load_icon {
+    ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr) => {
+        let icon = $theme.lookup_icon(
+            $icon_name, &[], *ICON_SIZE, *ICON_SCALE,
+            TextDirection::None, IconLookupFlags::PRELOAD,
         );
-        pic.set_paintable(Some(&icon));
-    } else {
-        trace!("[Icons]|{:.2?}| No Icon found for {}, looking in desktop file by class-name", now.elapsed(),client.class);
-        let icon_name = icons::get_icon_name(&client.class)
-            .or_else(|| {
-                if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", client.pid)) {
-                    // convert x00 to space
-                    trace!("[Icons]|{:.2?}| No Icon found for {}, using Icon by cmdline {} by PID ({})", now.elapsed(), client.class, cmdline, client.pid);
-                    let cmd = cmdline.split('\x00').next().unwrap_or_default().split('/').last().unwrap_or_default();
-                    if cmd.is_empty() {
-                        warn!("[Icons] Failed to read cmdline for PID {}", client.pid);
-                        None
-                    } else {
-                        trace!("[Icons]|{:.2?}| Searching for icon for {} with CMD {} in desktop files", now.elapsed(), client.class, cmd);
-                        icons::get_icon_name(cmd).or_else(|| {
-                            warn!("[Icons] Failed to find icon for CMD {}", cmd);
-                            None
-                        })
+        'block: {
+            if let Some(icon_file) = icon.file() {
+                if let Some(path) = icon_file.path() {
+                    if apply_pixbuf_path(path, $pic, $enabled).ok().is_some() {
+                        break 'block; // successfully loaded Pixbuf
                     }
-                } else {
-                    warn!("[Icons] Failed to read cmdline for PID {}", client.pid);
-                    None
                 }
-            });
+            }
+            warn!("[Icons] Failed to convert icon to pixbuf, using paintable");
+            $pic.set_paintable(Some(&icon));
+        }
+        trace!("[Icons]|{:.2?}| Applied Icon", $now.elapsed());
+    };
+}
 
-        if let Some(icon_name) = icon_name {
-            trace!("[Icons]|{:.2?}| Icon name found for {} in desktop file", now.elapsed(), client.class);
-            if icon_name.contains('/') {
-                if let Ok(buff) = Pixbuf::from_file_at_scale(icon_name, *ICON_SIZE, *ICON_SIZE, true) {
-                    if !client.enabled {
-                        buff.saturate_and_pixelate(&buff, 0.08, false);
+fn set_icon(client: &ClientData, pic: &Picture) {
+    let class = client.class.clone();
+    let enabled = client.enabled;
+    let pid = client.pid;
+    let pic = pic.clone();
+
+    gtk4::glib::MainContext::default().spawn_local(async move {
+        let now = Instant::now();
+
+        let theme = IconTheme::new();
+        // trace!("[Icons] Looking for icon for {}", client.class);
+        if theme.has_icon(&class) {
+            trace!("[Icons]|{:.2?}| Icon found for {}", now.elapsed(), class);
+            load_icon!(theme, &class, &pic, enabled, now);
+        } else {
+            trace!("[Icons]|{:.2?}| No Icon found for {}, looking in desktop file by class-name", now.elapsed(),class);
+            let icon_name = icons::get_icon_name(&class)
+                .or_else(|| {
+                    if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
+                        // convert x00 to space
+                        trace!("[Icons]|{:.2?}| No Icon found for {}, using Icon by cmdline {} by PID ({})", now.elapsed(), class, cmdline, pid);
+                        let cmd = cmdline.split('\x00').next().unwrap_or_default().split('/').last().unwrap_or_default();
+                        if cmd.is_empty() {
+                            warn!("[Icons] Failed to read cmdline for PID {}", pid);
+                            None
+                        } else {
+                            trace!("[Icons]|{:.2?}| Searching for icon for {} with CMD {} in desktop files", now.elapsed(), class, cmd);
+                            icons::get_icon_name(cmd).or_else(|| {
+                                warn!("[Icons] Failed to find icon for CMD {}", cmd);
+                                None
+                            })
+                        }
+                    } else {
+                        warn!("[Icons] Failed to read cmdline for PID {}", pid);
+                        None
                     }
-                    pic.set_pixbuf(Some(&buff));
+                });
+
+            if let Some(icon_name) = icon_name {
+                trace!("[Icons]|{:.2?}| Icon name found for {} in desktop file", now.elapsed(), class);
+                if icon_name.contains('/') {
+                    let _ = apply_pixbuf_path(icon_name, &pic, enabled);
+                    trace!("[Icons]|{:.2?}| Applied Icon", now.elapsed());
+                } else {
+                    load_icon!(theme, &icon_name, &pic, enabled, now);
                 }
             } else {
-                let icon = theme.lookup_icon(
-                    &icon_name,
-                    &[],
-                    *ICON_SIZE,
-                    *ICON_SCALE,
-                    TextDirection::None,
-                    IconLookupFlags::PRELOAD,
-                );
-                pic.set_paintable(Some(&icon));
+                // application-x-executable doesnt scale, idk why (it even is an svg)
+                if *SHOW_DEFAULT_ICON {
+                    load_icon!(theme, "application-x-executable", &pic, enabled, now);
+                }
             }
-        } else {
-            // application-x-executable doesnt scale, idk why (it even is an svg)
-
-            // let icon = theme.lookup_icon(
-            //     "application-x-executable",
-            //     &[],
-            //     32,
-            //     20,
-            //     TextDirection::None,
-            //     IconLookupFlags::PRELOAD,
-            // );
-            // pic.set_paintable(Some(&icon));
         }
+    });
+}
+
+fn apply_pixbuf_path(path: impl AsRef<std::path::Path>, pic: &Picture, enabled: bool) -> Result<(), ()> {
+    if let Ok(buff) = Pixbuf::from_file_at_scale(path, *ICON_SIZE, *ICON_SIZE, true) {
+        if !enabled {
+            buff.saturate_and_pixelate(&buff, 0.08, false);
+        }
+        pic.set_pixbuf(Some(&buff));
+        return Ok(());
     }
+    Err(())
 }
 
 // calculate offset from selected_client_position and position, "overflow" at end of list, prefer positive offset over negative

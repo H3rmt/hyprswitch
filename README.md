@@ -263,3 +263,4 @@ See [tests](/src/handle/sort/tests) for more details on how windows get sorted
   Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
 - `ICON_SCALE` i32 [default: 1]: Argument passed to the theme.lookup_icon function (IDK what this does, setting it to
   anything other than 1 changes nothing)
+- `SHOW_DEFAULT_ICON` bool [default: false]: Show a Icon if no icon was found (`application-x-executable` Doesn't scale good)

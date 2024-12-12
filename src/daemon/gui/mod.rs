@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Context;
 use gtk4::gdk::Monitor;
 use gtk4::glib::clone;
-use gtk4::prelude::{ApplicationExt, ApplicationExtManual, DisplayExt, GestureExt, GtkWindowExt, ListModelExtManual, MonitorExt, WidgetExt};
+use gtk4::prelude::{ApplicationExt, ApplicationExtManual, DisplayExt, GestureExt, ListModelExtManual, MonitorExt, WidgetExt};
 use gtk4::{gdk, glib, style_context_add_provider_for_display, Application, ApplicationWindow, CssProvider, EventSequenceState, FlowBox, GestureClick, Orientation, Overlay, SelectionMode, STYLE_PROVIDER_PRIORITY_APPLICATION, STYLE_PROVIDER_PRIORITY_USER};
 use gtk4_layer_shell::{Layer, LayerShell};
 use lazy_static::lazy_static;
@@ -22,12 +22,13 @@ mod switch_fns;
 lazy_static! {
     static ref ICON_SIZE: i32 = option_env!("ICON_SIZE").map_or(512, |s| s.parse().expect("Failed to parse ICON_SIZE"));
     static ref ICON_SCALE: i32 = option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
+    static ref SHOW_DEFAULT_ICON: bool = option_env!("SHOW_DEFAULT_ICON").map_or(false, |s| s.parse().expect("Failed to parse SHOW_DEFAULT_ICON"));
 }
 
 use crate::daemon::gui::switch_fns::switch_gui_monitor;
 use crate::daemon::handle_fns::close;
-pub use icons::{get_icon_name_debug, get_desktop_files_debug};
 pub(super) use icons::reload_icon_cache;
+pub use icons::{get_desktop_files_debug, get_icon_name_debug};
 
 pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_title: bool, size_factor: f64, workspaces_per_row: u8) -> anyhow::Result<()> {
     let arc_share = share.clone();
@@ -107,8 +108,12 @@ pub(super) fn start_gui_thread(share: &Share, custom_css: Option<PathBuf>, show_
                     window.set_margin(gtk4_layer_shell::Edge::Bottom, 120);
                 }
                 window.set_monitor(&monitor);
-                window.present();
-                window.hide();
+                window.show();
+                glib::spawn_future_local(clone!(#[strong] window, async move {
+                    window.hide();
+                }));
+
+                trace!("[GUI] Created window for monitor {connector:?}");
 
                 // we need to store a reference to the label used as overlay as it isn't possible to get the overlay child from the overlay
                 monitor_data_list.push((workspaces_flow_overlay, connector, window, None));
