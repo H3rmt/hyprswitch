@@ -26,7 +26,7 @@ Table of Contents
     * [Arch](#arch)
     * [Nixos](#nixos)
 * [Usage](#usage)
-    * [Parameters](#parameters-see-hyprswitch---help--hyprswitch-init---help---for-more-detailed-info)
+    * [Parameters](#parameters)
     * [Examples](#examples)
 * [Theming](#theming---custom-css)
 * [Other](#other)
@@ -65,33 +65,29 @@ Table of Contents
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
-## Parameters (see `hyprswitch --help` / `hyprswitch init --help` / ... for more detailed info)
+## Parameters
+
+### (see `hyprswitch --help` / `hyprswitch init --help` / ... for more detailed info and less used parameters)
 
 - `--dry-run / -d` Print the command that would be executed instead of executing it
 - `-v` Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
 
 - `init` Initialize and start the Daemon
     - `--custom-css <PATH>` Specify a path to custom css file
-    - `--show-title` Show the windows title instead of its class in Overview (fallback to class if title is empty)
-    - `--workspaces-per-row` Limit amount of workspaces in one row (overflows to next row)
-    - `--size-factor` The size factor (float) for the GUI (original_size / 30 * size_factor)
+    - `--show-title` [default=true] Show the windows title instead of its class in Overview (fallback to class if title is empty)
+    - `--workspaces-per-row` [default=5] Limit amount of workspaces in one row (overflows to next row)
+    - `--size-factor` [default=6] The size factor (float) for the GUI (original_size / 30 * size_factor)
 - `gui` Opens the GUI
-    - `--mod-key <MODIFIER>` The modifier key used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r)
-    - `--key <KEY>` The key to used to open the GUI (e.g., tab)
-    - `--reverse-key <KEYTYPE>=<KEY>` The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
+    - `--mod-key <MODIFIER>` [required] The modifier key used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r)
+    - `--key <KEY>` [required] The key to used to open the GUI (e.g., tab)
+    - `--reverse-key <KEYTYPE>=<KEY>` [default=shift] The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
       reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
-    - `--close <TYPE>` How to close hyprswitch
-        - `mod-key-index` Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2,
-          3, ...) or clicking on a window in GUI (or pressing escape)
-        - `index` Close when pressing an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing
-          escape)
-        - `mod-key` Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or clicking on a window in
-          GUI (or pressing escape)
-        - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER) or clicking on a window in GUI (or pressing
-          escape)
-        - `none` Close when clicking on a window in GUI (or pressing escape)
-    - `--max-switch-offset <MAX_SWITCH_OFFSET>` The maximum offset you can switch to with number keys, use 0 to disable number keys and hide index in GUI
-    - `--hide-active-window-border` Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
+    - `--close <TYPE>` How to close hyprswitch (ESC or pressing window always closes)
+        - `mod-key-index` [default] Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...)
+        - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER)
+        - `index` Close when pressing an index key (1, 2, 3, ...)
+    - `--max-switch-offset <MAX_SWITCH_OFFSET>` [default=6] The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
+    - `--hide-active-window-border` [default=false] Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
     - Same options as `simple` except `--offset` and `--reverse`
 
 - `simple` Switch without using the GUI / Daemon (switches directly)
@@ -106,8 +102,8 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
     - `--filter-current-monitor / -m` Only switch between windows that are on the same monitor as the currently focused
       window
     - `--sort-recent` Sort windows by most recently focused
-    - `--switch-type` Switches to next / previous workspace / client / monitor [default: client]
-        - `client` Switch to next / previous client
+    - `--switch-type` Switches to next / previous workspace / client / monitor
+        - `client` [default] Switch to next / previous client
         - `workspace` Switch to next / previous workspace
         - `monitor` Switch to next / previous monitor
 

@@ -40,11 +40,11 @@ pub enum Command {
         custom_css: Option<PathBuf>,
 
         /// Show the windows title instead of its class in Overview (fallback to class if title is empty)
-        #[arg(long)]
+        #[arg(long), default_value = "true"]
         show_title: bool,
 
         /// Limit amount of workspaces in one row (overflows to next row)
-        #[arg(long, default_value = "6", value_parser = clap::value_parser!(u8).range(1..))]
+        #[arg(long, default_value = "5", value_parser = clap::value_parser!(u8).range(1..))]
         workspaces_per_row: u8,
 
         /// The size factor (float) for the GUI (original_size / 30 * size_factor)
@@ -164,7 +164,7 @@ pub struct GuiConf {
     pub close: CloseType,
 
     /// The maximum offset you can switch to with number keys and is shown in the GUI (pass 0 to disable the number keys and index)
-    #[arg(long, default_value = "5", value_parser = clap::value_parser!(u8).range(0..=9))]
+    #[arg(long, default_value = "6", value_parser = clap::value_parser!(u8).range(0..=9))]
     pub max_switch_offset: u8,
 
     /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
