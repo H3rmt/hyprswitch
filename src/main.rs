@@ -9,8 +9,8 @@ use hyprswitch::cli::{App, SwitchType};
 use hyprswitch::client::{daemon_running, send_init_command, send_kill_daemon, send_switch_command};
 use hyprswitch::daemon::{deactivate_submap, get_desktop_files_debug, get_icon_name_debug, start_daemon};
 use hyprswitch::handle::{collect_data, find_next, switch_to_active};
-use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, ACTIVE, DRY};
-use log::{debug, info, trace, warn};
+use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
+use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
 
 
@@ -46,13 +46,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled???)");
 
     match cli.command {
-        cli::Command::Init { custom_css, show_title, workspaces_per_row, size_factor } => {
+        cli::Command::Init { init_opts } => {
             if daemon_running() {
                 warn!("Daemon already running");
                 return Ok(());
             }
             info!("Starting daemon");
-            start_daemon(custom_css, show_title, size_factor, workspaces_per_row)
+            let init_config = InitConfig::from(init_opts);
+            start_daemon(init_config)
                 .context("Failed to run daemon")
                 .inspect_err(|_| {
                     let _ = deactivate_submap();
@@ -97,7 +98,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         cli::Command::Simple { simple_opts, simple_conf } => {
             let config = Config::from(simple_conf);
             let (clients_data, active) = collect_data(config.clone()).with_context(|| format!("Failed to collect data with config {config:?}"))?;
-            trace!("Clients data: {:?}", clients_data);
 
             let command = Command::from(simple_opts);
 

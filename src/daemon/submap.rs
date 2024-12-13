@@ -22,7 +22,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
             .with_context(|| format!("unable to convert path {:?} to string", current_exe))?
             .to_string();
         let main_mod = get_mod_from_mod_key(gui_config.mod_key.clone());
-        trace!("current_exe: {}", current_exe);
+        trace!("[SUBMAP] current_exe: {}", current_exe);
 
         // always bind escape to kill
         keyword_list.push(("bind", format!(" ,escape , exec, {} close --kill", current_exe)));
@@ -113,19 +113,19 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         let name = generate_submap_name(&keyword_list);
         Keyword::set("submap", name.clone())?;
 
-        trace!("keyword_list: ");
+        trace!("[SUBMAP] keyword_list: ");
         for (key, value) in keyword_list {
-            trace!("{} = {}", key, value);
+            trace!("[SUBMAP] {} = {}", key, value);
             Keyword::set(key, value)?;
         }
-        trace!("keyword_list end");
+        trace!("[SUBMAP] keyword_list end");
 
         Dispatch::call(DispatchType::Custom("submap", &name))?;
         Ok(())
     })().inspect_err(|_| {
         // reset submap if failed
         Dispatch::call(DispatchType::Custom("submap", "reset")).unwrap_or_else(|e| {
-            error!("{:?}", e);
+            error!("[SUBMAP] {:?}", e);
         });
     })?;
 

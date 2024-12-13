@@ -5,9 +5,9 @@ use hyprland::prelude::HyprDataActive;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use log::{debug, warn};
 
-use crate::{Active, Data, DRY};
+use crate::{Active, HyprlandData, DRY};
 
-pub fn switch_to_active(active: &Active, clients_data: &Data) -> anyhow::Result<()> {
+pub fn switch_to_active(active: &Active, clients_data: &HyprlandData) -> anyhow::Result<()> {
     match active {
         Active::Client(addr) => {
             switch_client(addr, *DRY.get().expect("DRY not set")).with_context(|| {

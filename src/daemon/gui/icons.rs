@@ -46,7 +46,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
             env::var_os("HOME")
                 .map(|p| PathBuf::from(p).join(".local/share"))
                 .or_else(|| {
-                    warn!("No XDG_DATA_HOME and HOME environment variable found");
+                    warn!("[Icons] No XDG_DATA_HOME and HOME environment variable found");
                     None
                 })
         }, Some) {
@@ -57,7 +57,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
     for dir in dirs {
         res.push(dir.join("applications"));
     }
-    trace!("searching for icons in dirs: {:?}", res);
+    trace!("[Icons] searching for icons in dirs: {:?}", res);
     res
 }
 
@@ -77,7 +77,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
                 }
             }
             Err(e) => {
-                warn!("Failed to read dir {dir:?}: {e}");
+                warn!("[Icons] Failed to read dir {dir:?}: {e}");
                 continue;
             }
         }

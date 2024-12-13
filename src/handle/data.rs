@@ -5,13 +5,13 @@ use hyprland::prelude::{HyprData, HyprDataActiveOptional};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use log::{error, trace};
 
-use crate::{ClientData, Config, Data, MonitorData, WorkspaceData};
+use crate::{ClientData, Config, HyprlandData, MonitorData, WorkspaceData};
 use crate::handle::get_recent_clients_map;
 use crate::handle::sort::{sort_clients, update_clients};
 
 type Active = (Option<Address>, Option<WorkspaceId>, Option<MonitorId>);
 
-pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
+pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
     let clients = Clients::get()?
         .into_iter()
         .filter(|c| c.workspace.id != -1) // ignore clients on invalid workspaces
@@ -147,6 +147,8 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
             Some((a.class.clone(), a.workspace.id, a.monitor, a.address.clone()))
         });
 
+    trace!("active: {:?}", active);
+
     for client in client_data.iter_mut() {
         client.enabled = (!config.filter_same_class || active.as_ref().map_or(true, |active| client.class == *active.0))
             && (!config.filter_current_workspace || active.as_ref().map_or(true, |active| client.workspace == active.1))
@@ -164,7 +166,7 @@ pub fn collect_data(config: Config) -> anyhow::Result<(Data, Active)> {
     }
 
     Ok((
-        Data { clients: client_data, workspaces: workspace_data, monitors: monitor_data },
+        HyprlandData { clients: client_data, workspaces: workspace_data, monitors: monitor_data },
         (active.as_ref().map(|a| a.3.clone()), active.as_ref().map(|a| a.1), active.map(|a| a.2))
     ))
 }

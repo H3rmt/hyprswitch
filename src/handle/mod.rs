@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use anyhow::Context;
+use hyprland::data::{Monitor, Monitors};
+use hyprland::prelude::{HyprData, HyprDataVec};
 use hyprland::shared::Address;
 use log::info;
 
@@ -10,14 +12,14 @@ pub use exec::switch_to_active;
 
 use crate::cli::SwitchType;
 use crate::handle::next::{find_next_client, find_next_monitor, find_next_workspace};
-use crate::{Active, Command, Data};
+use crate::{Active, Command, HyprlandData};
 
 mod next;
 mod exec;
 mod data;
 mod sort;
 
-pub fn find_next(switch_type: &SwitchType, command: Command, clients_data: &Data, active: &Active) -> anyhow::Result<Active> {
+pub fn find_next(switch_type: &SwitchType, command: Command, clients_data: &HyprlandData, active: &Active) -> anyhow::Result<Active> {
     match switch_type {
         SwitchType::Client => {
             let client = find_next_client(command, &clients_data.clients,
@@ -50,4 +52,8 @@ fn get_recent_clients_map() -> &'static Mutex<HashMap<Address, i8>> {
 
 pub fn clear_recent_clients() {
     get_recent_clients_map().lock().expect("Failed to lock focus_map").clear();
+}
+
+pub fn get_monitors() -> Vec<Monitor> {
+    Monitors::get().map_or(vec![], |monitors| monitors.to_vec())
 }

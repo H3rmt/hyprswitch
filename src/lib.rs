@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 use tokio::sync::Notify;
 
-use crate::cli::{CloseType, GuiConf, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
+use crate::cli::{CloseType, GuiConf, InitOpts, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
 
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
@@ -84,6 +84,14 @@ pub struct Config {
     pub switch_type: SwitchType,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct InitConfig {
+    custom_css: Option<PathBuf>,
+    show_title: bool,
+    workspaces_per_row: u8,
+    size_factor: f64,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GuiConfig {
     pub max_switch_offset: u8,
@@ -109,7 +117,7 @@ pub struct Transfer {
 }
 
 #[derive(Debug, Default)]
-pub struct Data {
+pub struct HyprlandData {
     pub clients: Vec<ClientData>,
     pub workspaces: BTreeMap<WorkspaceId, WorkspaceData>,
     pub monitors: BTreeMap<MonitorId, MonitorData>,
@@ -119,7 +127,7 @@ pub struct Data {
 pub struct SharedData {
     pub simple_config: Config,
     pub gui_config: GuiConfig,
-    pub data: Data,
+    pub data: HyprlandData,
     pub active: Active,
     pub gui_show: bool,
 }
@@ -133,8 +141,8 @@ pub enum Active {
     Unknown,
 }
 
-// config, clients, selected-client, gui-show
-pub type Share = Arc<(Mutex<SharedData>, Notify)>;
+// shared ARC with Mutex and Notify for new_gui and update_gui
+pub type Share = Arc<(Mutex<SharedData>, Notify, Notify)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: OnceLock<bool> = OnceLock::new();
@@ -142,6 +150,16 @@ pub static DRY: OnceLock<bool> = OnceLock::new();
 /// global variable to store if daemon is active (displaying GUI)
 pub static ACTIVE: OnceLock<Mutex<bool>> = OnceLock::new();
 
+impl From<InitOpts> for InitConfig {
+    fn from(opts: InitOpts) -> Self {
+        Self {
+            custom_css: opts.custom_css,
+            show_title: opts.show_title,
+            workspaces_per_row: opts.workspaces_per_row,
+            size_factor: opts.size_factor,
+        }
+    }
+}
 impl From<SimpleConf> for Config {
     fn from(opts: SimpleConf) -> Self {
         Self {
