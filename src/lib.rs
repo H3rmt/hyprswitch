@@ -15,7 +15,6 @@ use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 use async_channel::Sender;
-use tokio::sync::Notify;
 
 use crate::cli::{CloseType, GuiConf, InitOpts, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
 

@@ -16,7 +16,6 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tokio::runtime::Runtime;
 
 pub use icons::{get_desktop_files_debug, get_icon_name_debug, reload_icon_cache};
 
