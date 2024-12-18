@@ -1,12 +1,50 @@
+use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
-use std::os::unix::net::UnixStream;
+use std::os::unix::net::{UnixListener, UnixStream};
 
 use anyhow::Context;
-use log::{debug, error, info, trace};
+use log::{debug, error, info, trace, warn};
 use notify_rust::{Notification, Urgency};
 
 use crate::daemon::handle_fns::{close, init, switch};
-use crate::{Share, Transfer, TransferType, ACTIVE};
+use crate::{get_socket_path_buff, Share, Transfer, TransferType, ACTIVE};
+
+
+pub(super) fn start_handler_blocking(share: &Share) {
+    let buf = get_socket_path_buff();
+    let path = buf.as_path();
+    // remove old PATH
+    let listener = {
+        if path.exists() {
+            remove_file(path)
+                .expect("Unable to remove old socket file");
+        }
+        UnixListener::bind(path).with_context(|| format!("Failed to bind to socket {path:?}"))
+    }.expect("Unable to start Listener");
+
+    info!("Starting listener on {path:?}");
+    loop {
+        match listener.accept() {
+            Ok((stream, _)) => {
+                let arc_share = share.clone();
+                handle_client(stream, arc_share).context("Failed to handle client")
+                    .unwrap_or_else(|e| {
+                        let _ = Notification::new()
+                            .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+                            .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
+                            .timeout(10000)
+                            .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+                            .show();
+
+                        warn!("{:?}", e)
+                    });
+            }
+            Err(e) => {
+                error!("Failed to accept client: {}", e);
+            }
+        }
+    }
+}
 
 pub(super) fn handle_client(
     mut stream: UnixStream, share: Share,
@@ -25,15 +63,12 @@ pub(super) fn handle_client(
     let transfer: Transfer = bincode::deserialize(&buffer).with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
     trace!("Received command: {transfer:?}");
 
+    // check the major and minor number, exclude patch number
     if *env!("CARGO_PKG_VERSION").split('.').take(2).collect::<Vec<_>>() != transfer.version.split('.').take(2).collect::<Vec<_>>() {
         error!("Client version {} and daemon version {} not matching", transfer.version, env!("CARGO_PKG_VERSION"));
         let _ = Notification::new()
             .summary(&format!("Hyprswitch daemon ({}) and client ({}) dont match", env!("CARGO_PKG_VERSION"), transfer.version))
-            .body("
-This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
-You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)
-
-(visit https://github.com/H3rmt/hyprswitch/releases to see latest release and new features)")
+            .body(VERSION_OUT_OF_SYNC)
             .timeout(20000)
             .hint(notify_rust::Hint::Urgency(Urgency::Critical))
             .show();
@@ -113,3 +148,9 @@ fn return_success(success: bool, stream: &mut UnixStream) -> anyhow::Result<()> 
     Ok(())
 }
 
+const VERSION_OUT_OF_SYNC: &str = r"
+This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
+You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)
+
+(visit https://github.com/H3rmt/hyprswitch/releases to see latest release and new features)
+";

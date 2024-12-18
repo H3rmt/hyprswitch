@@ -1,5 +1,3 @@
-// language=CSS
-pub(super) const CSS: &str = r#"
 * {
     border: unset;
 }
@@ -84,4 +82,3 @@ pub(super) const CSS: &str = r#"
     background-color: var(--bg-color);
     border: 3px solid var(--index-border-color);
 }
-"#;

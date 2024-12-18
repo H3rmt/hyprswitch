@@ -1,6 +1,7 @@
 use crate::daemon::gui::gui::{init_monitor, update};
-use crate::{InitConfig, Share};
+use crate::{GUISend, InitConfig, Share};
 use anyhow::Context;
+use async_channel::Receiver;
 use gtk4::gdk::{Display, Monitor};
 use gtk4::glib::{clone, GString};
 use gtk4::prelude::{ApplicationExt, ApplicationExtManual, CellAreaExt, DisplayExt, FixedExt, GestureExt, GtkWindowExt, ListModelExtManual, MonitorExt, WidgetExt};
@@ -10,17 +11,18 @@ use hyprland::async_closure;
 use hyprland::event_listener::{AsyncEventListener, EventListener};
 use hyprland::shared::{Address, MonitorId};
 use lazy_static::lazy_static;
-use log::{info, trace, warn};
+use log::{error, info, log, trace, warn};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use tokio::runtime::Runtime;
+
+pub use icons::{get_desktop_files_debug, get_icon_name_debug, reload_icon_cache};
 
 #[allow(clippy::module_inception)]
 mod gui;
 mod icons;
-mod css;
-
 mod switch_fns;
 
 lazy_static! {
@@ -32,82 +34,88 @@ lazy_static! {
 use crate::daemon::gui::switch_fns::switch_gui_monitor;
 use crate::daemon::handle_fns::close;
 use crate::handle::get_monitors;
-pub(super) use icons::reload_icon_cache;
-pub use icons::{get_desktop_files_debug, get_icon_name_debug};
 
-pub(super) fn start_gui_thread(share: &Share, init_config: InitConfig) -> anyhow::Result<()> {
+pub(super) fn start_gui_blocking(share: &Share, init_config: InitConfig, receiver: Receiver<GUISend>) {
     let share_clone = share.clone();
-    std::thread::spawn(move || {
-        #[cfg(debug_assertions)]
-        let application = Application::builder()
-            .application_id("com.github.h3rmt.hyprswitch.debug")
-            .build();
-        #[cfg(not(debug_assertions))]
-        let application = Application::builder()
-            .application_id("com.github.h3rmt.hyprswitch")
-            .build();
 
-        let mut monitor_data_list: Arc<Mutex<HashMap<ApplicationWindow, MonitorData>>> = Arc::new(Mutex::new(HashMap::new()));
+    #[cfg(debug_assertions)]
+    let application = Application::builder()
+        .application_id("com.github.h3rmt.hyprswitch.debug")
+        .build();
+    #[cfg(not(debug_assertions))]
+    let application = Application::builder()
+        .application_id("com.github.h3rmt.hyprswitch")
+        .build();
 
-        application.connect_activate(move |app| {
-            apply_css(init_config.custom_css.as_ref());
-            create_windows_save(&share_clone, monitor_data_list.deref(), init_config.workspaces_per_row as u32);
-            start_listen_monitors_thread(&share_clone, &monitor_data_list, init_config.workspaces_per_row as u32);
+    application.connect_activate(connect_app(init_config, share_clone, receiver));
+    info!("[GUI] Running application");
+    application.run_with_args::<String>(&[]);
+    error!("[GUI] Application exited");
+}
 
-            glib::spawn_future_local(clone!(#[strong] share_clone, #[strong] monitor_data_list, async move {
-                let (data_mut, notify_new, _) = share_clone.as_ref();
-                loop {
-                    // TODO remove
-                    warn!("[GUI] Waiting for notify_new: {notify_new:?}");
-                    let a = notify_new.notified();
-                    let mut pinned = std::pin::pin!(a);
-                    pinned.as_mut().enable();
-                    warn!("[GUI] Got notify_new: {pinned:?}");
-                    let u = pinned.await;
-                    warn!("[GUI] Rebuilding GUI {u:?}");
-                    let share_unlocked = data_mut.lock().expect("Failed to lock, data_mut");
-                    let mut monitor_data_list_unlocked = monitor_data_list.lock().expect("Failed to lock, monitor_data_list");
+fn connect_app(init_config: InitConfig, share: Share, mut receiver: Receiver<GUISend>) -> impl Fn(&Application) {
+    move |app| {
+        trace!("[GUI] start connect_activate");
+
+        let monitor_data_list: Arc<Mutex<HashMap<ApplicationWindow, MonitorData>>> = Arc::new(Mutex::new(HashMap::new()));
+        create_windows_save(&share, monitor_data_list.deref(), init_config.workspaces_per_row as u32, app);
+        apply_css(init_config.custom_css.as_ref());
+
+        glib::spawn_future_local(clone!(#[strong] share, #[strong] monitor_data_list, #[strong] receiver, async move {
+            loop {
+                let mess = receiver.recv().await;
+                warn!("[GUI] Rebuilding GUI {mess:?}");
+            }
+        }));
+    }
+}
+
+/*
+
+let (data_mut, _) = share.deref();
+        loop {
+            // let a = test.take().unwrap();
+            // warn!("[GUI] Waiting for notify_new: {rx:?}");
+            let mess = rx.recv().await;
+            let mess = Some(GUISend::Refresh);
+            warn!("[GUI] Rebuilding GUI {mess:?}");
+
+            let share_unlocked = data_mut.lock().expect("Failed to lock, data_mut");
+            let mut monitor_data_list_unlocked = monitor_data_list.lock().expect("Failed to lock, monitor_data_list");
+            match mess {
+                Some(GUISend::Refresh) => {
                     for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
-                        trace!("[GUI] Rebuilding window {:?}", window);
-                        if share_unlocked.gui_show {
-                            window.show();
-                            init_monitor(share_clone.clone(),
-                                &share_unlocked.data.workspaces, &share_unlocked.data.clients,
-                                monitor_data, init_config.show_title, init_config.size_factor
-                            );
-                        } else {
-                            window.hide();
-                        }
+                        trace!("[GUI] Refresh window {:?}", window);
                     }
                 }
-            }));
+                Some(GUISend::New) => {
+                    for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
+                        trace!("[GUI] Rebuilding window {:?}", window);
+                        window.show();
+                        // init_monitor(share_clone.clone(),
+                        //     &share_unlocked.data.workspaces, &share_unlocked.data.clients,
+                        //     monitor_data, init_config.show_title, init_config.size_factor
+                        // );
+                    }
+                }
+                Some(GUISend::Hide) => {
+                    for (window, _) in &mut monitor_data_list_unlocked.iter_mut() {
+                        window.hide();
+                    }
+                }
+                None => {
+                    warn!("[GUI] Receiver closed");
+                    break;
+                }
+            }
+        }
 
-            // glib::spawn_future_local(clone!(#[strong] share_clone, #[strong] monitor_data_list, async move {
-            //     let (data_mut, _, notify_reload) = share_clone.as_ref();
-            //     loop {
-            //         notify_reload.notified().await;
-            //         trace!("[GUI] Reloading GUI");
-            //         let share_unlocked = data_mut.lock().expect("Failed to lock, data_mut");
-            //         let mut monitor_data_list_unlocked = monitor_data_list.lock().expect("Failed to lock, monitor_data_list");
-            //         for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
-            //             trace!("[GUI] Reloading window {:?}", window);
-            //         }
-            //     }
-            // }));
+ */
 
-            trace!("[GUI] activation finished");
-        });
-
-        info!("[GUI] Running application");
-        application.run_with_args::<String>(&[]);
-    });
-
-    Ok(())
-}
 
 fn apply_css(custom_css: Option<&PathBuf>) {
     let provider_app = CssProvider::new();
-    provider_app.load_from_data(css::CSS);
+    provider_app.load_from_data(include_str!("style.css"));
     style_context_add_provider_for_display(
         &Display::default().context("Could not connect to a display.").expect("Could not connect to a display."),
         &provider_app,
@@ -129,14 +137,14 @@ fn apply_css(custom_css: Option<&PathBuf>) {
     }
 }
 
-fn create_windows_save(share: &Share, monitor_data_list: &Mutex<HashMap<ApplicationWindow, MonitorData>>, workspaces_per_row: u32) {
+fn create_windows_save(share: &Share, monitor_data_list: &Mutex<HashMap<ApplicationWindow, MonitorData>>, workspaces_per_row: u32, app: &Application) {
     let mut monitor_data_list = monitor_data_list.lock().expect("Failed to lock");
-    create_windows(share, &mut monitor_data_list, workspaces_per_row).unwrap_or_else(|e| {
+    create_windows(share, &mut monitor_data_list, workspaces_per_row, app).unwrap_or_else(|e| {
         warn!("[GUI] {:?}", e);
     });
 }
 
-fn create_windows(share: &Share, monitor_data_list: &mut HashMap<ApplicationWindow, MonitorData>, workspaces_per_row: u32) -> anyhow::Result<()> {
+fn create_windows(share: &Share, monitor_data_list: &mut HashMap<ApplicationWindow, MonitorData>, workspaces_per_row: u32, app: &Application) -> anyhow::Result<()> {
     let monitors = get_monitors();
     let gtk_monitors = Display::default().context("Could not connect to a display.")?
         .monitors().iter().filter_map(|m| m.ok()).collect::<Vec<Monitor>>();
@@ -170,7 +178,7 @@ fn create_windows(share: &Share, monitor_data_list: &mut HashMap<ApplicationWind
         }
         let window = ApplicationWindow::builder()
             .css_classes(vec!["monitor", "background"])
-            // .application(app)
+            .application(app)
             .child(&workspaces_flow_overlay).default_height(10).default_width(10).build();
         window.init_layer_shell();
         window.set_layer(Layer::Overlay);
@@ -181,7 +189,7 @@ fn create_windows(share: &Share, monitor_data_list: &mut HashMap<ApplicationWind
         window.set_monitor(monitor);
         window.present();
         glib::spawn_future_local(clone!(#[strong] window, async move {
-            window.hide();
+            // window.hide();
         }));
 
         monitor_data_list.insert(window, MonitorData {

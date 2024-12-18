@@ -14,6 +14,7 @@ use std::env::var;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
+use async_channel::Sender;
 use tokio::sync::Notify;
 
 use crate::cli::{CloseType, GuiConf, InitOpts, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
@@ -131,7 +132,6 @@ pub struct SharedData {
     pub gui_config: GuiConfig,
     pub data: HyprlandData,
     pub active: Active,
-    pub gui_show: bool,
 }
 
 #[derive(Debug, Default)]
@@ -143,8 +143,15 @@ pub enum Active {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum GUISend {
+    Refresh,
+    New,
+    Hide,
+}
+
 // shared ARC with Mutex and Notify for new_gui and update_gui
-pub type Share = Arc<(Mutex<SharedData>, Notify, Notify)>;
+pub type Share = Arc<(Mutex<SharedData>, Sender<GUISend>)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: OnceLock<bool> = OnceLock::new();

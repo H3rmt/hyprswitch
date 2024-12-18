@@ -6,23 +6,25 @@ use crate::cli::SwitchType;
 use crate::daemon::gui::reload_icon_cache;
 use crate::daemon::submap::{activate_submap, deactivate_submap};
 use crate::handle::{clear_recent_clients, collect_data, find_next, switch_to_active};
-use crate::{Active, Command, Config, GuiConfig, Share, ACTIVE};
+use crate::{Active, Command, Config, GUISend, GuiConfig, Share, ACTIVE};
 
 pub(crate) fn switch(share: Share, command: Command) -> anyhow::Result<()> {
-    let (latest, _, notify_update) = share.deref();
+    let (latest, send) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
         let active = find_next(&lock.simple_config.switch_type, command, &lock.data, &lock.active)?;
         lock.active = active;
+        drop(lock);
     }
-    notify_update.notify_waiters(); // trigger GUI update
+    send.send_blocking(GUISend::Refresh)
+        .context("Unable to refresh the GUI")?;
 
     Ok(())
 }
 
 
 pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
-    let (latest, notify_new, _) = share.deref();
+    let (latest, send) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
         if !kill {
@@ -30,9 +32,10 @@ pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
         } else {
             info!("Not executing switch on close, killing");
         }
-        lock.gui_show = false;
+        drop(lock);
     }
-    notify_new.notify_waiters(); // trigger GUI update
+    send.send_blocking(GUISend::Hide)
+        .context("Unable to refresh the GUI")?;
 
     deactivate_submap()?;
 
@@ -52,7 +55,7 @@ pub(crate) fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyho
         SwitchType::Monitor => if let Some(mon) = active.2 { Active::Monitor(mon) } else { Active::Unknown },
     };
 
-    let (latest, notify_new, _) = share.deref();
+    let (latest, send) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
 
@@ -60,10 +63,10 @@ pub(crate) fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyho
         lock.simple_config = config.clone();
         lock.gui_config = gui_config.clone();
         lock.data = clients_data;
-        lock.gui_show = true;
+        drop(lock);
     }
-    notify_new.notify_waiters(); // trigger new GUI update
-    info!("GUI notified: {notify_new:?}");
+    send.send_blocking(GUISend::New)
+        .context("Unable to refresh the GUI")?;
 
     activate_submap(gui_config.clone())?;
 

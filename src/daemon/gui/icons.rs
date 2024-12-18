@@ -1,6 +1,7 @@
 use log::{debug, trace, warn};
 use std::collections::BTreeMap;
 use std::sync::Mutex;
+use std::time::Instant;
 use std::{env, fs::DirEntry, path::PathBuf, sync::OnceLock};
 
 type IconMap = BTreeMap<Box<str>, (Box<str>, u8)>;
@@ -13,6 +14,7 @@ fn get_desktop_file_map() -> &'static Mutex<IconMap> {
 pub fn get_icon_name(icon: &str) -> Option<String> {
     let mut map = get_desktop_file_map().lock().expect("Failed to lock icon map");
     if map.is_empty() {
+        warn!("Icon map is empty, filling it (should be already done)");
         fill_desktop_file_map(&mut map);
     }
     map.get(icon.to_ascii_lowercase().as_str()).map(|s| s.clone().0.into_string())
@@ -87,6 +89,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
 }
 
 fn fill_desktop_file_map(map: &mut BTreeMap<Box<str>, (Box<str>, u8)>) {
+    let now = Instant::now();
     for entry in collect_desktop_files() {
         let file = std::fs::read_to_string(entry.path());
         match file {
@@ -120,4 +123,5 @@ fn fill_desktop_file_map(map: &mut BTreeMap<Box<str>, (Box<str>, u8)>) {
             }
         }
     }
+    debug!("[Icons] filled icon map in {}ms", now.elapsed().as_millis());
 }

@@ -7,12 +7,12 @@ use clap::Parser;
 use gtk4::IconTheme;
 use hyprswitch::cli::{App, SwitchType};
 use hyprswitch::client::{daemon_running, send_close_daemon, send_init_command, send_switch_command};
-use hyprswitch::daemon::{deactivate_submap, get_desktop_files_debug, get_icon_name_debug, start_daemon};
+use hyprswitch::daemon::gui::{get_desktop_files_debug, get_icon_name_debug};
+use hyprswitch::daemon::{deactivate_submap, start_daemon};
 use hyprswitch::handle::{collect_data, find_next, switch_to_active};
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
 use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
-
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = App::try_parse()

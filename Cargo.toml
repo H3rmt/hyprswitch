@@ -14,7 +14,8 @@ categories = ["command-line-utilities"]
 [dependencies]
 clap = { version = "4.5.21", features = ["derive"] }
 hyprland = { version = "0.4.0-beta.1" }
-tokio = { version = "1.41.1", features = ["sync"] }
+tokio = { version = "1.41.1", features = ["sync", "rt-multi-thread", "full"] }
+async-channel = { version = "2.3.1", features = ["default"] }
 log = "0.4.22"
 stderrlog = "0.6.0"
 anyhow = "1.0.93"
