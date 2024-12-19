@@ -90,7 +90,7 @@ pub struct InitOpts {
     pub custom_css: Option<PathBuf>,
 
     /// Show the windows title instead of its class in Overview (fallback to class if title is empty)
-    #[arg(long, default_value = "true", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1
+    #[arg(long, default_value = "true", action = clap::ArgAction::Set, default_missing_value = "true", num_args=0..=1
     )]
     pub show_title: bool,
 
@@ -106,17 +106,17 @@ pub struct InitOpts {
 #[derive(Args, Debug, Clone)]
 pub struct SimpleConf {
     /// Include special workspaces (e.g., scratchpad)
-    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args=0..=1
     )]
     pub include_special_workspaces: bool,
 
     /// Sort all windows on every monitor like one contiguous workspace
-    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args=0..=1
     )]
     pub ignore_workspaces: bool,
 
     /// Sort all windows on matching workspaces on monitors like one big monitor
-    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args=0..=1
     )]
     pub ignore_monitors: bool,
 
@@ -195,15 +195,13 @@ pub struct GuiConf {
     /// Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1`
     ///
     /// Available values: `hyprctl monitors -j | jq '.[].name'`
-    #[arg(long, value_delimiter = ',')]
-    pub monitors: Option<Vec<String>>,
+    #[arg(long, value_delimiter = ',', value_parser = clap::value_parser!(Monitors))]
+    pub monitors: Option<Monitors>,
 
     /// Show all workspaces on all monitors [default: only show workspaces on the corresponding monitor]
-    #[arg(long, default_value = "false")]
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args=0..=1
+    )]
     pub show_workspaces_on_all_monitors: bool,
-
-    #[arg(long, value_parser = clap::value_parser!(Monitor))]
-    pub monitor: Option<String>,
 }
 
 #[derive(ValueEnum, Clone, Debug)]
@@ -248,20 +246,23 @@ impl From<ModKeyInput> for ModKey {
     }
 }
 
-#[derive(Clone)]
-struct Monitor(MonitorId);
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Monitors(pub Vec<String>);
 
-impl FromStr for Monitor {
+impl FromStr for Monitors {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let available: Vec<hyprland::data::Monitor> = get_monitors();
-
-        if let Some(m) = available.iter().find(|m| m.name == s) {
-            Ok(Monitor(m.id))
-        } else {
-            Err(format!("{s} not found in {:?}", available.iter().map(|a| a.name.clone()).collect::<Vec<_>>()))
+        let mut vec = Vec::new();
+        for monitor in s.split(',') {
+            if let Some(m) = available.iter().find(|m| m.name == monitor) {
+                vec.push(m.name.clone())
+            } else {
+                return Err(format!("{s} not found in {:?}", available.iter().map(|a| a.name.clone()).collect::<Vec<_>>()));
+            }
         }
+        Ok(Self { 0: vec })
     }
 }
 

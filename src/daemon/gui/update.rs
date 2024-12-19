@@ -1,4 +1,5 @@
 use crate::daemon::gui::MonitorData;
+use crate::cli::ReverseKey;
 use crate::{Active, SharedData};
 use anyhow::Context;
 use gtk4::prelude::WidgetExt;
@@ -37,7 +38,8 @@ macro_rules! update_type {
                     .unwrap_or(0);
                 let offset = calc_offset(
                     $htypr_data.iter().filter(|(_, wd)| wd.enabled).count(),
-                    selected_client_position, position, $gui_config.max_switch_offset, true
+                    selected_client_position, position, $gui_config.max_switch_offset,
+                    if let ReverseKey::Mod(_) = $gui_config.reverse_key.clone() { true } else { false }, true
                 );
                 if let Some(offset) = offset {
                     label.set_label(&offset.to_string());
@@ -96,7 +98,7 @@ pub(super) fn update_monitor(
 
 
 // calculate offset from selected_client_position and position, "overflow" at end of list, prefer positive offset over negative
-fn calc_offset(total_clients: usize, selected_client_position: usize, position: usize, max_offset: u8, prefer_higher_positive_number: bool) -> Option<i16> {
+fn calc_offset(total_clients: usize, selected_client_position: usize, position: usize, max_offset: u8, allow_negative_numbers: bool, prefer_higher_positive_number: bool) -> Option<i16> {
     // println!("Checking for {position} and {selected_client_position} in {total_clients} with offset: {max_offset}");
     debug_assert!(total_clients > position);
     debug_assert!(total_clients > selected_client_position);
@@ -133,23 +135,33 @@ mod tests {
 
     #[test]
     fn test_calc_offset_prefer_higher_positive_number() {
-        assert_eq!(calc_offset(5, 2, 4, 9, true), Some(2));
-        assert_eq!(calc_offset(5, 2, 4, 2, true), Some(2));
-        assert_eq!(calc_offset(5, 2, 3, 2, true), Some(1));
-        assert_eq!(calc_offset(5, 2, 1, 2, true), Some(-1));
-        assert_eq!(calc_offset(5, 2, 0, 2, true), Some(-2));
-        assert_eq!(calc_offset(5, 2, 0, 5, true), Some(3));
-        assert_eq!(calc_offset(5, 2, 0, 1, true), None);
+        assert_eq!(calc_offset(5, 2, 4, 9, true, true), Some(2));
+        assert_eq!(calc_offset(5, 2, 4, 2, true, true), Some(2));
+        assert_eq!(calc_offset(5, 2, 3, 2, true, true), Some(1));
+        assert_eq!(calc_offset(5, 2, 1, 2, true, true), Some(-1));
+        assert_eq!(calc_offset(5, 2, 0, 2, true, true), Some(-2));
+        assert_eq!(calc_offset(5, 2, 0, 5, true, true), Some(3));
+        assert_eq!(calc_offset(5, 2, 0, 1, true, true), None);
+    }
+    #[test]
+    fn test_calc_offset_prefer_higher_positive_number_dont_allow_negative() {
+        assert_eq!(calc_offset(5, 2, 4, 9, false, true), Some(2));
+        assert_eq!(calc_offset(5, 2, 4, 2, false, true), Some(2));
+        assert_eq!(calc_offset(5, 2, 3, 2, false, true), Some(1));
+        assert_eq!(calc_offset(5, 2, 1, 2, false, true), None);
+        assert_eq!(calc_offset(5, 2, 0, 2, false, true), None);
+        assert_eq!(calc_offset(5, 2, 0, 5, false, true), Some(3));
+        assert_eq!(calc_offset(5, 2, 0, 1, false, true), None);
     }
 
     #[test]
     fn test_calc_offset_no_prefer_higher_positive_number() {
-        assert_eq!(calc_offset(5, 2, 4, 9, false), Some(2));
-        assert_eq!(calc_offset(5, 2, 4, 2, false), Some(2));
-        assert_eq!(calc_offset(5, 2, 3, 2, false), Some(1));
-        assert_eq!(calc_offset(5, 2, 1, 2, false), Some(-1));
-        assert_eq!(calc_offset(5, 2, 0, 2, false), Some(-2));
-        assert_eq!(calc_offset(5, 2, 0, 5, false), Some(-2));
-        assert_eq!(calc_offset(5, 2, 0, 1, false), None);
+        assert_eq!(calc_offset(5, 2, 4, 9, true, false), Some(2));
+        assert_eq!(calc_offset(5, 2, 4, 2, true, false), Some(2));
+        assert_eq!(calc_offset(5, 2, 3, 2, true, false), Some(1));
+        assert_eq!(calc_offset(5, 2, 1, 2, true, false), Some(-1));
+        assert_eq!(calc_offset(5, 2, 0, 2, true, false), Some(-2));
+        assert_eq!(calc_offset(5, 2, 0, 5, true, false), Some(-2));
+        assert_eq!(calc_offset(5, 2, 0, 1, true, false), None);
     }
 }

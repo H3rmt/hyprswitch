@@ -72,6 +72,11 @@ fn connect_app(init_config: InitConfig, share: Share, receiver: Receiver<GUISend
                     match mess {
                         Ok(GUISend::Refresh) => {
                             for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
+                                if let Some(monitors) = &data.gui_config.monitors {
+                                    if !monitors.0.iter().any(|m| *m == monitor_data.connector) {
+                                        continue
+                                    }
+                                }
                                 trace!("[GUI] Refresh window {:?}", window);
                                 update_monitor(monitor_data, &data)
                                     .unwrap_or_else(|e| { warn!("[GUI] {:?}", e) });
@@ -79,6 +84,11 @@ fn connect_app(init_config: InitConfig, share: Share, receiver: Receiver<GUISend
                         }
                         Ok(GUISend::New) => {
                             for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
+                                if let Some(monitors) = &data.gui_config.monitors {
+                                    if !monitors.0.iter().any(|m| *m == monitor_data.connector) {
+                                        continue
+                                    }
+                                }
                                 trace!("[GUI] Rebuilding window {:?}", window);
                                 window.show();
                                 init_monitor(share.clone(),

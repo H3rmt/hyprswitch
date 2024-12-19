@@ -14,7 +14,7 @@ use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use crate::cli::{CloseType, GuiConf, InitOpts, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
+use crate::cli::{CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
 
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
@@ -96,7 +96,7 @@ pub struct GuiConfig {
     pub close: CloseType,
     pub reverse_key: ReverseKey,
     pub hide_active_window_border: bool,
-    pub monitors: Option<Vec<String>>,
+    pub monitors: Option<Monitors>,
     pub show_workspaces_on_all_monitors: bool,
 }
 
