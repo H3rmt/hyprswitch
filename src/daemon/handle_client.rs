@@ -1,7 +1,7 @@
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
-
+use std::time::Instant;
 use anyhow::Context;
 use log::{debug, error, info, trace, warn};
 use notify_rust::{Notification, Urgency};
@@ -26,6 +26,7 @@ pub(super) fn start_handler_blocking(share: &Share) {
     loop {
         match listener.accept() {
             Ok((stream, _)) => {
+                let now = Instant::now();
                 let arc_share = share.clone();
                 handle_client(stream, arc_share).context("Failed to handle client")
                     .unwrap_or_else(|e| {
@@ -38,6 +39,7 @@ pub(super) fn start_handler_blocking(share: &Share) {
 
                         warn!("{:?}", e)
                     });
+                trace!("Handled client in {:?}", now.elapsed());
             }
             Err(e) => {
                 error!("Failed to accept client: {}", e);
@@ -56,12 +58,12 @@ pub(super) fn handle_client(
 
     // client checked if socket is OK
     if buffer.is_empty() {
-        debug!("Received empty buffer");
+        debug!("[HANDLE] Received empty buffer");
         return Ok(());
     }
 
     let transfer: Transfer = bincode::deserialize(&buffer).with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
-    trace!("Received command: {transfer:?}");
+    trace!("[HANDLE] Received command: {transfer:?}");
 
     // check the major and minor number, exclude patch number
     if *env!("CARGO_PKG_VERSION").split('.').take(2).collect::<Vec<_>>() != transfer.version.split('.').take(2).collect::<Vec<_>>() {
@@ -81,12 +83,12 @@ pub(super) fn handle_client(
 
     match transfer.transfer {
         TransferType::Check => {
-            info!("Received running? command");
+            info!("[HANDLE] Received running? command");
             return_success(active, &mut stream)?;
         }
         TransferType::Init(config, gui_config) => {
             if !active {
-                info!("Received init command {config:?} and {gui_config:?}");
+                info!("[HANDLE] Received init command {config:?} and {gui_config:?}");
                 match init(share, config.clone(), gui_config.clone()).with_context(|| format!("Failed to init with config {:?} and gui_config {:?}", config, gui_config)) {
                     Ok(_) => {
                         return_success(true, &mut stream)?;
@@ -103,8 +105,7 @@ pub(super) fn handle_client(
         }
         TransferType::Close(kill) => {
             if active {
-                info!("Received close command");
-                trace!("Received close command with kill: {kill}");
+                info!("[HANDLE] Received close command with kill: {kill}");
                 match close(share, kill).with_context(|| format!("Failed to close gui  kill: {kill}")) {
                     Ok(_) => {
                         return_success(true, &mut stream)?;
@@ -120,7 +121,7 @@ pub(super) fn handle_client(
         }
         TransferType::Switch(command) => {
             if active {
-                info!("Received switch command {command:?}");
+                info!("[HANDLE] Received switch command {command:?}");
                 match switch(share, command).with_context(|| format!("Failed to execute with command {command:?}")) {
                     Ok(_) => {
                         return_success(true, &mut stream)?;

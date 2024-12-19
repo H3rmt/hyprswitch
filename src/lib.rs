@@ -1,20 +1,18 @@
 #![deny(clippy::print_stdout)]
 
 use anyhow::Context;
+use async_channel::{Receiver, Sender};
 use hyprland::data::Version as HyprlandVersion;
-use hyprland::data::WorkspaceBasic;
 use hyprland::prelude::HyprData;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use log::{info, trace};
 use notify_rust::{Notification, Urgency};
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::env::var;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
-use async_channel::Sender;
 
 use crate::cli::{CloseType, GuiConf, InitOpts, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
 
@@ -39,7 +37,6 @@ pub struct MonitorData {
 /// we need both id and name for the workspace (special workspaces need the name)
 #[derive(Debug, Clone)]
 pub struct WorkspaceData {
-    pub id: WorkspaceId,
     pub name: String,
     pub x: i32,
     pub y: i32,
@@ -57,7 +54,6 @@ pub struct ClientData {
     pub height: i16,
     pub class: String,
     pub title: String,
-    pub address: Address,
     pub workspace: WorkspaceId,
     pub monitor: MonitorId,
     pub focus_history_id: i8,
@@ -120,16 +116,16 @@ pub struct Transfer {
 
 #[derive(Debug, Default)]
 pub struct HyprlandData {
-    pub clients: Vec<ClientData>,
-    pub workspaces: BTreeMap<WorkspaceId, WorkspaceData>,
-    pub monitors: BTreeMap<MonitorId, MonitorData>,
+    pub clients: Vec<(Address, ClientData)>,
+    pub workspaces: Vec<(WorkspaceId, WorkspaceData)>,
+    pub monitors: Vec<(MonitorId, MonitorData)>,
 }
 
 #[derive(Debug, Default)]
 pub struct SharedData {
     pub simple_config: Config,
     pub gui_config: GuiConfig,
-    pub data: HyprlandData,
+    pub hypr_data: HyprlandData,
     pub active: Active,
 }
 
@@ -150,7 +146,7 @@ pub enum GUISend {
 }
 
 // shared ARC with Mutex and Notify for new_gui and update_gui
-pub type Share = Arc<(Mutex<SharedData>, Sender<GUISend>)>;
+pub type Share = Arc<(Mutex<SharedData>, Sender<GUISend>, Receiver<bool>)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: OnceLock<bool> = OnceLock::new();
@@ -207,15 +203,6 @@ impl From<GuiConf> for GuiConfig {
     }
 }
 
-impl<'a> From<&'a WorkspaceData> for WorkspaceBasic {
-    fn from(data: &'a WorkspaceData) -> Self {
-        WorkspaceBasic {
-            id: data.id,
-            name: data.name.clone(),
-        }
-    }
-}
-
 impl fmt::Display for ModKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self { // need snake_case
@@ -268,4 +255,26 @@ pub fn check_version() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+pub trait FindByFirst<ID, Data> {
+    fn find_by_first(&self, id: &ID) -> Option<&Data>;
+}
+
+impl FindByFirst<Address, ClientData> for Vec<(Address, ClientData)> {
+    fn find_by_first(&self, id: &Address) -> Option<&ClientData> {
+        self.iter().find(|(addr, _)| *addr == *id).map(|(_, cd)| cd)
+    }
+}
+
+impl FindByFirst<WorkspaceId, WorkspaceData> for Vec<(WorkspaceId, WorkspaceData)> {
+    fn find_by_first(&self, id: &WorkspaceId) -> Option<&WorkspaceData> {
+        self.iter().find(|(wid, _)| *wid == *id).map(|(_, wd)| wd)
+    }
+}
+
+impl FindByFirst<MonitorId, MonitorData> for Vec<(MonitorId, MonitorData)> {
+    fn find_by_first(&self, id: &MonitorId) -> Option<&MonitorData> {
+        self.iter().find(|(mid, _)| *mid == *id).map(|(_, md)| md)
+    }
 }

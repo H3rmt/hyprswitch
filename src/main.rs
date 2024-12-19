@@ -1,21 +1,13 @@
-use std::error::Error;
 use std::process::exit;
 use std::sync::Mutex;
-
 use anyhow::Context;
 use clap::Parser;
-use gtk4::IconTheme;
-use hyprswitch::cli::{App, SwitchType};
-use hyprswitch::client::{daemon_running, send_close_daemon, send_init_command, send_switch_command};
-use hyprswitch::daemon::gui::{get_desktop_files_debug, get_icon_name_debug};
-use hyprswitch::daemon::{deactivate_submap, start_daemon};
-use hyprswitch::handle::{collect_data, find_next, switch_to_active};
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
 use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let cli = App::try_parse()
+fn main() -> anyhow::Result<()> {
+    let cli = cli::App::try_parse()
         .unwrap_or_else(|e| {
             // only show error if not caused by --help ort -V (every start of every help text needs to be added...)
             if !(e.to_string().starts_with("A CLI/GUI that allows switching between windows in Hyprland") ||
@@ -47,68 +39,68 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match cli.command {
         cli::Command::Init { init_opts } => {
-            if daemon_running() {
+            if hyprswitch::client::daemon_running() {
                 warn!("Daemon already running");
                 return Ok(());
             }
             info!("Starting daemon");
             let init_config = InitConfig::from(init_opts);
-            start_daemon(init_config)
+            hyprswitch::daemon::start_daemon(init_config)
                 .context("Failed to run daemon")
                 .inspect_err(|_| {
-                    let _ = deactivate_submap();
+                    let _ = hyprswitch::daemon::deactivate_submap();
                 })?;
             return Ok(());
         }
         cli::Command::Close { kill } => {
             info!("Stopping daemon");
 
-            if !daemon_running() {
+            if !hyprswitch::client::daemon_running() {
                 warn!("Daemon not running");
                 return Ok(());
             }
-            send_close_daemon(kill).context("Failed to send kill command to daemon")?;
+            hyprswitch::client::send_close_daemon(kill).context("Failed to send kill command to daemon")?;
         }
         cli::Command::Dispatch { simple_opts } => {
             let command = Command::from(simple_opts);
-            send_switch_command(command)
+            hyprswitch::client::send_switch_command(command)
                 .with_context(|| format!("Failed to send switch command with command {command:?} to daemon"))?;
         }
         cli::Command::Gui { gui_conf, simple_config } => {
-            if !daemon_running() {
+            if !hyprswitch::client::daemon_running() {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
                     .body("Daemon not running (add ``exec-once = hyprswitch init &`` to your Hyprland config or run ``hyprswitch init &`` it in a terminal)\nvisit https://github.com/H3rmt/hyprswitch/wiki/Examples to see Example configs")
                     .timeout(10000)
                     .hint(notify_rust::Hint::Urgency(Urgency::Critical))
                     .show();
-                return Err(Box::from(anyhow::anyhow!("Daemon not running")));
+                return Err(anyhow::anyhow!("Daemon not running"));
             }
 
             // Daemon is not running
             info!("initialising daemon");
             let config = Config::from(simple_config);
             let gui_config = GuiConfig::from(gui_conf);
-            send_init_command(config.clone(), gui_config.clone())
+            hyprswitch::client::send_init_command(config.clone(), gui_config.clone())
                 .with_context(|| format!("Failed to send init command with config {config:?} and gui_config {gui_config:?} to daemon"))?;
 
             return Ok(());
         }
         cli::Command::Simple { simple_opts, simple_conf } => {
             let config = Config::from(simple_conf);
-            let (clients_data, active) = collect_data(config.clone()).with_context(|| format!("Failed to collect data with config {config:?}"))?;
+            let (clients_data, active) = hyprswitch::handle::collect_data(config.clone()).with_context(|| format!("Failed to collect data with config {config:?}"))?;
 
             let command = Command::from(simple_opts);
 
             let active = match config.switch_type {
-                SwitchType::Client => if let Some(add) = active.0 { Active::Client(add) } else { Active::Unknown },
-                SwitchType::Workspace => if let Some(ws) = active.1 { Active::Workspace(ws) } else { Active::Unknown },
-                SwitchType::Monitor => if let Some(mon) = active.2 { Active::Monitor(mon) } else { Active::Unknown },
+                cli::SwitchType::Client => if let Some(add) = active.0 { Active::Client(add) } else { Active::Unknown },
+                cli::SwitchType::Workspace => if let Some(ws) = active.1 { Active::Workspace(ws) } else { Active::Unknown },
+                cli::SwitchType::Monitor => if let Some(mon) = active.2 { Active::Monitor(mon) } else { Active::Unknown },
             };
             info!("Active: {:?}", active);
-            let next_active = find_next(&config.switch_type, command, &clients_data, &active);
+            let next_active = hyprswitch::handle::find_next(&config.switch_type, command, &clients_data, &active);
             if let Ok(next_active) = next_active {
-                switch_to_active(&next_active, &clients_data)?;
+                hyprswitch::handle::switch_to_active(&next_active, &clients_data)?;
             }
         }
         cli::Command::Icon { class, desktop_files, list } => {
@@ -116,43 +108,43 @@ fn main() -> Result<(), Box<dyn Error>> {
             match (list, desktop_files) {
                 (true, false) => {
                     gtk4::init().context("Failed to init gtk")?;
-                    let theme = IconTheme::new();
+                    let theme = gtk4::IconTheme::new();
                     for icon in theme.icon_names() {
-                        info!("[ICON] Icon: {icon}");
+                        info!("Icon: {icon}");
                     }
                 }
                 (false, true) => {
-                    let map = get_desktop_files_debug();
+                    let map = hyprswitch::daemon::gui::get_desktop_files_debug();
 
                     for (name, file) in map {
-                        info!("[ICON] Desktop file: {name} -> {} ({})", file.0, match file.1 {
+                        info!("Desktop file: {name} -> {} ({}) [{:?}]", file.0, match file.1 {
                             0 => "Name",
                             1 => "Exec",
                             2 => "StartupWMClass",
                             _ => "Unknown",
-                        });
+                        }, file.2);
                     }
                 }
                 _ => {
-                    info!("[ICON] Icon for class {class}");
+                    info!("Icon for class {class}");
                     gtk4::init().context("Failed to init gtk")?;
-                    let theme = IconTheme::new();
+                    let theme = gtk4::IconTheme::new();
                     if theme.has_icon(&class) {
-                        info!("[ICON] Theme contains icon for class {class}");
+                        info!("Theme contains icon for class {class}");
                     } else {
-                        info!("[ICON] Theme does not contain icon for class {class}");
-                        let name = get_icon_name_debug(&class)
+                        info!("Theme does not contain icon for class {class}");
+                        let name = hyprswitch::daemon::gui::get_icon_name_debug(&class)
                             .with_context(|| format!("Failed to get icon name for class {class}"))?;
-                        info!("[ICON] name from desktop file: {} from {}", name.0, match name.1 {
+                        info!("name from desktop file: {:?} from {}", name.2, match name.1 {
                             0 => "Name",
                             1 => "Exec",
                             2 => "StartupWMClass",
                             _ => "Unknown",
                         });
                         if theme.has_icon(&name.0) {
-                            info!("[ICON] Theme contains icon for name {}", name.0);
+                            info!("Theme contains icon for name {}", name.0);
                         } else {
-                            info!("[ICON] Theme does not contain icon for name {}", name.0);
+                            info!("Theme does not contain icon for name {}", name.0);
                         }
                     }
                 }

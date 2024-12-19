@@ -3,14 +3,14 @@ use std::env;
 use anyhow::Context;
 use hyprland::dispatch::{Dispatch, DispatchType};
 use hyprland::keyword::Keyword;
-use log::{error, trace};
+use log::{debug, error, trace};
 
 use crate::cli::ReverseKey::{Key, Mod};
 use crate::cli::{CloseType, ModKey};
 use crate::GuiConfig;
 
 // TODO in the future generate a hash and reuse the old keymap (check if it has been deleted)
-fn generate_submap_name(_keyword_list: &Vec<(&str, String)>) -> String {
+fn generate_submap_name(_keyword_list: &[(&str, String)]) -> String {
     format!("hyprswitch-{}-{}", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"), rand::random::<u32>())
 }
 
@@ -105,7 +105,10 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                 keyword_list.push(("bind", format!(",right, exec, {} dispatch", current_exe)));
                 keyword_list.push(("bind", format!(",left, exec, {} dispatch -r", current_exe)));
             }
-            CloseType::ModKeyRelease => {}
+            CloseType::ModKeyRelease => {
+                keyword_list.push(("bind", format!("{},right, exec, {} dispatch", main_mod, current_exe)));
+                keyword_list.push(("bind", format!("{},left, exec, {} dispatch -r", main_mod, current_exe)));
+            }
         }
 
         keyword_list.push(("submap", "reset".to_string()));
@@ -134,6 +137,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
 
 pub fn deactivate_submap() -> anyhow::Result<()> {
     Dispatch::call(DispatchType::Custom("submap", "reset"))?;
+    debug!("[SUBMAP] Deactivated submap");
     Ok(())
 }
 

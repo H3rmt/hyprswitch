@@ -70,7 +70,7 @@ pub enum Command {
     /// Test command to debug finding icons for the GUI, doesn't interact with the Daemon
     Icon {
         /// The class of the window to find an icon for
-        #[arg(long)]
+        #[arg(long, default_value = "")]
         class: String,
 
         /// List all icons in the theme

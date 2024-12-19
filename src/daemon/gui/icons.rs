@@ -1,10 +1,11 @@
 use log::{debug, trace, warn};
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::sync::Mutex;
 use std::time::Instant;
 use std::{env, fs::DirEntry, path::PathBuf, sync::OnceLock};
 
-type IconMap = BTreeMap<Box<str>, (Box<str>, u8)>;
+type IconMap = BTreeMap<Box<str>, (Box<str>, u8, Box<Path>)>;
 
 fn get_desktop_file_map() -> &'static Mutex<IconMap> {
     static MAP_LOCK: OnceLock<Mutex<IconMap>> = OnceLock::new();
@@ -14,18 +15,18 @@ fn get_desktop_file_map() -> &'static Mutex<IconMap> {
 pub fn get_icon_name(icon: &str) -> Option<String> {
     let mut map = get_desktop_file_map().lock().expect("Failed to lock icon map");
     if map.is_empty() {
-        warn!("Icon map is empty, filling it (should be already done)");
+        warn!("[ICONS] Icon map is empty, filling it (should be already done)");
         fill_desktop_file_map(&mut map);
     }
     map.get(icon.to_ascii_lowercase().as_str()).map(|s| s.clone().0.into_string())
 }
 
-pub fn get_icon_name_debug(icon: &str) -> Option<(Box<str>, u8)> {
+pub fn get_icon_name_debug(icon: &str) -> Option<(Box<str>, u8, Box<Path>)> {
     let mut map = BTreeMap::new();
     fill_desktop_file_map(&mut map);
     map.get(icon.to_ascii_lowercase().as_str()).cloned()
 }
-pub fn get_desktop_files_debug() -> BTreeMap<Box<str>, (Box<str>, u8)> {
+pub fn get_desktop_files_debug() -> BTreeMap<Box<str>, (Box<str>, u8, Box<Path>)> {
     let mut map = BTreeMap::new();
     fill_desktop_file_map(&mut map);
     map
@@ -48,7 +49,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
             env::var_os("HOME")
                 .map(|p| PathBuf::from(p).join(".local/share"))
                 .or_else(|| {
-                    warn!("[Icons] No XDG_DATA_HOME and HOME environment variable found");
+                    warn!("[ICONS] No XDG_DATA_HOME and HOME environment variable found");
                     None
                 })
         }, Some) {
@@ -59,7 +60,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
     for dir in dirs {
         res.push(dir.join("applications"));
     }
-    trace!("[Icons] searching for icons in dirs: {:?}", res);
+    trace!("[ICONS] searching for icons in dirs: {:?}", res);
     res
 }
 
@@ -79,16 +80,16 @@ fn collect_desktop_files() -> Vec<DirEntry> {
                 }
             }
             Err(e) => {
-                warn!("[Icons] Failed to read dir {dir:?}: {e}");
+                warn!("[ICONS] Failed to read dir {dir:?}: {e}");
                 continue;
             }
         }
     }
-    debug!("[Icons] found {} desktop files", res.len());
+    debug!("[ICONS] found {} desktop files", res.len());
     res
 }
 
-fn fill_desktop_file_map(map: &mut BTreeMap<Box<str>, (Box<str>, u8)>) {
+fn fill_desktop_file_map(map: &mut IconMap) {
     let now = Instant::now();
     for entry in collect_desktop_files() {
         let file = std::fs::read_to_string(entry.path());
@@ -96,32 +97,33 @@ fn fill_desktop_file_map(map: &mut BTreeMap<Box<str>, (Box<str>, u8)>) {
             Ok(file) => {
                 let icon = file.lines().find(|l| l.starts_with("Icon=")).and_then(|l| l.split('=').nth(1));
                 let name = file.lines().find(|l| l.starts_with("Name=")).and_then(|l| l.split('=').nth(1));
-                let exec = file.lines().find(|l| l.starts_with("Exec=")).and_then(|l| l.split('=').nth(1)).and_then(|l| l.split(' ').next()).and_then(|l| l.split('/').last());
+                let exec = file.lines().find(|l| l.starts_with("Exec=")).and_then(|l| l.split('=').nth(1))
+                    .and_then(|l| l.split(' ').next()).and_then(|l| l.split('/').last()).map(|n| n.replace('"', ""));
                 let startup_wm_class = file.lines().find(|l| l.starts_with("StartupWMClass=")).and_then(|l| l.split('=').nth(1));
 
                 if let (Some(name), Some(icon)) = (name, icon) {
                     let mut n: Box<str> = Box::from(name);
                     n.make_ascii_lowercase();
                     let i = Box::from(icon);
-                    map.insert(n, (i, 0));
+                    map.insert(n, (i, 0, entry.path().into_boxed_path()));
                 }
                 if let (Some(exec), Some(icon)) = (exec, icon) {
                     let mut n: Box<str> = Box::from(exec);
                     n.make_ascii_lowercase();
                     let i = Box::from(icon);
-                    map.insert(n, (i, 1));
+                    map.insert(n, (i, 1, entry.path().into_boxed_path()));
                 }
                 if let (Some(startup_wm_class), Some(icon)) = (startup_wm_class, icon) {
                     let mut s: Box<str> = Box::from(startup_wm_class);
                     s.make_ascii_lowercase();
                     let i = Box::from(icon);
-                    map.insert(s, (i, 2));
+                    map.insert(s, (i, 2, entry.path().into_boxed_path()));
                 }
             }
             Err(e) => {
-                warn!("[Icons] Failed to read file {}: {e}", entry.path().display());
+                warn!("[ICONS] Failed to read file {}: {e}", entry.path().display());
             }
         }
     }
-    debug!("[Icons] filled icon map in {}ms", now.elapsed().as_millis());
+    debug!("[ICONS] filled icon map in {}ms", now.elapsed().as_millis());
 }

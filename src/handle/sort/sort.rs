@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 
-use hyprland::shared::{MonitorId, WorkspaceId};
-use log::debug;
+use hyprland::shared::{Address, MonitorId, WorkspaceId};
 
 use crate::ClientData;
 
@@ -10,9 +9,9 @@ use crate::ClientData;
 /// * 'clients' - Vector of clients to sort
 /// * 'ignore_workspaces' - Don't split clients into workspaces (treat all clients on monitor as one workspace)
 /// * 'ignore_monitors' - Don't split clients into monitors (treat all clients as one monitor)
-pub fn sort_clients(clients: Vec<ClientData>, ignore_workspaces: bool, ignore_monitors: bool) -> Vec<ClientData> {
+pub fn sort_clients(clients: Vec<(Address, ClientData)>, ignore_workspaces: bool, ignore_monitors: bool) -> Vec<(Address, ClientData)> {
     // monitor -> workspace -> clients
-    let monitors: Vec<Vec<Vec<ClientData>>> = match (ignore_workspaces, ignore_monitors) {
+    let monitors: Vec<Vec<Vec<(Address, ClientData)>>> = match (ignore_workspaces, ignore_monitors) {
         (true, true) => {
             panic!(
                 "Can't ignore workspaces and monitors at the same time (currently not implemented)"
@@ -22,16 +21,16 @@ pub fn sort_clients(clients: Vec<ClientData>, ignore_workspaces: bool, ignore_mo
         }
         (true, false) => {
             // workspace -> clients
-            let mut monitors: BTreeMap<MonitorId, Vec<ClientData>> = BTreeMap::new();
-            for client in clients {
-                monitors.entry(client.monitor).or_default().push(client);
+            let mut monitors: BTreeMap<MonitorId, Vec<(Address, ClientData)>> = BTreeMap::new();
+            for (addr, client) in clients {
+                monitors.entry(client.monitor).or_default().push((addr, client));
             }
             monitors.into_values().map(|m| vec![m]).collect()
         }
         (false, true) => {
             // monitor -> workspaces
             let mut workspaces: BTreeMap<MonitorId, Vec<WorkspaceId>> = BTreeMap::new();
-            for client in clients.iter() {
+            for (_, client) in clients.iter() {
                 workspaces
                     .entry(client.monitor)
                     .or_default()
@@ -58,32 +57,32 @@ pub fn sort_clients(clients: Vec<ClientData>, ignore_workspaces: bool, ignore_mo
                     break;
                 }
                 let new_workspace_id = current_workspaces[0];
-                debug!("current_workspaces: {:?}, new_workspace_id: {}", current_workspaces, new_workspace_id);
+                // debug!("current_workspaces: {:?}, new_workspace_id: {}", current_workspaces, new_workspace_id);
                 for wss in current_workspaces {
                     workspaces_map.insert(wss, new_workspace_id);
                 }
             }
 
-            let mut new_workspaces: BTreeMap<WorkspaceId, Vec<ClientData>> = BTreeMap::new();
-            for client in clients {
+            let mut new_workspaces: BTreeMap<WorkspaceId, Vec<(Address, ClientData)>> = BTreeMap::new();
+            for (addr, client) in clients {
                 new_workspaces
                     .entry(*workspaces_map.get(&client.workspace).expect("Workspace for client not found"))
                     .or_default()
-                    .push(client);
+                    .push((addr, client));
             }
 
             new_workspaces.into_values().map(|m| vec![m]).collect()
         }
         (false, false) => {
             // monitor -> workspace -> clients
-            let mut monitors: BTreeMap<MonitorId, BTreeMap<WorkspaceId, Vec<ClientData>>> = BTreeMap::new();
-            for client in clients {
+            let mut monitors: BTreeMap<MonitorId, BTreeMap<WorkspaceId, Vec<(Address, ClientData)>>> = BTreeMap::new();
+            for (addr, client) in clients {
                 monitors
                     .entry(client.monitor)
                     .or_default()
                     .entry(client.workspace)
                     .or_default()
-                    .push(client);
+                    .push((addr, client));
             }
             monitors
                 .into_values()
@@ -96,19 +95,19 @@ pub fn sort_clients(clients: Vec<ClientData>, ignore_workspaces: bool, ignore_mo
 
     for workspaces in monitors {
         for mut clients in workspaces {
-            clients.sort_by(|a, b| {
+            clients.sort_by(|(_, a), (_, b)| {
                 if a.x == b.x {
                     a.y.cmp(&b.y)
                 } else {
                     a.x.cmp(&b.x)
                 }
             });
-            let mut queue: VecDeque<ClientData> = VecDeque::from(clients);
+            let mut queue: VecDeque<(Address, ClientData)> = VecDeque::from(clients);
 
             let mut line_start = queue.pop_front();
-            while let Some(current) = line_start {
+            while let Some((current_addr, current)) = line_start {
                 let mut current_bottom = current.y + current.height;
-                sorted_clients.push(current);
+                sorted_clients.push((current_addr, current));
 
                 loop {
                     let mut next_index = None;
@@ -119,7 +118,7 @@ pub fn sort_clients(clients: Vec<ClientData>, ignore_workspaces: bool, ignore_mo
                     3. Check if any window(not taken) on left bottom is higher than current bottom (if true take this)
                     => Take if Top higher than current Bottom and no window on left has higher Top than window Bottom
                      */
-                    for (i, client) in queue.iter().enumerate() {
+                    for (i, (_, client)) in queue.iter().enumerate() {
                         let client_top = client.y;
                         let client_bottom = client.y + client.height;
                         let client_left = client.x;
@@ -132,19 +131,19 @@ pub fn sort_clients(clients: Vec<ClientData>, ignore_workspaces: bool, ignore_mo
                             let on_left = queue
                                 .iter()
                                 .enumerate()
-                                .find(|(_i, c)| c.x < client_left && c.y < client_bottom);
+                                .find(|(_, (_, c))| c.x < client_left && c.y < client_bottom);
 
                             // 3.
-                            let on_left_2 = queue.iter().enumerate().find(|(_i, c)| {
+                            let on_left_2 = queue.iter().enumerate().find(|(_, (_, c))| {
                                 c.x < client_left && c.y + c.height < client_bottom
                             });
 
                             match (on_left, on_left_2) {
-                                (Some((idx, c)), _) => {
+                                (Some((idx, (_, c))), _) => {
                                     current_bottom = c.y + c.height;
                                     next_index = Some(idx);
                                 }
-                                (_, Some((idx, c))) => {
+                                (_, Some((idx, (_, c)))) => {
                                     current_bottom = c.y + c.height;
                                     next_index = Some(idx);
                                 }

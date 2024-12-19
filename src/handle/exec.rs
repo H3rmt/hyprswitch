@@ -5,7 +5,7 @@ use hyprland::prelude::HyprDataActive;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use log::{debug, warn};
 
-use crate::{Active, HyprlandData, DRY};
+use crate::{Active, FindByFirst, HyprlandData, DRY};
 
 pub fn switch_to_active(active: &Active, clients_data: &HyprlandData) -> anyhow::Result<()> {
     match active {
@@ -15,9 +15,9 @@ pub fn switch_to_active(active: &Active, clients_data: &HyprlandData) -> anyhow:
             })?;
         }
         Active::Workspace(wid) => {
-            let workspace_data = clients_data.workspaces.get(wid)
+            let workspace_data = clients_data.workspaces.find_by_first(wid)
                 .context("Workspace data not found")?;
-            switch_workspace(&workspace_data.into(), *DRY.get().expect("DRY not set")).with_context(|| {
+            switch_workspace(&WorkspaceBasic { id: *wid, name: workspace_data.name.clone() }, *DRY.get().expect("DRY not set")).with_context(|| {
                 format!("Failed to execute switch workspace with workspace_data {workspace_data:?}")
             })?;
         }
@@ -40,7 +40,7 @@ fn switch_monitor(monitor_id: &MonitorId, dry_run: bool) -> anyhow::Result<()> {
             println!("switch to monitor {monitor_id}");
         }
     } else {
-        debug!("exec: switch to monitor {monitor_id}");
+        debug!("[EXEC] switch to monitor {monitor_id}");
         Dispatch::call(DispatchType::FocusMonitor(MonitorIdentifier::Id(*monitor_id)))?;
     }
     Ok(())
@@ -73,7 +73,7 @@ fn switch_client(address: &Address, dry_run: bool) -> anyhow::Result<()> {
             println!("switch to next_client: {}", address);
         }
     } else {
-        debug!("exec: switch to next_client: {}", address);
+        debug!("[EXEC] switch to next_client: {}", address);
         Dispatch::call(DispatchType::FocusWindow(WindowIdentifier::Address(address.clone())))?;
         Dispatch::call(DispatchType::BringActiveToTop)?;
     }
@@ -88,7 +88,7 @@ fn switch_normal_workspace(workspace_id: WorkspaceId, dry_run: bool) -> anyhow::
             println!("switch to workspace {workspace_id}");
         }
     } else {
-        debug!("exec: switch to workspace {workspace_id}");
+        debug!("[EXEC] switch to workspace {workspace_id}");
         Dispatch::call(DispatchType::Workspace(WorkspaceIdentifierWithSpecial::Id(
             workspace_id,
         )))?;
@@ -105,7 +105,7 @@ fn toggle_special_workspace(workspace_name: &str, dry_run: bool) -> anyhow::Resu
             println!("toggle workspace {name}");
         }
     } else {
-        debug!("exec: toggle workspace {name}");
+        debug!("[EXEC] toggle workspace {name}");
         Dispatch::call(DispatchType::ToggleSpecialWorkspace(Some(name)))?;
     }
     Ok(())

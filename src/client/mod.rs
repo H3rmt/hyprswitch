@@ -3,7 +3,6 @@ use std::os::unix::net::UnixStream;
 
 use anyhow::Context;
 use log::{debug, trace};
-use notify_rust::{Notification, Urgency};
 
 use crate::{get_socket_path_buff, Command, Config, GuiConfig, Transfer, TransferType, DRY};
 
@@ -41,21 +40,6 @@ pub fn send_init_command(config: Config, gui_config: GuiConfig) -> anyhow::Resul
     debug!("Sending init command {send_struct:?}");
     let serialized = bincode::serialize(&send_struct).with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
     send(&serialized).with_context(|| format!("Failed to send init command {serialized:?}"))
-        .inspect_err(|_| { // TODO should be removed in the future as daemon now checks versions and informs the user with notification itself
-            let _ = Notification::new()
-                .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                .body("
-Daemon most likely out of sync (<3.0.0)
-This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
-You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)
-
-visit https://github.com/H3rmt/hyprswitch/wiki/Examples to see Examples
-and visit https://github.com/H3rmt/hyprswitch/wiki/Migration-from-2.x.x-to-3.0.0 to see migration guide
-")
-                .timeout(20000)
-                .hint(notify_rust::Hint::Urgency(Urgency::Critical))
-                .show();
-        })
 }
 
 ///
