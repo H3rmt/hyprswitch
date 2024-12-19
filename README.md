@@ -31,8 +31,6 @@ Table of Contents
 * [Theming](#theming---custom-css)
 * [Other](#other)
     * [Sorting of windows](#sorting-of-windows)
-    * [--ignore-workspaces](#--ignore-workspaces)
-    * [--ignore-monitors](#--ignore-monitors)
     * [Experimental Environment Variables](#experimental-environment-variables)
 
 # Migration to 3.0.0
@@ -67,30 +65,29 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 
 ## Parameters
 
-### (see `hyprswitch --help` / `hyprswitch init --help` / ... for more detailed info and less used parameters)
+### This list only includes the most common options or values, (see `hyprswitch gui --help` / `hyprswitch init --help` / ... for more detailed info)
 
 - `--dry-run / -d` Print the command that would be executed instead of executing it
 - `-v` Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
 
 - `init` Initialize and start the Daemon
-    - `--custom-css <PATH>` Specify a path to custom css file
-    - `--show-title` [default=true] Show the windows title instead of its class in Overview (fallback to class if title is empty)
+    - `--custom-css <PATH>` Specify a path to custom CSS file
+    - `--show-title` [default=true] Show the window title instead of its class in Overview (fallback to class if title is empty)
     - `--workspaces-per-row` [default=5] Limit amount of workspaces in one row (overflows to next row)
     - `--size-factor` [default=6] The size factor (float) for the GUI (original_size / 30 * size_factor)
 - `gui` Opens the GUI
-    - `--mod-key <MODIFIER>` [required] The modifier key used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r)
-    - `--key <KEY>` [required] The key to used to open the GUI (e.g., tab)
+    - `--mod-key <MODIFIER>` [{required}] The modifier key used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r) (You might want to use a variable, see Examples)
+    - `--key <KEY>` [{required}] The key to used to open the GUI (e.g., tab) (You might want to use a variable, see Examples)
     - `--reverse-key <KEYTYPE>=<KEY>` [default=shift] The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
       reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
-    - `--close <TYPE>` How to close hyprswitch (`Return` or pressing window always closes, ESC always kills)
+    - `--close <TYPE>` How to close hyprswitch (`Return` or pressing a window always closes, ESC always kills)
         - `mod-key-index` [default] Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...)
-        - `mod-key` Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB)
         - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER)
         - `index` Close when pressing an index key (1, 2, 3, ...)
     - `--max-switch-offset <MAX_SWITCH_OFFSET>` [default=6] The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
     - `--hide-active-window-border` [default=false] Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
-  - `--monitors` Show the GUI only on this monitor(s) [default: display on all monitors] Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1` Available values: `hyprctl monitors -j | jq '.[].name'`
-  - `--show-workspaces-on-all-monitors` Show all workspaces on all monitors [default: only show workspaces on the corresponding monitor]
+    - `--monitors` Show the GUI only on this monitor(s) [default: display on all monitors] Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1` Available values: `hyprctl monitors -j | jq '.[].name'` (You might want to use this together with the next option)
+    - `--show-workspaces-on-all-monitors` Show all workspaces on all monitors [default: only show workspaces on the corresponding monitor]
     - Same options as `simple` except `--offset` and `--reverse`
 
 - `simple` Switch without using the GUI / Daemon (switches directly)
@@ -112,7 +109,9 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 
 ## Examples:
 
-(Modify the $... variables to use the keys you prefer)
+**(Modify the $... variables to use the keys you prefer)**
+
+**It is recommended to keep the `$key` variables to prevent errors when forgetting to change the parameter value when changing the keybinding**
 
 ### GUI
 
@@ -123,7 +122,7 @@ exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 
 
 $key = tab
 $mod = super
-bind = $mod , $key, exec, hyprswitch gui --mod-key $mod  --key $key --max-switch-offset 9 --hide-active-window-border
+bind = $mod , $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9 --hide-active-window-border
 ```
 
 **Simple Arrow keys**: Press `super` + `$key(tab)` to open the GUI, or press `1` / `2` / ... or arrow keys to change selected window, `return` to switch
@@ -175,13 +174,13 @@ bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --clo
 ### CSS Variables
 
 ```css
-window {
-    --border-color: rgba(90, 90, 110, 0.4);
-    --border-color-active: rgba(239, 9, 9, 0.9);
-    --bg-color: rgba(20, 20, 20, 1);
-    --bg-color-hover: rgba(40, 40, 50, 1);
-    --index-border-color: rgba(20, 170, 170, 0.7);
-    --border-radius: 12px;
+:root {
+    --border-color:        rgba(90, 90,110, 0.4);
+    --border-color-active: rgba(239, 9,  9, 0.9);
+    --bg-color:            rgba(20, 20, 20, 1);
+    --bg-color-hover:      rgba(40, 40, 50, 1);
+    --index-border-color:  rgba(20,170,170,0.7);
+    --border-radius:       12px;
 }
 ```
 
@@ -189,7 +188,7 @@ window {
 
 ```css
 /* light blue borders for active, more transparent bg and more border-radius */
-window {
+:root {
     --border-color-active: rgba(17, 170, 217, 0.9);
     --bg-color: rgba(20, 20, 20, 0.8);
     --border-radius: 15px;
@@ -217,13 +216,11 @@ window {
 }
 ```
 
-### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/CSS) for more info
+### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/CSS) for more info and [CSS File](./src/daemon/gui/style.css) for the default Style
 
 # Other
 
 ### Sorting of windows
-
-See [tests](/src/handle/sort/tests) for more details on how windows get sorted
 
 ```
    1      2  3      4
