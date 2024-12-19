@@ -93,7 +93,8 @@ fn connect_app(init_config: InitConfig, share: Share, receiver: Receiver<GUISend
                                 window.show();
                                 init_monitor(share.clone(),
                                     &data.hypr_data.workspaces, &data.hypr_data.clients,
-                                    monitor_data, init_config.show_title, init_config.size_factor
+                                    monitor_data, init_config.show_title, data.gui_config.show_workspaces_on_all_monitors,
+                                    init_config.size_factor
                                 );
                                 trace!("[GUI] Refresh window {:?}", window);
                                 update_monitor(monitor_data, &data)

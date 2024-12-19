@@ -19,13 +19,14 @@ pub(super) fn init_monitor(
     clients_p: &[(Address, ClientData)],
     monitor_data: &mut MonitorData,
     show_title: bool,
+    show_workspaces_on_all_monitors: bool,
     size_factor: f64,
 ) {
     clear_monitor(monitor_data);
 
     let workspaces = {
         let mut workspaces = workspaces_p.iter()
-            .filter(|(_, v)| v.monitor == monitor_data.id)
+            .filter(|(_, v)| show_workspaces_on_all_monitors || v.monitor == monitor_data.id)
             .collect::<Vec<_>>();
         workspaces.sort_by(|(a, _), (b, _)| a.cmp(b));
         workspaces
