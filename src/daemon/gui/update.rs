@@ -43,6 +43,9 @@ macro_rules! update_type {
                 );
                 if let Some(offset) = offset {
                     label.set_label(&offset.to_string());
+                } else {
+                    $overlay.remove_overlay(label);
+                    *$label = None;
                 }
             }
 
@@ -54,8 +57,8 @@ macro_rules! update_type {
             }
         } else {
             // remove label if exists
-            if let Some(label) = $label {
-                $overlay.remove_overlay(label);
+            if let Some(label) = $label.take() {
+                $overlay.remove_overlay(&label);
             }
             $overlay.remove_css_class($css_active_name);
         }
@@ -108,20 +111,23 @@ fn calc_offset(total_clients: usize, selected_client_position: usize, position: 
     let max_offset = max_offset as i16;
     let max_offset = min(max_offset, total_clients);
 
+    println!("max_offset: {max_offset}");
     let mut ret = None;
     for offset in 0..=max_offset {
         let max = (selected_client_position + offset) % total_clients;
         if max == position {
             return Some(offset);
         }
-        let min = (selected_client_position - offset) % total_clients;
-        if min == position {
-            if prefer_higher_positive_number {
-                // only return a negative offset if no positive was found
-                ret = Some(-offset);
-            } else {
-                // return negative number instantly as no smaller positive number was found
-                return Some(-offset);
+        if allow_negative_numbers {
+            let min = (selected_client_position - offset) % total_clients;
+            if min == position {
+                if prefer_higher_positive_number {
+                    // only return a negative offset if no positive was found
+                    ret = Some(-offset);
+                } else {
+                    // return negative number instantly as no smaller positive number was found
+                    return Some(-offset);
+                }
             }
         }
     }

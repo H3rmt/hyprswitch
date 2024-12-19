@@ -4,7 +4,6 @@ use std::str::FromStr;
 
 use crate::handle::get_monitors;
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use hyprland::shared::MonitorId;
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Debug, Clone)]
@@ -262,7 +261,7 @@ impl FromStr for Monitors {
                 return Err(format!("{s} not found in {:?}", available.iter().map(|a| a.name.clone()).collect::<Vec<_>>()));
             }
         }
-        Ok(Self { 0: vec })
+        Ok(Self(vec))
     }
 }
 
