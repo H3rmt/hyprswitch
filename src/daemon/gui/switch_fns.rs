@@ -63,15 +63,22 @@ pub(crate) fn close_gui(share: Share, kill: bool) -> anyhow::Result<()> {
         }
         drop(lock);
     }
-    thread::spawn(clone!(#[strong] send, move || {
-        *(ACTIVE.get().expect("ACTIVE not set").lock().expect("Failed to lock")) = false;
+    thread::spawn(clone!(
+        #[strong]
+        send,
+        move || {
+            *(ACTIVE
+                .get()
+                .expect("ACTIVE not set")
+                .lock()
+                .expect("Failed to lock")) = false;
 
-        send.send_blocking(GUISend::Hide)
-            .unwrap_or_else(|e| warn!("Unable to refresh the GUI: {e}"));
-        deactivate_submap()
-            .unwrap_or_else(|e| warn!("Unable to deactivate submap: {e}"));
-        clear_recent_clients();
-        reload_icon_cache();
-    }));
+            send.send_blocking(GUISend::Hide)
+                .unwrap_or_else(|e| warn!("Unable to refresh the GUI: {e}"));
+            deactivate_submap().unwrap_or_else(|e| warn!("Unable to deactivate submap: {e}"));
+            clear_recent_clients();
+            reload_icon_cache();
+        }
+    ));
     Ok(())
 }

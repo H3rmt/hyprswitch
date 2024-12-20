@@ -5,8 +5,8 @@ use gtk4::glib::clone;
 use crate::{InitConfig, Share, SharedData};
 
 pub mod gui;
-mod handle_fns;
 mod handle_client;
+mod handle_fns;
 mod submap;
 
 pub use submap::deactivate_submap;
@@ -19,9 +19,13 @@ pub fn start_daemon(init_config: InitConfig) -> anyhow::Result<()> {
     let share: Share = Arc::new((Mutex::new(SharedData::default()), sender, return_receiver));
 
     std::thread::scope(move |scope| {
-        scope.spawn(clone!(#[strong] share, move || {
-            handle_client::start_handler_blocking(&share);
-        }));
+        scope.spawn(clone!(
+            #[strong]
+            share,
+            move || {
+                handle_client::start_handler_blocking(&share);
+            }
+        ));
         scope.spawn(|| {
             gui::reload_icon_cache();
         });

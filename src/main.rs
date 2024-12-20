@@ -1,10 +1,10 @@
-use std::process::exit;
-use std::sync::Mutex;
 use anyhow::Context;
 use clap::Parser;
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
 use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
+use std::process::exit;
+use std::sync::Mutex;
 
 fn main() -> anyhow::Result<()> {
     let cli = cli::App::try_parse()
@@ -26,16 +26,23 @@ fn main() -> anyhow::Result<()> {
             eprintln!("{}", e);
             exit(1);
         });
-    stderrlog::new().module(module_path!()).verbosity(cli.global_opts.verbose as usize + 1).init()
-        .context("Failed to initialize logging :(").unwrap_or_else(|e| warn!("{:?}", e));
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(cli.global_opts.verbose as usize + 1)
+        .init()
+        .context("Failed to initialize logging :(")
+        .unwrap_or_else(|e| warn!("{:?}", e));
 
     let _ = check_version().map_err(|e| {
         warn!("Unable to check Hyprland version, continuing anyway");
         debug!("{:?}", e);
     });
 
-    DRY.set(cli.global_opts.dry_run).expect("unable to set DRY (already filled???)");
-    ACTIVE.set(Mutex::new(false)).expect("unable to set ACTIVE (already filled???)");
+    DRY.set(cli.global_opts.dry_run)
+        .expect("unable to set DRY (already filled???)");
+    ACTIVE
+        .set(Mutex::new(false))
+        .expect("unable to set ACTIVE (already filled???)");
 
     match cli.command {
         cli::Command::Init { init_opts } => {
@@ -59,14 +66,19 @@ fn main() -> anyhow::Result<()> {
                 warn!("Daemon not running");
                 return Ok(());
             }
-            hyprswitch::client::send_close_daemon(kill).context("Failed to send kill command to daemon")?;
+            hyprswitch::client::send_close_daemon(kill)
+                .context("Failed to send kill command to daemon")?;
         }
         cli::Command::Dispatch { simple_opts } => {
             let command = Command::from(simple_opts);
-            hyprswitch::client::send_switch_command(command)
-                .with_context(|| format!("Failed to send switch command with command {command:?} to daemon"))?;
+            hyprswitch::client::send_switch_command(command).with_context(|| {
+                format!("Failed to send switch command with command {command:?} to daemon")
+            })?;
         }
-        cli::Command::Gui { gui_conf, simple_config } => {
+        cli::Command::Gui {
+            gui_conf,
+            simple_config,
+        } => {
             if !hyprswitch::client::daemon_running() {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
@@ -86,24 +98,51 @@ fn main() -> anyhow::Result<()> {
 
             return Ok(());
         }
-        cli::Command::Simple { simple_opts, simple_conf } => {
+        cli::Command::Simple {
+            simple_opts,
+            simple_conf,
+        } => {
             let config = Config::from(simple_conf);
-            let (clients_data, active) = hyprswitch::handle::collect_data(config.clone()).with_context(|| format!("Failed to collect data with config {config:?}"))?;
+            let (clients_data, active) = hyprswitch::handle::collect_data(config.clone())
+                .with_context(|| format!("Failed to collect data with config {config:?}"))?;
 
             let command = Command::from(simple_opts);
 
             let active = match config.switch_type {
-                cli::SwitchType::Client => if let Some(add) = active.0 { Active::Client(add) } else { Active::Unknown },
-                cli::SwitchType::Workspace => if let Some(ws) = active.1 { Active::Workspace(ws) } else { Active::Unknown },
-                cli::SwitchType::Monitor => if let Some(mon) = active.2 { Active::Monitor(mon) } else { Active::Unknown },
+                cli::SwitchType::Client => {
+                    if let Some(add) = active.0 {
+                        Active::Client(add)
+                    } else {
+                        Active::Unknown
+                    }
+                }
+                cli::SwitchType::Workspace => {
+                    if let Some(ws) = active.1 {
+                        Active::Workspace(ws)
+                    } else {
+                        Active::Unknown
+                    }
+                }
+                cli::SwitchType::Monitor => {
+                    if let Some(mon) = active.2 {
+                        Active::Monitor(mon)
+                    } else {
+                        Active::Unknown
+                    }
+                }
             };
             info!("Active: {:?}", active);
-            let next_active = hyprswitch::handle::find_next(&config.switch_type, command, &clients_data, &active);
+            let next_active =
+                hyprswitch::handle::find_next(&config.switch_type, command, &clients_data, &active);
             if let Ok(next_active) = next_active {
                 hyprswitch::handle::switch_to_active(&next_active, &clients_data)?;
             }
         }
-        cli::Command::Icon { class, desktop_files, list } => {
+        cli::Command::Icon {
+            class,
+            desktop_files,
+            list,
+        } => {
             println!("use with -vvv icon ... to see full logs!");
             match (list, desktop_files) {
                 (true, false) => {
@@ -117,12 +156,17 @@ fn main() -> anyhow::Result<()> {
                     let map = hyprswitch::daemon::gui::get_desktop_files_debug();
 
                     for (name, file) in map {
-                        info!("Desktop file: {name} -> {} ({}) [{:?}]", file.0, match file.1 {
-                            0 => "Name",
-                            1 => "Exec",
-                            2 => "StartupWMClass",
-                            _ => "Unknown",
-                        }, file.2);
+                        info!(
+                            "Desktop file: {name} -> {} ({}) [{:?}]",
+                            file.0,
+                            match file.1 {
+                                0 => "Name",
+                                1 => "Exec",
+                                2 => "StartupWMClass",
+                                _ => "Unknown",
+                            },
+                            file.2
+                        );
                     }
                 }
                 _ => {
@@ -134,13 +178,19 @@ fn main() -> anyhow::Result<()> {
                     } else {
                         info!("Theme does not contain icon for class {class}");
                         let name = hyprswitch::daemon::gui::get_icon_name_debug(&class)
-                            .with_context(|| format!("Failed to get icon name for class {class}"))?;
-                        info!("name from desktop file: {:?} from {}", name.2, match name.1 {
-                            0 => "Name",
-                            1 => "Exec",
-                            2 => "StartupWMClass",
-                            _ => "Unknown",
-                        });
+                            .with_context(|| {
+                                format!("Failed to get icon name for class {class}")
+                            })?;
+                        info!(
+                            "name from desktop file: {:?} from {}",
+                            name.2,
+                            match name.1 {
+                                0 => "Name",
+                                1 => "Exec",
+                                2 => "StartupWMClass",
+                                _ => "Unknown",
+                            }
+                        );
                         if theme.has_icon(&name.0) {
                             info!("Theme contains icon for name {}", name.0);
                         } else {

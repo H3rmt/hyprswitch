@@ -188,7 +188,6 @@ pub struct GuiConf {
     pub hide_active_window_border: bool,
 
     // pub tile_floating_windows: bool,
-
     /// Show the GUI only on this monitor(s) [default: display on all monitors]
     ///
     /// Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1`
@@ -220,7 +219,6 @@ pub enum ModKeyInput {
     SuperR,
 }
 
-
 #[derive(ValueEnum, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub enum ModKey {
     AltL,
@@ -240,7 +238,7 @@ impl From<ModKeyInput> for ModKey {
             ModKeyInput::Ctrl | ModKeyInput::CtrlL => ModKey::CtrlL,
             ModKeyInput::CtrlR => ModKey::CtrlR,
             ModKeyInput::Super | ModKeyInput::SuperL => ModKey::SuperL,
-            ModKeyInput::SuperR => ModKey::SuperR
+            ModKeyInput::SuperR => ModKey::SuperR,
         }
     }
 }
@@ -258,7 +256,10 @@ impl FromStr for Monitors {
             if let Some(m) = available.iter().find(|m| m.name == monitor) {
                 vec.push(m.name.clone())
             } else {
-                return Err(format!("{s} not found in {:?}", available.iter().map(|a| a.name.clone()).collect::<Vec<_>>()));
+                return Err(format!(
+                    "{s} not found in {:?}",
+                    available.iter().map(|a| a.name.clone()).collect::<Vec<_>>()
+                ));
             }
         }
         Ok(Self(vec))

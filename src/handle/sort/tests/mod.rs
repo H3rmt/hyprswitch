@@ -13,7 +13,17 @@ mod simple;
 
 pub fn is_sorted(data: &[(Address, ClientData)]) -> bool {
     data.windows(2).all(|l| {
-        l[0].0.to_string().trim_start_matches("0x").parse::<u16>().unwrap() < l[1].0.to_string().trim_start_matches("0x").parse::<u16>().unwrap()
+        l[0].0
+            .to_string()
+            .trim_start_matches("0x")
+            .parse::<u16>()
+            .unwrap()
+            < l[1]
+                .0
+                .to_string()
+                .trim_start_matches("0x")
+                .parse::<u16>()
+                .unwrap()
     })
 }
 
@@ -39,7 +49,16 @@ pub fn create_svg_from_client_tests(
             .iter()
             .enumerate()
             .filter(|(_, (_, c))| c.monitor == *iden)
-            .map(|(i, (a, c))| (i, c.x * 10, c.y * 10, c.width * 10, c.height * 10, a.to_string()))
+            .map(|(i, (a, c))| {
+                (
+                    i,
+                    c.x * 10,
+                    c.y * 10,
+                    c.width * 10,
+                    c.height * 10,
+                    a.to_string(),
+                )
+            })
             .map(|(i, x, y, w, h, iden)| (i, x as u16, y as u16, w as u16, h as u16, iden))
             .collect();
 
@@ -51,7 +70,12 @@ pub fn create_svg_from_client_tests(
         };
 
         // find the width of the svg by finding the max x+width value
-        let wid = cl.iter().map(|(_, x, _, w, _, _)| x + w).max().expect("no clients") + 10;
+        let wid = cl
+            .iter()
+            .map(|(_, x, _, w, _, _)| x + w)
+            .max()
+            .expect("no clients")
+            + 10;
 
         create_svg(
             cl,
@@ -98,16 +122,28 @@ pub fn create_svg(
                     .set("y", y)
                     .set("width", width)
                     .set("height", height)
-                    .set("stroke", format!("hsl({} {}% {}% / {}%)", color[0], color[1], color[2], 65))
+                    .set(
+                        "stroke",
+                        format!("hsl({} {}% {}% / {}%)", color[0], color[1], color[2], 65),
+                    )
                     .set("stroke-width", stroke_width)
                     .set("fill", "none"),
             )
             .add(
                 Text::new(format!("{i}-{identifier}"))
-                    .set("x", (x + width / 2) as i16 - ((identifier.len() as u16 * (stroke_width * 4)) / 2) as i16)
-                    .set("y", (y + height / 2) as i16 + ((((stroke_width as f32 * color[0] as f32) / 90.0) as i16) - stroke_width as i16))
+                    .set(
+                        "x",
+                        (x + width / 2) as i16
+                            - ((identifier.len() as u16 * (stroke_width * 4)) / 2) as i16,
+                    )
+                    .set(
+                        "y",
+                        (y + height / 2) as i16
+                            + ((((stroke_width as f32 * color[0] as f32) / 90.0) as i16)
+                                - stroke_width as i16),
+                    )
                     .set("font-size", stroke_width * 4)
-                    .set("fill", "white")
+                    .set("fill", "white"),
             );
 
         svg = svg.add(group);
@@ -115,7 +151,6 @@ pub fn create_svg(
 
     svg::save(filename.clone(), &svg).unwrap_or_else(|_| panic!("unable to save svg {filename}"));
 }
-
 
 /// (x, y, width, height, workspace, monitor) => <increment>: ClientData { x, y, width, height, workspace, monitor, address: Address::new(<increment>), focus_history_id: <increment>, class: "test".to_string(), title: "test".to_string(), floating: false, active: true }
 ///
@@ -220,36 +255,36 @@ macro_rules! workspace_map {
 
 #[allow(unused_macros)]
 macro_rules! function {
-        () => {{
-            fn f() {}
-            fn type_name_of<T>(_: T) -> &'static str {
-                std::any::type_name::<T>()
-            }
-            let name = type_name_of(f);
+    () => {{
+        fn f() {}
+        fn type_name_of<T>(_: T) -> &'static str {
+            std::any::type_name::<T>()
+        }
+        let name = type_name_of(f);
 
-            let mut filename = file!().split("/").collect::<Vec<&str>>();
-            if let Some(last) = filename.last() {
-                if *last == "mod.rs" {
-                    filename.pop();
-                }
+        let mut filename = file!().split("/").collect::<Vec<&str>>();
+        if let Some(last) = filename.last() {
+            if *last == "mod.rs" {
+                filename.pop();
             }
-            let filename = filename.join("/");
+        }
+        let filename = filename.join("/");
 
-            // Find and cut the rest of the path
-            &(filename
-                + "/"
-                + match &name[..name.len() - 3].rfind(':') {
-                    Some(pos) => &name[pos + 1..name.len() - 3],
-                    None => &name[..name.len() - 3],
-                })
-        }};
-    }
+        // Find and cut the rest of the path
+        &(filename
+            + "/"
+            + match &name[..name.len() - 3].rfind(':') {
+                Some(pos) => &name[pos + 1..name.len() - 3],
+                None => &name[..name.len() - 3],
+            })
+    }};
+}
 
 // used for tests
 #[allow(unused_imports)]
-pub(crate) use function;
-#[allow(unused_imports)]
 pub(crate) use client_vec;
+#[allow(unused_imports)]
+pub(crate) use function;
 #[allow(unused_imports)]
 pub(crate) use monitor_map;
 #[allow(unused_imports)]

@@ -2,7 +2,10 @@ use crate::daemon::gui::click::{press_client, press_workspace};
 use crate::daemon::gui::{icons, MonitorData, ICON_SCALE, ICON_SIZE, SHOW_DEFAULT_ICON};
 use crate::{ClientData, Share, WorkspaceData};
 use gtk4::gdk_pixbuf::Pixbuf;
-use gtk4::{pango, prelude::*, Fixed, Frame, IconLookupFlags, IconTheme, Label, Overflow, Overlay, Picture, TextDirection};
+use gtk4::{
+    pango, prelude::*, Fixed, Frame, IconLookupFlags, IconTheme, Label, Overflow, Overlay, Picture,
+    TextDirection,
+};
 use hyprland::shared::{Address, WorkspaceId};
 use log::{trace, warn};
 use std::fs;
@@ -11,7 +14,6 @@ use std::time::Instant;
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
 }
-
 
 pub(super) fn init_monitor(
     share: Share,
@@ -25,7 +27,8 @@ pub(super) fn init_monitor(
     clear_monitor(monitor_data);
 
     let workspaces = {
-        let mut workspaces = workspaces_p.iter()
+        let mut workspaces = workspaces_p
+            .iter()
             .filter(|(_, v)| show_workspaces_on_all_monitors || v.monitor == monitor_data.id)
             .collect::<Vec<_>>();
         workspaces.sort_by(|(a, _), (b, _)| a.cmp(b));
@@ -39,17 +42,23 @@ pub(super) fn init_monitor(
             .build();
 
         let id_string = wid.to_string();
-        let title = if show_title && !workspace.name.trim().is_empty() { &workspace.name } else { &id_string };
+        let title = if show_title && !workspace.name.trim().is_empty() {
+            &workspace.name
+        } else {
+            &id_string
+        };
 
         let workspace_frame = Frame::builder()
             .label(title)
-            .label_xalign(0.5).child(&workspace_fixed)
+            .label_xalign(0.5)
+            .child(&workspace_fixed)
             .build();
 
         let workspace_overlay = {
             let workspace_overlay = Overlay::builder()
                 .css_classes(vec!["workspace", "background"])
-                .child(&workspace_frame).build();
+                .child(&workspace_frame)
+                .build();
             // special workspace
             if *wid < 0 {
                 workspace_overlay.add_css_class("workspace_special");
@@ -58,15 +67,22 @@ pub(super) fn init_monitor(
             monitor_data.workspaces_flow.insert(&workspace_overlay, -1);
             workspace_overlay
         };
-        monitor_data.workspace_refs.insert(*wid, (workspace_overlay, None));
+        monitor_data
+            .workspace_refs
+            .insert(*wid, (workspace_overlay, None));
 
         let clients = {
-            let mut clients = clients_p.iter()
+            let mut clients = clients_p
+                .iter()
                 .filter(|(_, client)| client.monitor == monitor_data.id && client.workspace == *wid)
                 .collect::<Vec<_>>();
             clients.sort_by(|(_, a), (_, b)| {
                 // prefer smaller windows
-                if a.floating && b.floating { (b.width * b.height).cmp(&(a.width * a.height)) } else { a.floating.cmp(&b.floating) }
+                if a.floating && b.floating {
+                    (b.width * b.height).cmp(&(a.width * a.height))
+                } else {
+                    a.floating.cmp(&b.floating)
+                }
             });
             clients
         };
@@ -74,17 +90,30 @@ pub(super) fn init_monitor(
             let client_overlay = {
                 let picture = Picture::builder().css_classes(vec!["client-image"]).build();
                 set_icon_spawn(client, &picture);
-                let title = if show_title && !client.title.trim().is_empty() { &client.title } else { &client.class };
-                let client_label = Label::builder().label(title)
-                    .overflow(Overflow::Visible).margin_start(6)
-                    .ellipsize(pango::EllipsizeMode::End).build();
+                let title = if show_title && !client.title.trim().is_empty() {
+                    &client.title
+                } else {
+                    &client.class
+                };
+                let client_label = Label::builder()
+                    .label(title)
+                    .overflow(Overflow::Visible)
+                    .margin_start(6)
+                    .ellipsize(pango::EllipsizeMode::End)
+                    .build();
                 let client_frame = Frame::builder()
                     .label_xalign(0.5)
-                    .label_widget(&client_label).child(&picture).build();
+                    .label_widget(&client_label)
+                    .child(&picture)
+                    .build();
                 let client_overlay = Overlay::builder()
                     .css_classes(vec!["client", "background"])
-                    .child(&client_frame).build();
-                client_overlay.set_size_request(scale(client.width, size_factor), scale(client.height, size_factor));
+                    .child(&client_frame)
+                    .build();
+                client_overlay.set_size_request(
+                    scale(client.width, size_factor),
+                    scale(client.height, size_factor),
+                );
                 client_overlay.add_controller(press_client(&share, address));
                 client_overlay
             };
@@ -93,11 +122,12 @@ pub(super) fn init_monitor(
                 scale(client.x - workspace.x as i16, size_factor) as f64,
                 scale(client.y - workspace.y as i16, size_factor) as f64,
             );
-            monitor_data.client_refs.insert(address.clone(), (client_overlay, None));
+            monitor_data
+                .client_refs
+                .insert(address.clone(), (client_overlay, None));
         }
     }
 }
-
 
 fn clear_monitor(monitor_data: &mut MonitorData) {
     // remove all children
@@ -106,16 +136,22 @@ fn clear_monitor(monitor_data: &mut MonitorData) {
     }
     // remove previous overlay from monitor
     if let Some(overlay_ref_label) = monitor_data.workspaces_flow_overlay.1.take() {
-        monitor_data.workspaces_flow_overlay.0.remove_overlay(&overlay_ref_label);
+        monitor_data
+            .workspaces_flow_overlay
+            .0
+            .remove_overlay(&overlay_ref_label);
     }
 }
-
 
 macro_rules! load_icon {
     ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr) => {
         let icon = $theme.lookup_icon(
-            $icon_name, &[], *ICON_SIZE, *ICON_SCALE,
-            TextDirection::None, IconLookupFlags::PRELOAD,
+            $icon_name,
+            &[],
+            *ICON_SIZE,
+            *ICON_SCALE,
+            TextDirection::None,
+            IconLookupFlags::PRELOAD,
         );
         'block: {
             if let Some(icon_file) = icon.file() {
@@ -188,7 +224,11 @@ fn set_icon_spawn(client: &ClientData, pic: &Picture) {
     });
 }
 
-fn apply_pixbuf_path(path: impl AsRef<std::path::Path>, pic: &Picture, enabled: bool) -> Result<(), ()> {
+fn apply_pixbuf_path(
+    path: impl AsRef<std::path::Path>,
+    pic: &Picture,
+    enabled: bool,
+) -> Result<(), ()> {
     if let Ok(buff) = Pixbuf::from_file_at_scale(path, *ICON_SIZE, *ICON_SIZE, true) {
         if !enabled {
             buff.saturate_and_pixelate(&buff, 0.08, false);

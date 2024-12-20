@@ -14,14 +14,16 @@ use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use crate::cli::{CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
+use crate::cli::{
+    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType,
+};
 
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
 
-pub mod daemon;
 pub mod cli;
 pub mod client;
+pub mod daemon;
 pub mod handle;
 
 #[derive(Debug, Clone)]
@@ -205,7 +207,8 @@ impl From<GuiConf> for GuiConfig {
 
 impl fmt::Display for ModKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self { // need snake_case
+        match self {
+            // need snake_case
             ModKey::SuperL => write!(f, "super_l"),
             ModKey::SuperR => write!(f, "super_r"),
             ModKey::AltL => write!(f, "alt_l"),
@@ -236,7 +239,8 @@ pub fn check_version() -> anyhow::Result<()> {
         .context("Failed to get version! (Hyprland is probably outdated or too new??)")?;
 
     trace!("Hyprland {version:?}");
-    info!("Starting Hyprswitch ({}) on Hyprland {}",
+    info!(
+        "Starting Hyprswitch ({}) on Hyprland {}",
         option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"),
         version.tag
     );
@@ -247,7 +251,10 @@ pub fn check_version() -> anyhow::Result<()> {
     // TODO use .version in future and fall back to tag (only parse tag if version is not found => <v0.41.?)
     if version.tag == "unknown" || parsed_version.lt(&MIN_VERSION) {
         let _ = Notification::new()
-            .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+            .summary(&format!(
+                "Hyprswitch ({}) Error",
+                option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")
+            ))
             .body("Hyprland version too old or unknown")
             .timeout(5000)
             .hint(notify_rust::Hint::Urgency(Urgency::Critical))

@@ -18,19 +18,23 @@ pub fn update_clients(
         .into_iter()
         .filter_map(|(a, mut c)| {
             let ws = if let Some(wdt) = workspace_data {
-                wdt.find_by_first(&c.workspace).map(|ws| (ws.x, ws.y)).or_else(|| {
-                    error!("Workspace {:?} not found for client: {:?}", c.workspace, c);
-                    None
-                })
+                wdt.find_by_first(&c.workspace)
+                    .map(|ws| (ws.x, ws.y))
+                    .or_else(|| {
+                        error!("Workspace {:?} not found for client: {:?}", c.workspace, c);
+                        None
+                    })
             } else {
                 Some((0, 0))
             };
 
             let md = if let Some(mdt) = monitor_data {
-                mdt.find_by_first(&c.monitor).map(|md| (md.x, md.y)).or_else(|| {
-                    error!("Monitor {:?} not found: {:?}", c.monitor, c);
-                    None
-                })
+                mdt.find_by_first(&c.monitor)
+                    .map(|md| (md.x, md.y))
+                    .or_else(|| {
+                        error!("Monitor {:?} not found: {:?}", c.monitor, c);
+                        None
+                    })
             } else {
                 Some((0, 0))
             };

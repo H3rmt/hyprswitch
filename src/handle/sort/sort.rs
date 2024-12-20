@@ -9,9 +9,14 @@ use crate::ClientData;
 /// * 'clients' - Vector of clients to sort
 /// * 'ignore_workspaces' - Don't split clients into workspaces (treat all clients on monitor as one workspace)
 /// * 'ignore_monitors' - Don't split clients into monitors (treat all clients as one monitor)
-pub fn sort_clients(clients: Vec<(Address, ClientData)>, ignore_workspaces: bool, ignore_monitors: bool) -> Vec<(Address, ClientData)> {
+pub fn sort_clients(
+    clients: Vec<(Address, ClientData)>,
+    ignore_workspaces: bool,
+    ignore_monitors: bool,
+) -> Vec<(Address, ClientData)> {
     // monitor -> workspace -> clients
-    let monitors: Vec<Vec<Vec<(Address, ClientData)>>> = match (ignore_workspaces, ignore_monitors) {
+    let monitors: Vec<Vec<Vec<(Address, ClientData)>>> = match (ignore_workspaces, ignore_monitors)
+    {
         (true, true) => {
             panic!(
                 "Can't ignore workspaces and monitors at the same time (currently not implemented)"
@@ -23,7 +28,10 @@ pub fn sort_clients(clients: Vec<(Address, ClientData)>, ignore_workspaces: bool
             // workspace -> clients
             let mut monitors: BTreeMap<MonitorId, Vec<(Address, ClientData)>> = BTreeMap::new();
             for (addr, client) in clients {
-                monitors.entry(client.monitor).or_default().push((addr, client));
+                monitors
+                    .entry(client.monitor)
+                    .or_default()
+                    .push((addr, client));
             }
             monitors.into_values().map(|m| vec![m]).collect()
         }
@@ -63,10 +71,15 @@ pub fn sort_clients(clients: Vec<(Address, ClientData)>, ignore_workspaces: bool
                 }
             }
 
-            let mut new_workspaces: BTreeMap<WorkspaceId, Vec<(Address, ClientData)>> = BTreeMap::new();
+            let mut new_workspaces: BTreeMap<WorkspaceId, Vec<(Address, ClientData)>> =
+                BTreeMap::new();
             for (addr, client) in clients {
                 new_workspaces
-                    .entry(*workspaces_map.get(&client.workspace).expect("Workspace for client not found"))
+                    .entry(
+                        *workspaces_map
+                            .get(&client.workspace)
+                            .expect("Workspace for client not found"),
+                    )
                     .or_default()
                     .push((addr, client));
             }
@@ -75,7 +88,10 @@ pub fn sort_clients(clients: Vec<(Address, ClientData)>, ignore_workspaces: bool
         }
         (false, false) => {
             // monitor -> workspace -> clients
-            let mut monitors: BTreeMap<MonitorId, BTreeMap<WorkspaceId, Vec<(Address, ClientData)>>> = BTreeMap::new();
+            let mut monitors: BTreeMap<
+                MonitorId,
+                BTreeMap<WorkspaceId, Vec<(Address, ClientData)>>,
+            > = BTreeMap::new();
             for (addr, client) in clients {
                 monitors
                     .entry(client.monitor)
@@ -155,8 +171,12 @@ pub fn sort_clients(clients: Vec<(Address, ClientData)>, ignore_workspaces: bool
                         }
                     }
                     match next_index.and_then(|i| queue.remove(i)) {
-                        Some(next) => { sorted_clients.push(next); }
-                        None => { break; }
+                        Some(next) => {
+                            sorted_clients.push(next);
+                        }
+                        None => {
+                            break;
+                        }
                     }
                 }
                 line_start = queue.pop_front();

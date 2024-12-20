@@ -36,14 +36,17 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
         let mut md: Vec<(MonitorId, MonitorData)> = Vec::with_capacity(monitors.iter().len());
 
         monitors.iter().for_each(|monitor| {
-            md.push((monitor.id, MonitorData {
-                x: monitor.x,
-                y: monitor.y,
-                width: (monitor.width as f32 / monitor.scale) as u16,
-                height: (monitor.height as f32 / monitor.scale) as u16,
-                connector: monitor.name.clone(),
-                enabled: false, // gets updated later
-            }));
+            md.push((
+                monitor.id,
+                MonitorData {
+                    x: monitor.x,
+                    y: monitor.y,
+                    width: (monitor.width as f32 / monitor.scale) as u16,
+                    height: (monitor.height as f32 / monitor.scale) as u16,
+                    connector: monitor.name.clone(),
+                    enabled: false, // gets updated later
+                },
+            ));
         });
         md
     };
@@ -54,21 +57,25 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
 
         for (monitor_id, monitor_data) in monitor_data.iter() {
             let mut x_offset: i32 = 0;
-            workspaces.iter()
+            workspaces
+                .iter()
                 .filter(|ws| ws.monitor_id == *monitor_id)
                 .for_each(|workspace| {
-                    wd.push((workspace.id, WorkspaceData {
-                        x: x_offset,
-                        y: monitor_data.y,
-                        name: workspace.name.clone(),
-                        monitor: *monitor_id,
-                        height: monitor_data.height,
-                        width: monitor_data.width,
-                        enabled: false, // gets updated later
-                    }));
+                    wd.push((
+                        workspace.id,
+                        WorkspaceData {
+                            x: x_offset,
+                            y: monitor_data.y,
+                            name: workspace.name.clone(),
+                            monitor: *monitor_id,
+                            height: monitor_data.height,
+                            width: monitor_data.width,
+                            enabled: false, // gets updated later
+                        },
+                    ));
                     x_offset += monitor_data.width as i32;
                 });
-        };
+        }
         wd
     };
 
@@ -77,22 +84,28 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
 
         for client in clients {
             if workspace_data.find_by_first(&client.workspace.id).is_some() {
-                cd.push((client.address.clone(), ClientData {
-                    x: client.at.0,
-                    y: client.at.1,
-                    width: client.size.0,
-                    height: client.size.1,
-                    class: client.class.clone(),
-                    workspace: client.workspace.id,
-                    monitor: client.monitor,
-                    focus_history_id: client.focus_history_id,
-                    title: client.title.clone(),
-                    floating: client.floating,
-                    pid: client.pid,
-                    enabled: false, // gets updated later
-                }));
+                cd.push((
+                    client.address.clone(),
+                    ClientData {
+                        x: client.at.0,
+                        y: client.at.1,
+                        width: client.size.0,
+                        height: client.size.1,
+                        class: client.class.clone(),
+                        workspace: client.workspace.id,
+                        monitor: client.monitor,
+                        focus_history_id: client.focus_history_id,
+                        title: client.title.clone(),
+                        floating: client.floating,
+                        pid: client.pid,
+                        enabled: false, // gets updated later
+                    },
+                ));
             } else {
-                warn!("workspace {:?} not found for client {:?}", client.workspace, client);
+                warn!(
+                    "workspace {:?} not found for client {:?}",
+                    client.workspace, client
+                );
             }
         }
         cd
@@ -109,9 +122,15 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
     }
 
     if config.sort_recent {
-        let mut focus_map = get_recent_clients_map().lock().expect("Failed to lock focus_map");
+        let mut focus_map = get_recent_clients_map()
+            .lock()
+            .expect("Failed to lock focus_map");
         if focus_map.is_empty() {
-            focus_map.extend(client_data.iter().map(|(address, client_data)| (address.clone(), client_data.focus_history_id)));
+            focus_map.extend(
+                client_data
+                    .iter()
+                    .map(|(address, client_data)| (address.clone(), client_data.focus_history_id)),
+            );
         };
         // client_data.
         client_data.sort_by(|(a_addr, a), (b_addr, b)| {
@@ -129,7 +148,11 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
             }
         });
     } else {
-        client_data = sort_clients(client_data, config.ignore_workspaces, config.ignore_monitors);
+        client_data = sort_clients(
+            client_data,
+            config.ignore_workspaces,
+            config.ignore_monitors,
+        );
     }
     // also remove offset of monitors (else gui will be offset)
     if config.ignore_monitors {
@@ -137,35 +160,59 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
     }
 
     let active = Client::get_active()?;
-    let active: Option<(String, WorkspaceId, MonitorId, Address)> =
-        active.as_ref().map_or_else(|| {
-            None
-        }, |a| {
-            Some((a.class.clone(), a.workspace.id, a.monitor, a.address.clone()))
-        });
+    let active: Option<(String, WorkspaceId, MonitorId, Address)> = active.as_ref().map_or_else(
+        || None,
+        |a| {
+            Some((
+                a.class.clone(),
+                a.workspace.id,
+                a.monitor,
+                a.address.clone(),
+            ))
+        },
+    );
 
     trace!("[DATA] active: {:?}", active);
 
     for (_, client) in client_data.iter_mut() {
-        client.enabled = (!config.filter_same_class || active.as_ref().map_or(true, |active| client.class == *active.0))
-            && (!config.filter_current_workspace || active.as_ref().map_or(true, |active| client.workspace == active.1))
-            && (!config.filter_current_monitor || active.as_ref().map_or(true, |active| client.monitor == active.2));
+        client.enabled = (!config.filter_same_class
+            || active
+                .as_ref()
+                .map_or(true, |active| client.class == *active.0))
+            && (!config.filter_current_workspace
+                || active
+                    .as_ref()
+                    .map_or(true, |active| client.workspace == active.1))
+            && (!config.filter_current_monitor
+                || active
+                    .as_ref()
+                    .map_or(true, |active| client.monitor == active.2));
     }
 
     // iterate over all workspaces and set active to false if no client is on the workspace is active
     for (wid, workspace) in workspace_data.iter_mut() {
-        workspace.enabled = client_data.iter().any(|(_, c)| c.enabled && c.workspace == *wid);
+        workspace.enabled = client_data
+            .iter()
+            .any(|(_, c)| c.enabled && c.workspace == *wid);
     }
 
     // iterate over all monitors and set active to false if no client is on the monitor is active
     for (id, monitor) in monitor_data.iter_mut() {
-        monitor.enabled = client_data.iter().any(|(_, c)| c.enabled && c.monitor == *id);
+        monitor.enabled = client_data
+            .iter()
+            .any(|(_, c)| c.enabled && c.monitor == *id);
     }
 
     Ok((
-        HyprlandData { clients: client_data, workspaces: workspace_data, monitors: monitor_data },
-        (active.as_ref().map(|a| a.3.clone()), active.as_ref().map(|a| a.1), active.map(|a| a.2))
+        HyprlandData {
+            clients: client_data,
+            workspaces: workspace_data,
+            monitors: monitor_data,
+        },
+        (
+            active.as_ref().map(|a| a.3.clone()),
+            active.as_ref().map(|a| a.1),
+            active.map(|a| a.2),
+        ),
     ))
 }
-
-
