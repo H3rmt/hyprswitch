@@ -147,7 +147,6 @@ fn calc_offset(
     let max_offset = max_offset as i16;
     let max_offset = min(max_offset, total_clients);
 
-    println!("max_offset: {max_offset}");
     let mut ret = None;
     for offset in 0..=max_offset {
         let max = (selected_client_position + offset) % total_clients;
