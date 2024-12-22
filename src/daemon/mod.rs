@@ -27,7 +27,7 @@ pub fn start_daemon(init_config: InitConfig) -> anyhow::Result<()> {
             }
         ));
         scope.spawn(|| {
-            gui::reload_icon_cache();
+            gui::reload_desktop_maps();
         });
         scope.spawn(move || {
             gui::start_gui_blocking(&share, init_config, receiver, return_sender);

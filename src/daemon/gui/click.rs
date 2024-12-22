@@ -23,7 +23,7 @@ pub(super) fn press_client(share: &Share, address: &Address) -> GestureClick {
                 .map_err(|e| warn!("{:?}", e));
 
             info!("Exiting on click of client window");
-            let _ = close_gui(share.clone(), false)
+            let _ = close_gui(share.clone())
                 .with_context(|| "Failed to close daemon".to_string())
                 .map_err(|e| warn!("{:?}", e));
         }
@@ -43,7 +43,7 @@ pub(super) fn press_workspace(share: &Share, id: WorkspaceId) -> GestureClick {
                 .map_err(|e| warn!("{:?}", e));
 
             info!("Exiting on click of workspace");
-            let _ = close_gui(share.clone(), false)
+            let _ = close_gui(share.clone())
                 .with_context(|| "Failed to close daemon".to_string())
                 .map_err(|e| warn!("{:?}", e));
         }
@@ -64,7 +64,7 @@ pub(super) fn press_monitor(share: &Share, id: MonitorId) -> GestureClick {
                 .map_err(|e| warn!("{:?}", e));
 
             info!("Exiting on click of monitor");
-            let _ = close_gui(share.clone(), false)
+            let _ = close_gui(share.clone())
                 .with_context(|| "Failed to close daemon".to_string())
                 .map_err(|e| warn!("{:?}", e));
         }

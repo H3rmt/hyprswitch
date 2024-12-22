@@ -1,5 +1,5 @@
 use crate::daemon::deactivate_submap;
-use crate::daemon::gui::reload_icon_cache;
+use crate::daemon::gui::reload_desktop_maps;
 use crate::handle::{clear_recent_clients, switch_to_active};
 use crate::{Active, GUISend, Share, ACTIVE};
 use anyhow::Context;
@@ -52,15 +52,11 @@ pub(crate) fn switch_gui_monitor(share: Share, id: MonitorId) -> anyhow::Result<
     Ok(())
 }
 
-pub(crate) fn close_gui(share: Share, kill: bool) -> anyhow::Result<()> {
+pub(crate) fn close_gui(share: Share) -> anyhow::Result<()> {
     let (latest, send, _) = share.deref();
     {
         let lock = latest.lock().expect("Failed to lock");
-        if !kill {
-            switch_to_active(&lock.active, &lock.hypr_data)?;
-        } else {
-            info!("Not executing switch on close, killing");
-        }
+        switch_to_active(&lock.active, &lock.hypr_data)?;
         drop(lock);
     }
     thread::spawn(clone!(
@@ -77,7 +73,7 @@ pub(crate) fn close_gui(share: Share, kill: bool) -> anyhow::Result<()> {
                 .unwrap_or_else(|e| warn!("Unable to refresh the GUI: {e}"));
             deactivate_submap().unwrap_or_else(|e| warn!("Unable to deactivate submap: {e}"));
             clear_recent_clients();
-            reload_icon_cache();
+            reload_desktop_maps();
         }
     ));
     Ok(())

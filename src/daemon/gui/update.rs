@@ -1,78 +1,162 @@
 use crate::cli::ReverseKey;
-use crate::daemon::gui::MonitorData;
+use crate::daemon::gui::icons::get_all_desktop_files;
+use crate::daemon::gui::{MonitorData, LAUNCHER_MAX_ITEMS};
 use crate::{Active, SharedData};
 use anyhow::Context;
-use gtk4::prelude::WidgetExt;
-use gtk4::{Align, Label};
+use gtk4::prelude::{BoxExt, WidgetExt};
+use gtk4::{Align, IconSize, Image, Label, ListBox, ListBoxRow, Orientation};
 use std::cmp::min;
+use std::collections::BTreeMap;
+use std::ops::Deref;
 
 macro_rules! update_type {
     (
         $htypr_data:expr, $identifier_name:ident, $css_active_name:expr, $id:expr,
         $overlay:expr, $label:expr, $active:expr, $gui_config:expr, $valign: expr
     ) => {
-        let (_, data) = $htypr_data
-            .iter()
-            .find(|(i, _)| *i == $id)
-            .with_context(|| format!("Failed to find ... with id {}", $id))?;
-        if data.enabled {
-            // create label if not exists
-            if $label.is_none() {
-                let new_label = Label::builder()
-                    .css_classes(vec!["index"])
-                    .halign(Align::End)
-                    .valign($valign)
-                    .build();
-                $overlay.add_overlay(&new_label);
-                *$label = Some(new_label.clone());
-            }
-
-            // will always be some, TODO find better way to handle this
-            if let Some(label) = $label {
-                let position = $htypr_data
-                    .iter()
-                    .filter(|(_, d)| d.enabled)
-                    .position(|(oid, _)| *oid == $id)
-                    .unwrap_or(0);
-                let selected_client_position = $htypr_data
-                    .iter()
-                    .filter(|(_, d)| d.enabled)
-                    .position(|(oid, _)| *oid == $active)
-                    .unwrap_or(0);
-                let offset = calc_offset(
-                    $htypr_data.iter().filter(|(_, wd)| wd.enabled).count(),
-                    selected_client_position,
-                    position,
-                    $gui_config.max_switch_offset,
-                    if let ReverseKey::Mod(_) = $gui_config.reverse_key.clone() {
-                        true
-                    } else {
-                        false
-                    },
-                    true,
-                );
-                if let Some(offset) = offset {
-                    label.set_label(&offset.to_string());
-                } else {
-                    $overlay.remove_overlay(label);
-                    *$label = None;
+        let find = $htypr_data.iter().find(|(i, _)| *i == $id);
+        if let Some((_, data)) = find {
+            if data.enabled {
+                // create label if not exists
+                if $label.is_none() {
+                    let new_label = Label::builder()
+                        .css_classes(vec!["index"])
+                        .halign(Align::End)
+                        .valign($valign)
+                        .build();
+                    $overlay.add_overlay(&new_label);
+                    *$label = Some(new_label.clone());
                 }
-            }
 
-            // mark the active client
-            if !$gui_config.hide_active_window_border && $active == $id {
-                $overlay.add_css_class($css_active_name);
+                // will always be some, TODO find better way to handle this
+                if let Some(label) = $label {
+                    let position = $htypr_data
+                        .iter()
+                        .filter(|(_, d)| d.enabled)
+                        .position(|(oid, _)| *oid == $id)
+                        .unwrap_or(0);
+                    let selected_client_position = $htypr_data
+                        .iter()
+                        .filter(|(_, d)| d.enabled)
+                        .position(|(oid, _)| *oid == $active)
+                        .unwrap_or(0);
+                    let offset = calc_offset(
+                        $htypr_data.iter().filter(|(_, wd)| wd.enabled).count(),
+                        selected_client_position,
+                        position,
+                        $gui_config.max_switch_offset,
+                        if let ReverseKey::Mod(_) = $gui_config.reverse_key.clone() {
+                            true
+                        } else {
+                            false
+                        },
+                        true,
+                    );
+                    if let Some(offset) = offset {
+                        label.set_label(&offset.to_string());
+                    } else {
+                        $overlay.remove_overlay(label);
+                        *$label = None;
+                    }
+                }
+
+                // mark the active client
+                if !$gui_config.hide_active_window_border && $active == $id {
+                    $overlay.add_css_class($css_active_name);
+                } else {
+                    $overlay.remove_css_class($css_active_name);
+                }
             } else {
+                // remove label if exists
+                if let Some(label) = $label.take() {
+                    $overlay.remove_overlay(&label);
+                }
                 $overlay.remove_css_class($css_active_name);
             }
-        } else {
-            // remove label if exists
-            if let Some(label) = $label.take() {
-                $overlay.remove_overlay(&label);
-            }
-            $overlay.remove_css_class($css_active_name);
         }
     };
+}
+
+pub(super) fn update_searches(
+    text: &str,
+    list: &ListBox,
+    execs: &mut Vec<(Box<str>, Option<Box<str>>)>,
+) {
+    while let Some(child) = list.first_child() {
+        list.remove(&child);
+    }
+
+    execs.clear();
+    if text.is_empty() {
+        return;
+    }
+
+    let entries = get_all_desktop_files();
+    let mut matches = BTreeMap::new();
+    for (name, icon, _, exec, path) in entries.deref() {
+        if name.to_lowercase().contains(&text.to_lowercase()) {
+            matches.insert(name, (icon, exec, path));
+        }
+    }
+    for (name, icon, keywords, exec, path) in entries.deref() {
+        if keywords.iter().any(|k| k.contains(text)) {
+            matches.insert(name, (icon, exec, path));
+        }
+    }
+
+    for (index, (name, (icon, exec, path))) in
+        matches.into_iter().take(*LAUNCHER_MAX_ITEMS).enumerate()
+    {
+        let widget = create_launch_widget(name, icon, index);
+        list.append(&widget);
+        execs.push((exec.clone(), path.clone()));
+    }
+}
+
+fn create_launch_widget(name: &str, icon: &Option<Box<str>>, index: usize) -> ListBoxRow {
+    let hbox = gtk4::Box::builder()
+        .orientation(Orientation::Horizontal)
+        .spacing(5)
+        .hexpand(true)
+        .vexpand(true)
+        .build();
+
+    if let Some(icon_name) = icon {
+        let icon = Image::builder()
+            .icon_name(icon_name.to_string())
+            .icon_size(IconSize::Large)
+            .build();
+        hbox.append(&icon);
+    }
+
+    let title = Label::builder()
+        .halign(Align::Start)
+        .valign(Align::Center)
+        .hexpand(true)
+        .label(name)
+        .build();
+    hbox.append(&title);
+
+    let i = if index == 0 {
+        "Return"
+    } else {
+        &index.to_string()
+    };
+    let index = Label::builder()
+        .halign(Align::End)
+        .valign(Align::Center)
+        .label(i)
+        .build();
+    hbox.append(&index);
+
+    let row = ListBoxRow::builder()
+        .css_classes(vec!["launcher-row"])
+        .height_request(45)
+        .hexpand(true)
+        .vexpand(true)
+        .child(&hbox)
+        .build();
+    row
 }
 
 pub(super) fn update_monitor(

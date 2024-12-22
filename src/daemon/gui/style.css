@@ -3,12 +3,12 @@
 }
 
 :root {
-    --border-color:        rgba(90, 90,110, 0.4);
-    --border-color-active: rgba(239, 9,  9, 0.9);
-    --bg-color:            rgba(20, 20, 20, 1);
-    --bg-color-hover:      rgba(40, 40, 50, 1);
-    --index-border-color:  rgba(20,170,170,0.7);
-    --border-radius:       12px;
+    --border-color: rgba(90, 90, 110, 0.4);
+    --border-color-active: rgba(239, 9, 9, 0.9);
+    --bg-color: rgba(20, 20, 20, 1);
+    --bg-color-hover: rgba(40, 40, 50, 1);
+    --index-border-color: rgba(20, 170, 170, 0.7);
+    --border-radius: 12px;
 }
 
 .client-image {
@@ -55,20 +55,20 @@
 }
 
 
-.monitor {
-    padding: 2px;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 4px solid var(--border-color);
-}
-
 .monitor:hover {
     background-color: var(--bg-color-hover);
 }
 
 .window_active {
     border: 3px solid var(--border-color-active);
+}
+
+.window {
+    padding: 2px;
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: 3px solid var(--border-color);
 }
 
 
@@ -81,4 +81,21 @@
     border-radius: var(--border-radius);
     background-color: var(--bg-color);
     border: 3px solid var(--index-border-color);
+}
+
+.launcher {
+    min-width: 520px;
+    font-size: 1.3em;
+}
+
+.launcher-entry {
+    margin: 6px;
+    padding-top: 6px;
+    padding-bottom: 4px;
+    padding-left: 12px;
+}
+
+.launcher-list {
+    margin-left: 6px;
+    margin-right: 6px;
 }

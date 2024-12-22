@@ -4,6 +4,7 @@ use notify_rust::{Notification, Urgency};
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
+use std::thread;
 use std::time::Instant;
 
 use crate::daemon::handle_fns::{close, init, switch};
@@ -27,18 +28,20 @@ pub(super) fn start_handler_blocking(share: &Share) {
             Ok((stream, _)) => {
                 let now = Instant::now();
                 let arc_share = share.clone();
-                handle_client(stream, arc_share).context("Failed to handle client")
-                    .unwrap_or_else(|e| {
-                        let _ = Notification::new()
-                            .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                            .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
-                            .timeout(10000)
-                            .hint(notify_rust::Hint::Urgency(Urgency::Critical))
-                            .show();
+                thread::spawn(move || {
+                    handle_client(stream, arc_share).context("Failed to handle client")
+                        .unwrap_or_else(|e| {
+                            let _ = Notification::new()
+                                .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+                                .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
+                                .timeout(10000)
+                                .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+                                .show();
 
-                        warn!("{:?}", e)
-                    });
-                trace!("Handled client in {:?}", now.elapsed());
+                            warn!("{:?}", e)
+                        });
+                    trace!("[HANDLE] Handled client in {:?}", now.elapsed());
+                });
             }
             Err(e) => {
                 error!("Failed to accept client: {}", e);

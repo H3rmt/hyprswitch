@@ -1,7 +1,11 @@
 #![deny(clippy::print_stdout)]
 
+use crate::cli::{
+    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType,
+};
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
+use gtk4::ApplicationWindow;
 use hyprland::data::Version as HyprlandVersion;
 use hyprland::prelude::HyprData;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
@@ -13,10 +17,6 @@ use std::env::var;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
-
-use crate::cli::{
-    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType,
-};
 
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
@@ -129,6 +129,13 @@ pub struct SharedData {
     pub gui_config: GuiConfig,
     pub hypr_data: HyprlandData,
     pub active: Active,
+    pub launcher: LauncherConfig,
+}
+
+#[derive(Debug, Default)]
+pub struct LauncherConfig {
+    execs: Vec<(Box<str>, Option<Box<str>>)>,
+    selected: Option<usize>,
 }
 
 #[derive(Debug, Default)]

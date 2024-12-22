@@ -269,16 +269,10 @@ impl FromStr for Monitors {
 #[derive(ValueEnum, Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub enum CloseType {
     #[default]
-    /// Close when pressing the mod key + key again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
-    ModKeyIndex,
-    /// Close when pressing an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
-    Index,
-    /// Close when pressing the mod key + key again (e.g., SUPER + TAB) or clicking on a window in GUI (or pressing escape)
-    ModKey,
-    /// Close when releasing the mod key (e.g., SUPER) or clicking on a window in GUI (or pressing escape)
+    /// Close when *pressing enter* or an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing escape)
+    Default,
+    /// Close when *releasing the mod key* (e.g., SUPER) or clicking on a window in GUI (or pressing escape)
     ModKeyRelease,
-    /// Close when clicking on a window in GUI (or pressing escape)
-    None,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

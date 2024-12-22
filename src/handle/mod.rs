@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use anyhow::Context;
-use hyprland::data::{Monitor, Monitors};
-use hyprland::prelude::{HyprData, HyprDataVec};
+use hyprland::data::{Client, Monitor, Monitors};
+use hyprland::prelude::{HyprData, HyprDataActiveOptional, HyprDataVec};
 use hyprland::shared::Address;
 use log::info;
 
@@ -17,7 +17,10 @@ use crate::{Active, Command, HyprlandData};
 mod data;
 mod exec;
 mod next;
+mod run;
 mod sort;
+
+pub use run::run_program;
 
 pub fn find_next(
     switch_type: &SwitchType,
@@ -85,4 +88,20 @@ pub fn clear_recent_clients() {
 
 pub fn get_monitors() -> Vec<Monitor> {
     Monitors::get().map_or(vec![], |monitors| monitors.to_vec())
+}
+
+pub fn get_active_monitor() -> Option<String> {
+    match Client::get_active().map(|c| {
+        c.map(|c| {
+            Monitors::get().map(|monitors| {
+                monitors
+                    .iter()
+                    .find(|m| m.id == c.monitor)
+                    .map(|mm| mm.name.clone())
+            })
+        })
+    }) {
+        Ok(Some(Ok(Some(monitor)))) => Some(monitor),
+        _ => None,
+    }
 }
