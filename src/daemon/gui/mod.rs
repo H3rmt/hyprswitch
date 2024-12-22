@@ -15,7 +15,7 @@ use gtk4::{
 use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use lazy_static::lazy_static;
-use log::{error, info, trace, warn};
+use log::{debug, error, info, trace, warn};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -135,7 +135,7 @@ async fn handle_updates(
 ) {
     loop {
         let mess = receiver.recv().await;
-        info!("[GUI] Rebuilding GUI {mess:?}");
+        debug!("[GUI] Rebuilding GUI {mess:?}");
 
         let (data_mut, _, _) = share.deref();
         {
