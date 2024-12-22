@@ -10,6 +10,8 @@ pub fn run_program(run: &str, path: &Option<Box<str>>) {
     }
     info!("Running command: {:?}", process);
     let _ = process
+        .stdout(process::Stdio::null())
+        .stderr(process::Stdio::null())
         .spawn()
         .map_err(|e| warn!("Failed to run command: {}", e));
 }
