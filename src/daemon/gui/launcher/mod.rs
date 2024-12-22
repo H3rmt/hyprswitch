@@ -1,9 +1,14 @@
-use crate::daemon::gui::LauncherRefs;
+use crate::daemon::gui::maps::get_all_desktop_files;
+use crate::daemon::gui::{LauncherRefs, LAUNCHER_MAX_ITEMS};
 use crate::{GUISend, Share};
 use gtk4::glib::clone;
 use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
-use gtk4::{glib, Application, ApplicationWindow, Entry, ListBox, SelectionMode};
+use gtk4::{
+    glib, Align, Application, ApplicationWindow, Entry, IconSize, Image, Label, ListBox,
+    ListBoxRow, Orientation, SelectionMode,
+};
 use gtk4_layer_shell::{Layer, LayerShell};
+use std::collections::BTreeMap;
 use std::ops::Deref;
 
 pub(super) fn create_launcher(
@@ -61,4 +66,86 @@ pub(super) fn create_launcher(
         .replace((window, entry, entries));
 
     Ok(())
+}
+
+pub(super) fn update_launcher(
+    text: &str,
+    list: &ListBox,
+    execs: &mut Vec<(Box<str>, Option<Box<str>>)>,
+) {
+    while let Some(child) = list.first_child() {
+        list.remove(&child);
+    }
+
+    execs.clear();
+    if text.is_empty() {
+        return;
+    }
+
+    let entries = get_all_desktop_files();
+    let mut matches = BTreeMap::new();
+    for (name, icon, _, exec, path) in entries.deref() {
+        if name.to_lowercase().contains(&text.to_lowercase()) {
+            matches.insert(name, (icon, exec, path));
+        }
+    }
+    for (name, icon, keywords, exec, path) in entries.deref() {
+        if keywords.iter().any(|k| k.contains(text)) {
+            matches.insert(name, (icon, exec, path));
+        }
+    }
+
+    for (index, (name, (icon, exec, path))) in
+        matches.into_iter().take(*LAUNCHER_MAX_ITEMS).enumerate()
+    {
+        let widget = create_launch_widget(name, icon, index);
+        list.append(&widget);
+        execs.push((exec.clone(), path.clone()));
+    }
+}
+
+fn create_launch_widget(name: &str, icon: &Option<Box<str>>, index: usize) -> ListBoxRow {
+    let hbox = gtk4::Box::builder()
+        .orientation(Orientation::Horizontal)
+        .spacing(5)
+        .hexpand(true)
+        .vexpand(true)
+        .build();
+
+    if let Some(icon_name) = icon {
+        let icon = Image::builder()
+            .icon_name(icon_name.to_string())
+            .icon_size(IconSize::Large)
+            .build();
+        hbox.append(&icon);
+    }
+
+    let title = Label::builder()
+        .halign(Align::Start)
+        .valign(Align::Center)
+        .hexpand(true)
+        .label(name)
+        .build();
+    hbox.append(&title);
+
+    let i = if index == 0 {
+        "Return"
+    } else {
+        &index.to_string()
+    };
+    let index = Label::builder()
+        .halign(Align::End)
+        .valign(Align::Center)
+        .label(i)
+        .build();
+    hbox.append(&index);
+
+    let row = ListBoxRow::builder()
+        .css_classes(vec!["launcher-row"])
+        .height_request(45)
+        .hexpand(true)
+        .vexpand(true)
+        .child(&hbox)
+        .build();
+    row
 }

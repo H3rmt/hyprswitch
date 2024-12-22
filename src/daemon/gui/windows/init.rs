@@ -1,5 +1,4 @@
-use crate::daemon::gui::click::{press_client, press_workspace};
-use crate::daemon::gui::{icons, MonitorData, ICON_SCALE, ICON_SIZE, SHOW_DEFAULT_ICON};
+use crate::daemon::gui::{maps, MonitorData, ICON_SCALE, ICON_SIZE, SHOW_DEFAULT_ICON};
 use crate::{ClientData, Share, WorkspaceData};
 use gtk4::gdk_pixbuf::Pixbuf;
 use gtk4::{
@@ -10,12 +9,13 @@ use hyprland::shared::{Address, WorkspaceId};
 use log::{trace, warn};
 use std::fs;
 use std::time::Instant;
+use crate::daemon::gui::windows::click::{click_client, click_workspace};
 
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
 }
 
-pub(super) fn init_monitor(
+pub fn init_windows(
     share: Share,
     workspaces_p: &[(WorkspaceId, WorkspaceData)],
     clients_p: &[(Address, ClientData)],
@@ -63,7 +63,7 @@ pub(super) fn init_monitor(
             if *wid < 0 {
                 workspace_overlay.add_css_class("workspace_special");
             }
-            workspace_overlay.add_controller(press_workspace(&share, *wid));
+            workspace_overlay.add_controller(click_workspace(&share, *wid));
             monitor_data.workspaces_flow.insert(&workspace_overlay, -1);
             workspace_overlay
         };
@@ -114,7 +114,7 @@ pub(super) fn init_monitor(
                     scale(client.width, size_factor),
                     scale(client.height, size_factor),
                 );
-                client_overlay.add_controller(press_client(&share, address));
+                client_overlay.add_controller(click_client(&share, address));
                 client_overlay
             };
             workspace_fixed.put(
@@ -184,7 +184,7 @@ fn set_icon_spawn(client: &ClientData, pic: &Picture) {
             load_icon!(theme, &class, &pic, enabled, now);
         } else {
             trace!("[Icons]|{:.2?}| No Icon found for {}, looking in desktop file by class-name", now.elapsed(),class);
-            let icon_name = icons::get_icon_name(&class)
+            let icon_name = maps::get_icon_name(&class)
                 .or_else(|| {
                     if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
                         // convert x00 to space
@@ -195,7 +195,7 @@ fn set_icon_spawn(client: &ClientData, pic: &Picture) {
                             None
                         } else {
                             trace!("[Icons]|{:.2?}| Searching for icon for {} with CMD {} in desktop files", now.elapsed(), class, cmd);
-                            icons::get_icon_name(cmd).or_else(|| {
+                            maps::get_icon_name(cmd).or_else(|| {
                                 warn!("[Icons] Failed to find icon for CMD {}", cmd);
                                 None
                             })

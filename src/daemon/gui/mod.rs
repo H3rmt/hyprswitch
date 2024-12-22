@@ -1,4 +1,3 @@
-use crate::daemon::gui::gui::init_monitor;
 use crate::{GUISend, InitConfig, Share};
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
@@ -22,20 +21,13 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use crate::daemon::gui::click::press_monitor;
-use crate::daemon::gui::update::{update_monitor, update_searches};
 use crate::handle::get_monitors;
 
 use crate::cli::CloseType;
-pub use icons::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
+pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
 
-mod click;
-#[allow(clippy::module_inception)]
-mod gui;
-mod icons;
+mod maps;
 mod launcher;
-mod switch_fns;
-mod update;
 mod windows;
 
 lazy_static! {
@@ -47,7 +39,7 @@ lazy_static! {
         .parse()
         .expect("Failed to parse SHOW_DEFAULT_ICON"));
     static ref SHOW_LAUNCHER: bool = option_env!("SHOW_LAUNCHER")
-        .map_or(false, |s| s.parse().expect("Failed to parse SHOW_LAUNCHER"));
+        .map_or(true, |s| s.parse().expect("Failed to parse SHOW_LAUNCHER"));
     static ref LAUNCHER_MAX_ITEMS: usize = option_env!("LAUNCHER_MAX_ITEMS").map_or(6, |s| s
         .parse()
         .expect("Failed to parse LAUNCHER_MAX_ITEMS"));
@@ -161,7 +153,7 @@ async fn handle_updates(
                             }
                         }
                         trace!("[GUI] Refresh window {:?}", window);
-                        update_monitor(monitor_data, &data)
+                        windows::update_windows(monitor_data, &data)
                             .unwrap_or_else(|e| warn!("[GUI] {:?}", e));
 
                         if data.gui_config.close == CloseType::Default {
@@ -172,7 +164,7 @@ async fn handle_updates(
                                 if data.launcher.selected.is_some() && e.text().is_empty() {
                                     data.launcher.selected = None;
                                 }
-                                update_searches(&e.text(), l, &mut data.launcher.execs)
+                                launcher::update_launcher(&e.text(), l, &mut data.launcher.execs)
                             });
                         }
                     }
@@ -186,7 +178,7 @@ async fn handle_updates(
                         }
                         trace!("[GUI] Rebuilding window {:?}", window);
                         window.show();
-                        init_monitor(
+                        windows::init_windows(
                             share.clone(),
                             &data.hypr_data.workspaces,
                             &data.hypr_data.clients,
@@ -196,7 +188,7 @@ async fn handle_updates(
                             init_config.size_factor,
                         );
                         trace!("[GUI] Refresh window {:?}", window);
-                        update_monitor(monitor_data, &data)
+                        windows::update_windows(monitor_data, &data)
                             .unwrap_or_else(|e| warn!("[GUI] {:?}", e));
                     }
 
