@@ -47,7 +47,7 @@ lazy_static! {
         .parse()
         .expect("Failed to parse SHOW_DEFAULT_ICON"));
     static ref SHOW_LAUNCHER: bool = option_env!("SHOW_LAUNCHER")
-        .map_or(true, |s| s.parse().expect("Failed to parse SHOW_LAUNCHER"));
+        .map_or(false, |s| s.parse().expect("Failed to parse SHOW_LAUNCHER"));
     static ref LAUNCHER_MAX_ITEMS: usize = option_env!("LAUNCHER_MAX_ITEMS").map_or(6, |s| s
         .parse()
         .expect("Failed to parse LAUNCHER_MAX_ITEMS"));
