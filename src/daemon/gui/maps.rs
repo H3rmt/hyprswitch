@@ -12,6 +12,7 @@ type DesktopFileMap = Vec<(
     Vec<Box<str>>,
     Box<str>,
     Option<Box<str>>,
+    bool,
 )>;
 
 fn get_icon_map() -> &'static Mutex<IconMap> {
@@ -171,6 +172,12 @@ fn fill_desktop_file_map(map: &mut IconMap, mut map2: Option<&mut DesktopFileMap
                         .lines()
                         .find(|l| l.starts_with("Path="))
                         .and_then(|l| l.split('=').nth(1));
+                    let terminal = file
+                        .lines()
+                        .find(|l| l.starts_with("Terminal="))
+                        .map(|l| l.trim_start_matches("Terminal="))
+                        .map(|l| l == "true")
+                        .unwrap_or(false);
                     if ttype.map_or(false, |t| t == "Application")
                         && no_display.map_or(true, |n| !n)
                     {
@@ -189,6 +196,7 @@ fn fill_desktop_file_map(map: &mut IconMap, mut map2: Option<&mut DesktopFileMap
                                     .unwrap_or_else(Vec::new),
                                 exec.trim().into(),
                                 exec_path.map(Box::from),
+                                terminal,
                             ));
                         }
                     }

@@ -40,8 +40,8 @@ pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
         let lock = latest.lock().expect("Failed to lock");
         if !kill {
             if let Some(selected) = lock.launcher.selected {
-                if let Some((run, path)) = lock.launcher.execs.get(selected) {
-                    run_program(run, path);
+                if let Some((run, path, terminal)) = lock.launcher.execs.get(selected) {
+                    run_program(run, path, *terminal);
                 } else {
                     warn!("Selected program (nr. {}) not found, killing", selected);
                 }

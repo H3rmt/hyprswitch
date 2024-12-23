@@ -1,5 +1,6 @@
 use crate::daemon::gui::maps::get_all_desktop_files;
-use crate::daemon::gui::{LauncherRefs, LAUNCHER_MAX_ITEMS};
+use crate::daemon::gui::LauncherRefs;
+use crate::envs::LAUNCHER_MAX_ITEMS;
 use crate::{GUISend, Share};
 use gtk4::glib::clone;
 use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
@@ -8,7 +9,6 @@ use gtk4::{
     ListBoxRow, Orientation, SelectionMode,
 };
 use gtk4_layer_shell::{Layer, LayerShell};
-use std::collections::BTreeMap;
 use std::ops::Deref;
 
 pub(super) fn create_launcher(
@@ -71,7 +71,7 @@ pub(super) fn create_launcher(
 pub(super) fn update_launcher(
     text: &str,
     list: &ListBox,
-    execs: &mut Vec<(Box<str>, Option<Box<str>>)>,
+    execs: &mut Vec<(Box<str>, Option<Box<str>>, bool)>,
 ) {
     while let Some(child) = list.first_child() {
         list.remove(&child);
@@ -83,24 +83,30 @@ pub(super) fn update_launcher(
     }
 
     let entries = get_all_desktop_files();
-    let mut matches = BTreeMap::new();
-    for (name, icon, _, exec, path) in entries.deref() {
-        if name.to_lowercase().contains(&text.to_lowercase()) {
-            matches.insert(name, (icon, exec, path));
+    let mut matches = Vec::new();
+    for (name, icon, _, exec, path, terminal) in entries.deref() {
+        if name
+            .to_ascii_lowercase()
+            .contains(&text.to_ascii_lowercase())
+        {
+            matches.push((name, icon, exec, path, terminal));
         }
     }
-    for (name, icon, keywords, exec, path) in entries.deref() {
-        if keywords.iter().any(|k| k.contains(text)) {
-            matches.insert(name, (icon, exec, path));
+    for (name, icon, keywords, exec, path, terminal) in entries.deref() {
+        if keywords
+            .iter()
+            .any(|k| k.to_ascii_lowercase().contains(&text.to_ascii_lowercase()))
+        {
+            matches.push((name, icon, exec, path, terminal));
         }
     }
 
-    for (index, (name, (icon, exec, path))) in
+    for (index, (name, icon, exec, path, terminal)) in
         matches.into_iter().take(*LAUNCHER_MAX_ITEMS).enumerate()
     {
         let widget = create_launch_widget(name, icon, index);
         list.append(&widget);
-        execs.push((exec.clone(), path.clone()));
+        execs.push((exec.clone(), path.clone(), *terminal));
     }
 }
 

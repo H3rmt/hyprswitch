@@ -25,25 +25,11 @@ use crate::handle::get_monitors;
 
 use crate::cli::CloseType;
 pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
+use crate::envs::SHOW_LAUNCHER;
 
-mod maps;
 mod launcher;
+mod maps;
 mod windows;
-
-lazy_static! {
-    static ref ICON_SIZE: i32 =
-        option_env!("ICON_SIZE").map_or(512, |s| s.parse().expect("Failed to parse ICON_SIZE"));
-    static ref ICON_SCALE: i32 =
-        option_env!("ICON_SCALE").map_or(1, |s| s.parse().expect("Failed to parse ICON_SCALE"));
-    static ref SHOW_DEFAULT_ICON: bool = option_env!("SHOW_DEFAULT_ICON").map_or(false, |s| s
-        .parse()
-        .expect("Failed to parse SHOW_DEFAULT_ICON"));
-    static ref SHOW_LAUNCHER: bool = option_env!("SHOW_LAUNCHER")
-        .map_or(true, |s| s.parse().expect("Failed to parse SHOW_LAUNCHER"));
-    static ref LAUNCHER_MAX_ITEMS: usize = option_env!("LAUNCHER_MAX_ITEMS").map_or(6, |s| s
-        .parse()
-        .expect("Failed to parse LAUNCHER_MAX_ITEMS"));
-}
 
 pub(super) fn start_gui_blocking(
     share: &Share,
@@ -156,6 +142,7 @@ async fn handle_updates(
                         windows::update_windows(monitor_data, &data)
                             .unwrap_or_else(|e| warn!("[GUI] {:?}", e));
 
+                        // only update launcher wen using default close mode
                         if data.gui_config.close == CloseType::Default {
                             launcher_unlocked.as_ref().inspect(|(_, e, l)| {
                                 if data.launcher.selected.is_none() && !e.text().is_empty() {

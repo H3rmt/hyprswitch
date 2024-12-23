@@ -1,4 +1,6 @@
-use crate::daemon::gui::{maps, MonitorData, ICON_SCALE, ICON_SIZE, SHOW_DEFAULT_ICON};
+use crate::daemon::gui::windows::click::{click_client, click_workspace};
+use crate::daemon::gui::{maps, MonitorData};
+use crate::envs::{ICON_SIZE, SHOW_DEFAULT_ICON};
 use crate::{ClientData, Share, WorkspaceData};
 use gtk4::gdk_pixbuf::Pixbuf;
 use gtk4::{
@@ -9,7 +11,6 @@ use hyprland::shared::{Address, WorkspaceId};
 use log::{trace, warn};
 use std::fs;
 use std::time::Instant;
-use crate::daemon::gui::windows::click::{click_client, click_workspace};
 
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
@@ -146,12 +147,8 @@ fn clear_monitor(monitor_data: &mut MonitorData) {
 macro_rules! load_icon {
     ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr) => {
         let icon = $theme.lookup_icon(
-            $icon_name,
-            &[],
-            *ICON_SIZE,
-            *ICON_SCALE,
-            TextDirection::None,
-            IconLookupFlags::PRELOAD,
+            $icon_name, &[], *ICON_SIZE, 1,
+            TextDirection::None, IconLookupFlags::PRELOAD,
         );
         'block: {
             if let Some(icon_file) = icon.file() {

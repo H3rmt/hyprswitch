@@ -25,6 +25,7 @@ pub mod cli;
 pub mod client;
 pub mod daemon;
 pub mod handle;
+pub mod envs;
 
 #[derive(Debug, Clone)]
 pub struct MonitorData {
@@ -134,7 +135,7 @@ pub struct SharedData {
 
 #[derive(Debug, Default)]
 pub struct LauncherConfig {
-    execs: Vec<(Box<str>, Option<Box<str>>)>,
+    execs: Vec<(Box<str>, Option<Box<str>>, bool)>,
     selected: Option<usize>,
 }
 

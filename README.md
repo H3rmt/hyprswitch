@@ -174,12 +174,12 @@ bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --clo
 
 ```css
 :root {
-    --border-color:        rgba(90, 90,110, 0.4);
-    --border-color-active: rgba(239, 9,  9, 0.9);
-    --bg-color:            rgba(20, 20, 20, 1);
-    --bg-color-hover:      rgba(40, 40, 50, 1);
-    --index-border-color:  rgba(20,170,170,0.7);
-    --border-radius:       12px;
+    --border-color: rgba(90, 90, 110, 0.4);
+    --border-color-active: rgba(239, 9, 9, 0.9);
+    --bg-color: rgba(20, 20, 20, 1);
+    --bg-color-hover: rgba(40, 40, 50, 1);
+    --index-border-color: rgba(20, 170, 170, 0.7);
+    --border-radius: 12px;
 }
 ```
 
@@ -266,6 +266,8 @@ bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --clo
 
 - `ICON_SIZE` i32 [default: 512]: Argument passed to the theme.lookup_icon function (Determines the resolution of the
   Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
-- `ICON_SCALE` i32 [default: 1]: Argument passed to the theme.lookup_icon function (IDK what this does, setting it to
-  anything other than 1 changes nothing)
 - `SHOW_DEFAULT_ICON` bool [default: false]: Show a Icon if no icon was found (`application-x-executable` Doesn't scale good)
+- `SHOW_LAUNCHER` bool [default: true]: Show a Launcher Icon in the GUI when using default `--close` mode
+- `LAUNCHER_MAX_ITEMS` i32 [default: 5]: Maximum number of items in the Launcher
+- `DEFAULT_TERMINAL` string [default: ""]: Terminal to use for launching terminal applications, e.g., `alacritty`. (If
+  empty, a list if known terminals will be used)
