@@ -12,9 +12,8 @@ use crate::GuiConfig;
 // TODO in the future generate a hash and reuse the old keymap (check if it has been deleted)
 fn generate_submap_name(_keyword_list: &[(&str, String)]) -> String {
     format!(
-        "hyprswitch-{}-{}",
-        option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"),
-        rand::random::<u32>()
+        "hyprswitch-{}",
+        rand::random::<u16>()
     )
 }
 
@@ -25,7 +24,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         let current_exe = current_exe
             .to_str()
             .with_context(|| format!("unable to convert path {:?} to string", current_exe))?
-            .to_string();
+            .trim_end_matches(" (deleted)");
         let main_mod = get_mod_from_mod_key(gui_config.mod_key.clone());
         trace!("[SUBMAP] current_exe: {}", current_exe);
 
