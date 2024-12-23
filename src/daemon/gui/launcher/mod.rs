@@ -1,7 +1,7 @@
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
 use crate::envs::LAUNCHER_MAX_ITEMS;
-use crate::{GUISend, Share};
+use crate::{Execs, GUISend, Share};
 use gtk4::glib::clone;
 use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
 use gtk4::{
@@ -68,11 +68,7 @@ pub(super) fn create_launcher(
     Ok(())
 }
 
-pub(super) fn update_launcher(
-    text: &str,
-    list: &ListBox,
-    execs: &mut Vec<(Box<str>, Option<Box<str>>, bool)>,
-) {
+pub(super) fn update_launcher(text: &str, list: &ListBox, execs: &mut Execs) {
     while let Some(child) = list.first_child() {
         list.remove(&child);
     }
@@ -146,12 +142,11 @@ fn create_launch_widget(name: &str, icon: &Option<Box<str>>, index: usize) -> Li
         .build();
     hbox.append(&index);
 
-    let row = ListBoxRow::builder()
+    ListBoxRow::builder()
         .css_classes(vec!["launcher-row"])
         .height_request(45)
         .hexpand(true)
         .vexpand(true)
         .child(&hbox)
-        .build();
-    row
+        .build()
 }

@@ -14,6 +14,7 @@ use log::{debug, error, info, trace, warn};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use crate::cli::CloseType;
@@ -62,8 +63,8 @@ fn connect_app(
         trace!("[GUI] start connect_activate");
         apply_css(init_config.custom_css.as_ref());
 
-        let monitor_data_list: Arc<Mutex<HashMap<ApplicationWindow, MonitorData>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, MonitorData>>> =
+            Rc::new(Mutex::new(HashMap::new()));
         create_windows_save(
             &share,
             monitor_data_list.deref(),
@@ -71,7 +72,7 @@ fn connect_app(
             app,
         );
 
-        let launcher: LauncherRefs = Arc::new(Mutex::new(None));
+        let launcher: LauncherRefs = Rc::new(Mutex::new(None));
         if *SHOW_LAUNCHER {
             create_launcher_save(&share, launcher.clone(), app);
         }
@@ -109,7 +110,7 @@ async fn handle_updates(
     init_config: InitConfig,
     receiver: Receiver<GUISend>,
     return_sender: Sender<bool>,
-    monitor_data_list: Arc<Mutex<HashMap<ApplicationWindow, MonitorData>>>,
+    monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, MonitorData>>>,
     launcher: LauncherRefs,
 ) {
     loop {
@@ -239,7 +240,7 @@ fn create_launcher_save(share: &Share, launcher: LauncherRefs, app: &Application
     });
 }
 
-type LauncherRefs = Arc<Mutex<Option<(ApplicationWindow, Entry, ListBox)>>>;
+type LauncherRefs = Rc<Mutex<Option<(ApplicationWindow, Entry, ListBox)>>>;
 
 fn create_windows_save(
     share: &Share,

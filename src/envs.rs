@@ -10,7 +10,7 @@ lazy_static! {
         .map_or(true, |s| s.parse().expect("Failed to parse SHOW_LAUNCHER"));
     pub static ref LAUNCHER_MAX_ITEMS: usize = option_env!("LAUNCHER_MAX_ITEMS").map_or(5, |s| {
         let value = s.parse().expect("Failed to parse LAUNCHER_MAX_ITEMS");
-        if value < 1 || value > 9 {
+        if !(1..=9).contains(&value) {
             panic!("LAUNCHER_MAX_ITEMS must be between 1 and 9");
         }
         value

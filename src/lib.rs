@@ -23,8 +23,8 @@ const MIN_VERSION: Version = Version::new(0, 42, 0);
 pub mod cli;
 pub mod client;
 pub mod daemon;
-pub mod handle;
 pub mod envs;
+pub mod handle;
 
 #[derive(Debug, Clone)]
 pub struct MonitorData {
@@ -134,9 +134,11 @@ pub struct SharedData {
 
 #[derive(Debug, Default)]
 pub struct LauncherConfig {
-    execs: Vec<(Box<str>, Option<Box<str>>, bool)>,
+    execs: Execs,
     selected: Option<usize>,
 }
+
+type Execs = Vec<(Box<str>, Option<Box<str>>, bool)>;
 
 #[derive(Debug, Default)]
 pub enum Active {
