@@ -1,5 +1,8 @@
 #![deny(clippy::print_stdout)]
 
+use crate::cli::{
+    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType,
+};
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
 use hyprland::data::Version as HyprlandVersion;
@@ -14,16 +17,13 @@ use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use crate::cli::{
-    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType,
-};
-
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
 
 pub mod cli;
 pub mod client;
 pub mod daemon;
+pub mod envs;
 pub mod handle;
 
 #[derive(Debug, Clone)]
@@ -129,7 +129,16 @@ pub struct SharedData {
     pub gui_config: GuiConfig,
     pub hypr_data: HyprlandData,
     pub active: Active,
+    pub launcher: LauncherConfig,
 }
+
+#[derive(Debug, Default)]
+pub struct LauncherConfig {
+    execs: Execs,
+    selected: Option<usize>,
+}
+
+type Execs = Vec<(Box<str>, Option<Box<str>>, bool)>;
 
 #[derive(Debug, Default)]
 pub enum Active {

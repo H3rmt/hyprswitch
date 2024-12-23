@@ -39,13 +39,6 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
             format!("{} ,escape , exec, {} close --kill", main_mod, current_exe),
         ));
 
-        // always bind return to close
-        keyword_list.push(("bind", format!(" ,return , exec, {} close", current_exe)));
-        keyword_list.push((
-            "bind",
-            format!("{} ,return , exec, {} close", main_mod, current_exe),
-        ));
-
         // repeatable presses
         match gui_config.close {
             CloseType::ModKeyRelease => {
@@ -75,8 +68,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                     }
                 };
             }
-            CloseType::ModKey | CloseType::ModKeyIndex => {
-                // close on repeatable presses
+            CloseType::Default => {
                 keyword_list.push((
                     "bind",
                     format!(
@@ -84,69 +76,40 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                         main_mod, gui_config.key, current_exe
                     ),
                 ));
-                match gui_config.reverse_key.clone() {
-                    Mod(modkey) => {
-                        keyword_list.push((
-                            "bind",
-                            format!(
-                                "{} {}, {}, exec, {} close",
-                                main_mod, modkey, gui_config.key, current_exe
-                            ),
-                        ));
-                    }
-                    Key(key) => {
-                        keyword_list.push((
-                            "bind",
-                            format!("{}, {}, exec, {} close", main_mod, key, current_exe),
-                        ));
-                    }
-                };
             }
-            CloseType::None | CloseType::Index => {}
         };
 
-        // close on release of mod key
-        if let CloseType::ModKeyRelease = gui_config.close {
-            keyword_list.push((
-                "bindrt",
-                format!(
-                    "{}, {}, exec, {} close",
-                    main_mod, gui_config.mod_key, current_exe
-                ),
-            ));
-            if let Mod(modkey) = gui_config.reverse_key.clone() {
+        // close on release of the mod key
+        match gui_config.close {
+            CloseType::ModKeyRelease => {
                 keyword_list.push((
                     "bindrt",
                     format!(
-                        "{} {}, {}, exec, {} close",
-                        main_mod, modkey, gui_config.mod_key, current_exe
+                        "{}, {}, exec, {} close",
+                        main_mod, gui_config.mod_key, current_exe
                     ),
                 ));
-            };
+                if let Mod(modkey) = gui_config.reverse_key.clone() {
+                    keyword_list.push((
+                        "bindrt",
+                        format!(
+                            "{} {}, {}, exec, {} close",
+                            main_mod, modkey, gui_config.mod_key, current_exe
+                        ),
+                    ));
+                };
+            }
+            CloseType::Default => {
+                // bind return to close
+                keyword_list.push(("bind", format!(" ,return , exec, {} close", current_exe)));
+            }
         };
 
         // jump to index
         match gui_config.close {
-            CloseType::None | CloseType::ModKey => {
-                for i in 1..=gui_config.max_switch_offset {
-                    keyword_list.push((
-                        "bind",
-                        format!(",{}, exec, {} dispatch -o={}", i, current_exe, i),
-                    ));
-                    if let Mod(modkey) = gui_config.reverse_key.clone() {
-                        keyword_list.push((
-                            "bind",
-                            format!(
-                                "{},{}, exec, {} dispatch -o={} -r",
-                                modkey, i, current_exe, i
-                            ),
-                        ));
-                    };
-                }
-            }
             CloseType::ModKeyRelease => {
                 // main_mod needed as it is still pressed
-                for i in 1..=gui_config.max_switch_offset {
+                for i in 1..=9 {
                     keyword_list.push((
                         "bind",
                         format!(
@@ -165,9 +128,8 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                     };
                 }
             }
-            CloseType::Index | CloseType::ModKeyIndex => {
-                keyword_list.push(("bind", format!(",0, exec, {} close", current_exe)));
-                for i in 1..=gui_config.max_switch_offset {
+            CloseType::Default => {
+                for i in 1..=9 {
                     keyword_list.push((
                         "bind",
                         format!(
@@ -190,7 +152,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
 
         // use arrow keys to navigate
         match gui_config.close {
-            CloseType::None | CloseType::ModKey | CloseType::Index | CloseType::ModKeyIndex => {
+            CloseType::Default => {
                 keyword_list.push(("bind", format!(",right, exec, {} dispatch", current_exe)));
                 keyword_list.push(("bind", format!(",left, exec, {} dispatch -r", current_exe)));
             }

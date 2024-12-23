@@ -1,9 +1,9 @@
 use crate::cli::ReverseKey;
 use crate::daemon::gui::MonitorData;
 use crate::{Active, SharedData};
-use anyhow::Context;
 use gtk4::prelude::WidgetExt;
-use gtk4::{Align, Label};
+use gtk4::Align;
+use gtk4::Label;
 use std::cmp::min;
 
 macro_rules! update_type {
@@ -11,74 +11,70 @@ macro_rules! update_type {
         $htypr_data:expr, $identifier_name:ident, $css_active_name:expr, $id:expr,
         $overlay:expr, $label:expr, $active:expr, $gui_config:expr, $valign: expr
     ) => {
-        let (_, data) = $htypr_data
-            .iter()
-            .find(|(i, _)| *i == $id)
-            .with_context(|| format!("Failed to find ... with id {}", $id))?;
-        if data.enabled {
-            // create label if not exists
-            if $label.is_none() {
-                let new_label = Label::builder()
-                    .css_classes(vec!["index"])
-                    .halign(Align::End)
-                    .valign($valign)
-                    .build();
-                $overlay.add_overlay(&new_label);
-                *$label = Some(new_label.clone());
-            }
-
-            // will always be some, TODO find better way to handle this
-            if let Some(label) = $label {
-                let position = $htypr_data
-                    .iter()
-                    .filter(|(_, d)| d.enabled)
-                    .position(|(oid, _)| *oid == $id)
-                    .unwrap_or(0);
-                let selected_client_position = $htypr_data
-                    .iter()
-                    .filter(|(_, d)| d.enabled)
-                    .position(|(oid, _)| *oid == $active)
-                    .unwrap_or(0);
-                let offset = calc_offset(
-                    $htypr_data.iter().filter(|(_, wd)| wd.enabled).count(),
-                    selected_client_position,
-                    position,
-                    $gui_config.max_switch_offset,
-                    if let ReverseKey::Mod(_) = $gui_config.reverse_key.clone() {
-                        true
-                    } else {
-                        false
-                    },
-                    true,
-                );
-                if let Some(offset) = offset {
-                    label.set_label(&offset.to_string());
-                } else {
-                    $overlay.remove_overlay(label);
-                    *$label = None;
+        let find = $htypr_data.iter().find(|(i, _)| *i == $id);
+        if let Some((_, data)) = find {
+            if data.enabled {
+                // create label if not exists
+                if $label.is_none() {
+                    let new_label = Label::builder()
+                        .css_classes(vec!["index"])
+                        .halign(Align::End)
+                        .valign($valign)
+                        .build();
+                    $overlay.add_overlay(&new_label);
+                    *$label = Some(new_label.clone());
                 }
-            }
 
-            // mark the active client
-            if !$gui_config.hide_active_window_border && $active == $id {
-                $overlay.add_css_class($css_active_name);
+                // will always be some, TODO find better way to handle this
+                if let Some(label) = $label {
+                    let position = $htypr_data
+                        .iter()
+                        .filter(|(_, d)| d.enabled)
+                        .position(|(oid, _)| *oid == $id)
+                        .unwrap_or(0);
+                    let selected_client_position = $htypr_data
+                        .iter()
+                        .filter(|(_, d)| d.enabled)
+                        .position(|(oid, _)| *oid == $active)
+                        .unwrap_or(0);
+                    let offset = calc_offset(
+                        $htypr_data.iter().filter(|(_, wd)| wd.enabled).count(),
+                        selected_client_position,
+                        position,
+                        $gui_config.max_switch_offset,
+                        if let ReverseKey::Mod(_) = $gui_config.reverse_key.clone() {
+                            true
+                        } else {
+                            false
+                        },
+                        true,
+                    );
+                    if let Some(offset) = offset {
+                        label.set_label(&offset.to_string());
+                    } else {
+                        $overlay.remove_overlay(label);
+                        *$label = None;
+                    }
+                }
+
+                // mark the active client
+                if !$gui_config.hide_active_window_border && $active == $id {
+                    $overlay.add_css_class($css_active_name);
+                } else {
+                    $overlay.remove_css_class($css_active_name);
+                }
             } else {
+                // remove label if exists
+                if let Some(label) = $label.take() {
+                    $overlay.remove_overlay(&label);
+                }
                 $overlay.remove_css_class($css_active_name);
             }
-        } else {
-            // remove label if exists
-            if let Some(label) = $label.take() {
-                $overlay.remove_overlay(&label);
-            }
-            $overlay.remove_css_class($css_active_name);
         }
     };
 }
 
-pub(super) fn update_monitor(
-    gui_monitor_data: &mut MonitorData,
-    data: &SharedData,
-) -> anyhow::Result<()> {
+pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> anyhow::Result<()> {
     match &data.active {
         Active::Client(addr) => {
             for (id, (overlay, label)) in gui_monitor_data.client_refs.iter_mut() {

@@ -1,10 +1,10 @@
 use crate::cli::SwitchType;
-use crate::daemon::gui::reload_icon_cache;
+use crate::daemon::gui::reload_desktop_maps;
 use crate::daemon::submap::{activate_submap, deactivate_submap};
-use crate::handle::{clear_recent_clients, collect_data, find_next, switch_to_active};
+use crate::handle::{clear_recent_clients, collect_data, find_next, run_program, switch_to_active};
 use crate::{Active, Command, Config, GUISend, GuiConfig, Share, ACTIVE};
 use anyhow::Context;
-use log::info;
+use log::{info, warn};
 use std::ops::Deref;
 use std::thread;
 
@@ -12,13 +12,17 @@ pub(crate) fn switch(share: Share, command: Command) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
-        let active = find_next(
-            &lock.simple_config.switch_type,
-            command,
-            &lock.hypr_data,
-            &lock.active,
-        )?;
-        lock.active = active;
+        if let Some(ref mut selected) = lock.launcher.selected {
+            *selected += command.offset as usize;
+        } else {
+            let active = find_next(
+                &lock.simple_config.switch_type,
+                command,
+                &lock.hypr_data,
+                &lock.active,
+            )?;
+            lock.active = active;
+        }
         drop(lock);
     }
     send.send_blocking(GUISend::Refresh)
@@ -35,19 +39,27 @@ pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
     {
         let lock = latest.lock().expect("Failed to lock");
         if !kill {
-            switch_to_active(&lock.active, &lock.hypr_data)?;
+            if let Some(selected) = lock.launcher.selected {
+                if let Some((run, path, terminal)) = lock.launcher.execs.get(selected) {
+                    run_program(run, path, *terminal);
+                } else {
+                    warn!("Selected program (nr. {}) not found, killing", selected);
+                }
+            } else {
+                switch_to_active(&lock.active, &lock.hypr_data)?;
+            }
         } else {
             info!("Not executing switch on close, killing");
         }
         drop(lock);
     }
+    deactivate_submap()?;
+
     send.send_blocking(GUISend::Hide)
         .context("Unable to refresh the GUI")?;
     receive
         .recv_blocking()
         .context("Unable to receive GUI update")?;
-
-    deactivate_submap()?;
 
     *(ACTIVE
         .get()
@@ -56,7 +68,7 @@ pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
         .expect("Failed to lock")) = false;
     clear_recent_clients();
     thread::spawn(|| {
-        reload_icon_cache();
+        reload_desktop_maps();
     });
     Ok(())
 }
@@ -99,13 +111,13 @@ pub(crate) fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyho
         lock.hypr_data = clients_data;
         drop(lock);
     }
+    activate_submap(gui_config.clone())?;
+
     send.send_blocking(GUISend::New)
         .context("Unable to refresh the GUI")?;
     receive
         .recv_blocking()
         .context("Unable to receive GUI update")?;
-
-    activate_submap(gui_config.clone())?;
 
     *(ACTIVE
         .get()
