@@ -25,7 +25,7 @@ pub(super) fn create_launcher(
     entry.connect_changed(clone!(
         #[strong]
         share,
-        move |entry| {
+        move |_| {
             let (_, sender, _) = share.deref();
             sender.send_blocking(GUISend::Refresh).unwrap()
         }

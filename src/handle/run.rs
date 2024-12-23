@@ -2,7 +2,6 @@ use crate::envs::DEFAULT_TERMINAL;
 use log::{info, trace, warn};
 use std::io;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 pub fn run_program(run: &str, path: &Option<Box<str>>, terminal: bool) {

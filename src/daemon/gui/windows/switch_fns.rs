@@ -5,7 +5,7 @@ use crate::{Active, GUISend, Share, ACTIVE};
 use anyhow::Context;
 use gtk4::glib::clone;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{info, warn};
+use log::warn;
 use std::ops::Deref;
 use std::thread;
 

@@ -1,31 +1,24 @@
 use crate::{GUISend, InitConfig, Share};
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
-use gtk4::gdk::{Display, Monitor};
+use gtk4::gdk::Display;
 use gtk4::glib::{clone, GString};
-use gtk4::prelude::{
-    ApplicationExt, ApplicationExtManual, DisplayExt, EditableExt, GtkWindowExt,
-    ListModelExtManual, MonitorExt, WidgetExt,
-};
+use gtk4::prelude::{ApplicationExt, ApplicationExtManual, EditableExt, WidgetExt};
 use gtk4::{
-    glib, style_context_add_provider_for_display, Align, Application, ApplicationWindow,
-    CssProvider, Entry, FlowBox, Label, ListBox, Orientation, Overlay, SelectionMode,
-    STYLE_PROVIDER_PRIORITY_APPLICATION, STYLE_PROVIDER_PRIORITY_USER,
+    glib, style_context_add_provider_for_display, Application, ApplicationWindow, CssProvider,
+    Entry, FlowBox, Label, ListBox, Overlay, STYLE_PROVIDER_PRIORITY_APPLICATION,
+    STYLE_PROVIDER_PRIORITY_USER,
 };
-use gtk4_layer_shell::{Layer, LayerShell};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use lazy_static::lazy_static;
 use log::{debug, error, info, trace, warn};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use crate::handle::get_monitors;
-
 use crate::cli::CloseType;
-pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
 use crate::envs::SHOW_LAUNCHER;
+pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
 
 mod launcher;
 mod maps;
@@ -78,7 +71,7 @@ fn connect_app(
             app,
         );
 
-        let mut launcher: LauncherRefs = Arc::new(Mutex::new(None));
+        let launcher: LauncherRefs = Arc::new(Mutex::new(None));
         if *SHOW_LAUNCHER {
             create_launcher_save(&share, launcher.clone(), app);
         }
@@ -262,6 +255,9 @@ fn create_windows_save(
     );
 }
 
+#[allow(dead_code)]
+#[allow(unused_variables)]
+/// In the future, listen to monitor changes and update the GUI accordingly
 fn start_listen_monitors_thread(
     share: &Share,
     monitor_data_list: &Arc<Mutex<HashMap<ApplicationWindow, MonitorData>>>,

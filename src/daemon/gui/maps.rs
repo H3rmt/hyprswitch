@@ -26,7 +26,7 @@ fn get_desktop_file_map() -> &'static Mutex<DesktopFileMap> {
 }
 
 pub fn get_icon_name(icon: &str) -> Option<String> {
-    let mut map = get_icon_map().lock().expect("Failed to lock icon map");
+    let map = get_icon_map().lock().expect("Failed to lock icon map");
     map.get(icon.to_ascii_lowercase().as_str())
         .map(|s| s.clone().0.into_string())
 }

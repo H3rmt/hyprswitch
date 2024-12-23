@@ -6,7 +6,7 @@ use crate::{Active, Command, Config, GUISend, GuiConfig, Share, ACTIVE};
 use anyhow::Context;
 use log::{info, warn};
 use std::ops::Deref;
-use std::{process, thread};
+use std::thread;
 
 pub(crate) fn switch(share: Share, command: Command) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();

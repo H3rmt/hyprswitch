@@ -5,7 +5,6 @@ use crate::cli::{
 };
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
-use gtk4::ApplicationWindow;
 use hyprland::data::Version as HyprlandVersion;
 use hyprland::prelude::HyprData;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
