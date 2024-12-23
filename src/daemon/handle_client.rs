@@ -3,26 +3,48 @@ use log::{debug, error, info, trace, warn};
 use notify_rust::{Notification, Urgency};
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
+use std::os::fd::{FromRawFd, RawFd};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::thread;
+use std::process::exit;
 use std::time::Instant;
+use std::{env, thread};
 
+use crate::client::daemon_running;
 use crate::daemon::handle_fns::{close, init, switch};
 use crate::{get_socket_path_buff, Share, Transfer, TransferType, ACTIVE};
 
 pub(super) fn start_handler_blocking(share: &Share) {
-    let buf = get_socket_path_buff();
-    let path = buf.as_path();
-    // remove old PATH
-    let listener = {
-        if path.exists() {
-            remove_file(path).expect("Unable to remove old socket file");
-        }
-        UnixListener::bind(path).with_context(|| format!("Failed to bind to socket {path:?}"))
-    }
-    .expect("Unable to start Listener");
+    let listener = if env::var("LISTEN_FDS").is_ok() {
+        // Get the file descriptor from the environment variable set by systemd
+        let fd = RawFd::from(3);
 
-    info!("Starting listener on {path:?}");
+        // Create a UnixListener from the file descriptor
+        let listener = unsafe { UnixListener::from_raw_fd(fd) };
+        info!(
+            "Starting {:?} listener on fd {:?}",
+            env::var("LISTEN_FDNAMES"),
+            env::var("LISTEN_FDS")
+        );
+        listener
+    } else {
+        if daemon_running() {
+            warn!("Daemon already running");
+            exit(0);
+        }
+        let buf = get_socket_path_buff();
+        let path = buf.as_path();
+        // remove old PATH
+        let listener = {
+            if path.exists() {
+                remove_file(path).expect("Unable to remove old socket file");
+            }
+            UnixListener::bind(path).with_context(|| format!("Failed to bind to socket {path:?}"))
+        }
+        .expect("Unable to start Listener");
+        info!("Starting listener on {path:?}");
+        listener
+    };
+
     loop {
         match listener.accept() {
             Ok((stream, _)) => {

@@ -46,10 +46,6 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         cli::Command::Init { init_opts } => {
-            if hyprswitch::client::daemon_running() {
-                warn!("Daemon already running");
-                return Ok(());
-            }
             info!("Starting daemon");
             let init_config = InitConfig::from(init_opts);
             hyprswitch::daemon::start_daemon(init_config)

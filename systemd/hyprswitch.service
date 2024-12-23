@@ -1,0 +1,15 @@
+[Unit]
+Description=Starts hyprswitch Daemon
+Requires=hyprswitch.socket
+After=hyprswitch.socket
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/home/user/RustroverProjects/hyprswitch/target/release/hyprswitch -vvv init --show-title --size-factor 5.5 --workspaces-per-row 4
+Restart=always
+RestartSec=10
+TimeoutSec=5
+
+Environment="LAUNCHER_MAX_ITEMS=6"
