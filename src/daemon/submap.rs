@@ -40,32 +40,43 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         ));
 
         // repeatable presses
-        if let CloseType::ModKeyRelease = gui_config.close {
-            // allow repeatable presses to switch to next
-            keyword_list.push((
-                "bind",
-                format!(
-                    "{}, {}, exec, {} dispatch",
-                    main_mod, gui_config.key, current_exe
-                ),
-            ));
-            match gui_config.reverse_key.clone() {
-                Mod(modkey) => {
-                    keyword_list.push((
-                        "bind",
-                        format!(
-                            "{} {}, {}, exec, {} dispatch -r",
-                            main_mod, modkey, gui_config.key, current_exe
-                        ),
-                    ));
-                }
-                Key(key) => {
-                    keyword_list.push((
-                        "bind",
-                        format!("{}, {}, exec, {} dispatch -r", main_mod, key, current_exe),
-                    ));
-                }
-            };
+        match gui_config.close {
+            CloseType::ModKeyRelease => {
+                // allow repeatable presses to switch to next
+                keyword_list.push((
+                    "bind",
+                    format!(
+                        "{}, {}, exec, {} dispatch",
+                        main_mod, gui_config.key, current_exe
+                    ),
+                ));
+                match gui_config.reverse_key.clone() {
+                    Mod(modkey) => {
+                        keyword_list.push((
+                            "bind",
+                            format!(
+                                "{} {}, {}, exec, {} dispatch -r",
+                                main_mod, modkey, gui_config.key, current_exe
+                            ),
+                        ));
+                    }
+                    Key(key) => {
+                        keyword_list.push((
+                            "bind",
+                            format!("{}, {}, exec, {} dispatch -r", main_mod, key, current_exe),
+                        ));
+                    }
+                };
+            }
+            CloseType::Default => {
+                keyword_list.push((
+                    "bind",
+                    format!(
+                        "{}, {}, exec, {} close",
+                        main_mod, gui_config.key, current_exe
+                    ),
+                ));
+            }
         };
 
         // close on release of the mod key

@@ -82,7 +82,7 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
         );
         let _ = Notification::new()
             .summary(&format!(
-                "Hyprswitch daemon ({}) and client ({}) dont match",
+                "Hyprswitch daemon ({}) and client ({}) dont match, please restart the daemon or your Hyprland session",
                 env!("CARGO_PKG_VERSION"),
                 transfer.version
             ))
@@ -91,7 +91,6 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
             .hint(notify_rust::Hint::Urgency(Urgency::Critical))
             .show();
         // don't return (would trigger new toast)
-        // return Err(anyhow::anyhow!("Daemon out of sync"));
         return Ok(());
     }
 
@@ -125,7 +124,7 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
                 };
             } else {
                 // don't cause notification on client
-                return_success(true, &mut stream)?;
+                return_success(false, &mut stream)?;
             }
         }
         TransferType::Close(kill) => {

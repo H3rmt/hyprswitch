@@ -81,9 +81,8 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
     - `--reverse-key <KEYTYPE>=<KEY>` [default=shift] The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
       reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
     - `--close <TYPE>` How to close hyprswitch (`Return` or pressing a window always closes, ESC always kills)
-        - `mod-key-index` [default] Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...)
+        - `default` [default] Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...)
         - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER)
-        - `index` Close when pressing an index key (1, 2, 3, ...)
     - `--max-switch-offset <MAX_SWITCH_OFFSET>` [default=6] The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
     - `--hide-active-window-border` [default=false] Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
     - `--monitors` Show the GUI only on this monitor(s) [default: display on all monitors] Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1` Available values: `hyprctl monitors -j | jq '.[].name'` (You might want to use this together with the next option)
