@@ -26,13 +26,11 @@ Table of Contents
     * [Arch](#arch)
     * [Nixos](#nixos)
 * [Usage](#usage)
-    * [Parameters](#parameters-see-hyprswitch---help--hyprswitch-init---help---for-more-detailed-info)
+    * [Parameters](#parameters)
     * [Examples](#examples)
 * [Theming](#theming---custom-css)
 * [Other](#other)
     * [Sorting of windows](#sorting-of-windows)
-    * [--ignore-workspaces](#--ignore-workspaces)
-    * [--ignore-monitors](#--ignore-monitors)
     * [Experimental Environment Variables](#experimental-environment-variables)
 
 # Migration to 3.0.0
@@ -65,33 +63,31 @@ Table of Contents
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
-## Parameters (see `hyprswitch --help` / `hyprswitch init --help` / ... for more detailed info)
+## Parameters
+
+### This list only includes the most common options or values, (see `hyprswitch gui --help` / `hyprswitch init --help` / ... for more detailed info)
 
 - `--dry-run / -d` Print the command that would be executed instead of executing it
 - `-v` Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
 
 - `init` Initialize and start the Daemon
-    - `--custom-css <PATH>` Specify a path to custom css file
-    - `--show-title` Show the windows title instead of its class in Overview (fallback to class if title is empty)
-    - `--workspaces-per-row` Limit amount of workspaces in one row (overflows to next row)
-    - `--size-factor` The size factor (float) for the GUI (original_size / 30 * size_factor)
+    - `--custom-css <PATH>` Specify a path to custom CSS file
+    - `--show-title` [default=true] Show the window title instead of its class in Overview (fallback to class if title is empty)
+    - `--workspaces-per-row` [default=5] Limit amount of workspaces in one row (overflows to next row)
+    - `--size-factor` [default=6] The size factor (float) for the GUI (original_size / 30 * size_factor)
 - `gui` Opens the GUI
-    - `--mod-key <MODIFIER>` The modifier key used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r)
-    - `--key <KEY>` The key to used to open the GUI (e.g., tab)
-    - `--reverse-key <KEYTYPE>=<KEY>` The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
+    - `--mod-key <MODIFIER>` [{required}] The modifier key used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r) (You might want to use a variable, see Examples)
+    - `--key <KEY>` [{required}] The key to used to open the GUI (e.g., tab) (You might want to use a variable, see Examples)
+    - `--reverse-key <KEYTYPE>=<KEY>` [default=shift] The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
       reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
-    - `--close <TYPE>` How to close hyprswitch
-        - `mod-key-index` Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2,
-          3, ...) or clicking on a window in GUI (or pressing escape)
-        - `index` Close when pressing an index key (1, 2, 3, ...) or clicking on a window in GUI (or pressing
-          escape)
-        - `mod-key` Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or clicking on a window in
-          GUI (or pressing escape)
-        - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER) or clicking on a window in GUI (or pressing
-          escape)
-        - `none` Close when clicking on a window in GUI (or pressing escape)
-    - `--max-switch-offset <MAX_SWITCH_OFFSET>` The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
-    - `--hide-active-window-border` Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
+    - `--close <TYPE>` How to close hyprswitch (`Return` or pressing a window always closes, ESC always kills)
+        - `default` [default] Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...)
+        - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER)
+    - `--max-switch-offset <MAX_SWITCH_OFFSET>` [default=6] The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
+    - `--hide-active-window-border` [default=false] Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
+    - `--monitors` Show the GUI only on this monitor(s) [default: display on all monitors] Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1` Available values: `hyprctl monitors -j | jq '.[].name'` 
+      (You might want to use this together with the next option as using arrow keys to select a window on a different monitor will still be possible. Or use `--filter-current-monitor` to only show windows of the current monitor)
+    - `--show-workspaces-on-all-monitors` Show all workspaces on all monitors [default: only show workspaces on the corresponding monitor]
     - Same options as `simple` except `--offset` and `--reverse`
 
 - `simple` Switch without using the GUI / Daemon (switches directly)
@@ -99,8 +95,6 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
     - `--offset / -o <OFFSET>` Switch to a specific window offset (default 1)
 
     - `--include-special-workspaces` Include special workspaces (e.g., scratchpad)
-    - `--ignore-workspaces` Sort all windows on every monitor like [one contiguous workspace](#--ignore-workspaces)
-    - `--ignore-monitors` Sort all windows on matching workspaces on monitors like [one big monitor](#--ignore-monitors)
     - `--filter-same-class / -s` Only switch between windows that have the same class/type as the currently focused
       window
     - `--filter-current-workspace / -w` Only switch between windows that are on the same workspace as the currently
@@ -108,21 +102,16 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
     - `--filter-current-monitor / -m` Only switch between windows that are on the same monitor as the currently focused
       window
     - `--sort-recent` Sort windows by most recently focused
-    - `--switch-type` Switches to next / previous workspace / client / monitor [default: client]
-        - `client` Switch to next / previous client
+    - `--switch-type` Switches to next / previous workspace / client / monitor
+        - `client` [default] Switch to next / previous client
         - `workspace` Switch to next / previous workspace
         - `monitor` Switch to next / previous monitor
 
-- `dispatch` Used to send commands to the daemon (used in keymap that gets generated by gui)
-    - `--reverse / -r` Reverse the order of windows / switch backwards
-    - `--offset / -o <OFFSET>` Switch to a specific window offset (default 1)
-
-- `close` Close the GUI, executes the command to switch window
-    - `--kill` Don't switch to the selected window, just close the GUI
-
 ## Examples:
 
-(Modify the $... variables to use the keys you prefer)
+**(Modify the $... variables to use the keys you prefer)**
+
+**It is recommended to keep the `$key` variables to prevent errors when forgetting to change the parameter value when changing the keybinding**
 
 ### GUI
 
@@ -132,7 +121,18 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
 
 $key = tab
-bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-switch-offset 9
+$mod = super
+bind = $mod , $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9 --hide-active-window-border
+```
+
+**Simple Arrow keys**: Press `super` + `$key(tab)` to open the GUI, or press `1` / `2` / ... or arrow keys to change selected window, `return` to switch
+
+```ini
+exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
+
+$key = tab
+$mod = super
+bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9 --close mod-key
 ```
 
 **Keyboard (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to next window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the next window, press ``$reverse(`)`` to switch backwards, release alt to switch
@@ -140,14 +140,15 @@ bind = super, $key, exec, hyprswitch gui --mod-key super_l --key $key --max-swit
 ```ini
 exec-once = hyprswitch init --show-title &
 $key = tab
+$mod = alt
 $reverse = grave
 
-bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse && hyprswitch dispatch
-bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse && hyprswitch dispatch -r
+bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=mod=$reverse && hyprswitch dispatch
+bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=mod=$reverse && hyprswitch dispatch -r
 
 # use the if switching to the next window with the opening keypress is unwanted
 #bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse
-#bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse
+#bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=mod=$reverse
 ```
 
 **Keyboard recent (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to previously used window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the less and less previously used window, press ``$reverse(`)`` to switch to more recent used windows, release alt to switch
@@ -155,14 +156,15 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 ```ini
 exec-once = hyprswitch init --show-title &
 $key = tab
+$mod = alt
 $reverse = grave
 
-bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse --sort-recent && hyprswitch dispatch
-bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse --sort-recent && hyprswitch dispatch -r
+bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=mod=$reverse --sort-recent && hyprswitch dispatch
+bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=mod=$reverse --sort-recent && hyprswitch dispatch -r
 
 # use the if switching to the next window with the opening keypress is unwanted
-#bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse
-#bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=mod=$reverse
+#bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=mod=$reverse
+#bind = alt $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=mod=$reverse
 ```
 
 ### More Examples in [Wiki](https://github.com/H3rmt/hyprswitch/wiki/Examples)
@@ -172,7 +174,7 @@ bind = alt $reverse, $key, exec, hyprswitch gui --mod-key alt_l --key $key --clo
 ### CSS Variables
 
 ```css
-window {
+:root {
     --border-color: rgba(90, 90, 110, 0.4);
     --border-color-active: rgba(239, 9, 9, 0.9);
     --bg-color: rgba(20, 20, 20, 1);
@@ -182,11 +184,11 @@ window {
 }
 ```
 
-### Custom CSS Example for 4K screen to override default CSS values:
+### Example custom CSS for 4K screen to override default CSS values:
 
 ```css
 /* light blue borders for active, more transparent bg and more border-radius */
-window {
+:root {
     --border-color-active: rgba(17, 170, 217, 0.9);
     --bg-color: rgba(20, 20, 20, 0.8);
     --border-radius: 15px;
@@ -214,13 +216,11 @@ window {
 }
 ```
 
-### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/CSS) for more info
+### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/CSS) for more info and [CSS File](./src/daemon/gui/style.css) for the default Style
 
 # Other
 
 ### Sorting of windows
-
-See [tests](/src/handle/sort/tests) for more details on how windows get sorted
 
 ```
    1      2  3      4
@@ -235,7 +235,6 @@ See [tests](/src/handle/sort/tests) for more details on how windows get sorted
 ```
 
 ```
-                  Monitor 1
       Workspace 1           Workspace 2
 1  +------+  +------+ | +------+  +------+
 2  |  1   |  |  2   |   |  5   |  |  6   |
@@ -264,73 +263,12 @@ See [tests](/src/handle/sort/tests) for more details on how windows get sorted
         2       4         7    9
 ```
 
-### `--ignore-workspaces`
-
-- Order without `--ignore-workspaces`
-
-```
-                   Monitor 1                                   Monitor 2
-       Workspace 0           Workspace 1           Workspace 10          Workspace 11
- 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
- 2  |  1   |  |  2   | | |  5   |  |  6   |  |  |  9   |  |  10  | | |  13  |  |  14  |
- 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
- 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
- 5  +------+  +------+ | +------+  |  8   |  |  +---------+  +---+ | +------+  |  16  |
- 6  |  3   |  |  4   | | |  7   |  |      |  |  |   11    |  |12 | | |  15  |  |      |
- 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
-    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
-```
-
-- Order with `--ignore-workspaces`
-
-```
-                   Monitor 1                                   Monitor 2
-       Workspace 0           Workspace 1           Workspace 10         Workspace 11
- 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
- 2  |  1   |  |  2   | | |  3   |  |  4   |  |  |  9   |  |  10  | | |  11  |  |  12  |
- 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
- 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
- 5  +------+  +------+ | +------+  |  8   |  |  +---------+  +---+ | +------+  |  16  |
- 6  |  5   |  |  6   | | |  7   |  |      |  |  |   13    |  |14 | | |  15  |  |      |
- 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
-    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
-```
-
-### `--ignore-monitors`
-
-- Order without `--ignore-monitors`
-
-```
-                   Monitor 1                                   Monitor 2
-       Workspace 0           Workspace 1           Workspace 10          Workspace 11
- 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
- 2  |  1   |  |  2   | | |  5   |  |  6   |  |  |  9   |  |  10  | | |  13  |  |  14  |
- 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
- 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
- 5  +------+  +------+ | +------+  |  8   |  |  +---------+  +---+ | +------+  |  16  |
- 6  |  3   |  |  4   | | |  7   |  |      |  |  |   11    |  |12 | | |  15  |  |      |
- 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
-    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7   8  9
-```
-
-- Order with `--ignore-monitors`
-
-```
-                   Monitor 1                                   Monitor 2
-       Workspace 0           Workspace 1           Workspace 10          Workspace 11
- 1  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
- 2  |  1   |  |  2   | | |  9   |  |  10  |  |  |  3   |  |  4   | | |  11  |  |  12  |
- 3  |      |  |      | | |      |  +------+  |  |      |  |      | | |      |  +------+
- 4  +------+  +------+ | +------+  +------+  |  +------+  +------+ | +------+  +------+
- 5  +------+  +------+ | +------+  |  14  |  |  +---------+  +---+ | +------+  |  16  |
- 6  |  5   |  |  6   | | |  13  |  |      |  |  |   7     |  | 8 | | |  15  |  |      |
- 7  +------+  +------+ | +------+  +------+  |  +---------+  +---+ | +------+  +------+
-    1      2  3      4   1      2  3      4     5      6  7  8   9   5      6  7  8   9
-```
-
 ### Experimental Environment Variables
 
-- `ICON_SIZE` i32 [default: 128]: Argument passed to the theme.lookup_icon function (Determines the resolution of the
+- `ICON_SIZE` i32 [default: 512]: Argument passed to the theme.lookup_icon function (Determines the resolution of the
   Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
-- `ICON_SCALE` i32 [default: 1]: Argument passed to the theme.lookup_icon function (IDK what this does, setting it to
-  anything other than 1 changes nothing)
+- `SHOW_DEFAULT_ICON` bool [default: false]: Show a Icon if no icon was found (`application-x-executable` Doesn't scale good)
+- `SHOW_LAUNCHER` bool [default: true]: Show a Launcher Icon in the GUI when using default `--close` mode
+- `LAUNCHER_MAX_ITEMS` i32 [default: 5]: Maximum number of items in the Launcher
+- `DEFAULT_TERMINAL` string [default: ""]: Terminal to use for launching terminal applications, e.g., `alacritty`. (If
+  empty, a list if known terminals will be used)

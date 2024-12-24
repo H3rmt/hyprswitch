@@ -1,7 +1,9 @@
 use std::time::Instant;
 
+use crate::handle::sort::tests::{
+    client_vec, create_svg_from_client_tests, function, is_sorted, monitor_map, workspace_map,
+};
 use crate::handle::sort::{sort_clients, update_clients};
-use crate::handle::sort::tests::{client_vec, create_svg_from_client_tests, function, is_sorted, monitor_map, workspace_map};
 
 /// ```text
 ///                   Monitor 1
@@ -17,13 +19,8 @@ use crate::handle::sort::tests::{client_vec, create_svg_from_client_tests, funct
 /// ```
 #[test]
 fn default() {
-    let monitor_data = monitor_map![
-        (0, 0, 4, 7),
-    ];
-    let workspace_data = workspace_map![
-        (0, 0, 0),
-        (5, 0, 0),
-    ];
+    let monitor_data = monitor_map![(0, 0, 4, 7),];
+    let workspace_data = workspace_map![(0, 0, 0), (5, 0, 0),];
     let clients = client_vec![
         (1, 1, 1, 3, 0, 0),
         (3, 1, 1, 3, 0, 0),
@@ -63,13 +60,8 @@ fn default() {
 /// ```
 #[test]
 fn ignore_workspace() {
-    let monitor_data = monitor_map![
-        (0, 0, 4, 7),
-    ];
-    let workspace_data = workspace_map![
-        (0, 0, 0),
-        (5, 0, 0),
-    ];
+    let monitor_data = monitor_map![(0, 0, 4, 7),];
+    let workspace_data = workspace_map![(0, 0, 0), (5, 0, 0),];
     let clients = client_vec![
         (1, 1, 1, 3, 0, 0),
         (3, 1, 1, 3, 0, 0),
@@ -85,7 +77,7 @@ fn ignore_workspace() {
 
     let clients = update_clients(clients, Some(&workspace_data), Some(&monitor_data));
     println!("updated clients: {clients:?} ({:?})", update.elapsed());
-    
+
     let start = Instant::now();
     let clients = sort_clients(clients, true, false);
     println!("{clients:?} ({:?})", start.elapsed());
@@ -117,13 +109,8 @@ fn ignore_workspace() {
 /// ```
 #[test]
 fn vertical() {
-    let monitor_data = monitor_map![
-        (0, 0, 4, 7),
-    ];
-    let workspace_data = workspace_map![
-        (0, 0, 0),
-        (0, 8, 0),
-    ];
+    let monitor_data = monitor_map![(0, 0, 4, 7),];
+    let workspace_data = workspace_map![(0, 0, 0), (0, 8, 0),];
     let clients = client_vec![
         (1, 1, 1, 3, 0, 0),
         (3, 1, 1, 3, 0, 0),
@@ -171,13 +158,8 @@ fn vertical() {
 /// ```
 #[test]
 fn vertical_ignore_workspace() {
-    let monitor_data = monitor_map![
-        (0, 0, 4, 7),
-    ];
-    let workspace_data = workspace_map![
-        (0, 0, 0),
-        (0, 8, 0),
-    ];
+    let monitor_data = monitor_map![(0, 0, 4, 7),];
+    let workspace_data = workspace_map![(0, 0, 0), (0, 8, 0),];
     let clients = client_vec![
         (1, 1, 1, 3, 0, 0),
         (3, 1, 1, 3, 0, 0),

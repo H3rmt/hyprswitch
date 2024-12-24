@@ -1,0 +1,9 @@
+[Unit]
+Description=Socket for hyprswitch Daemon
+
+[Socket]
+ListenStream=%t/hyprswitch.sock
+Accept=false
+
+[Install]
+WantedBy=sockets.target

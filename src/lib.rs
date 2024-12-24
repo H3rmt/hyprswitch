@@ -1,29 +1,29 @@
 #![deny(clippy::print_stdout)]
 
+use crate::cli::{
+    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType,
+};
 use anyhow::Context;
+use async_channel::{Receiver, Sender};
 use hyprland::data::Version as HyprlandVersion;
-use hyprland::data::WorkspaceBasic;
 use hyprland::prelude::HyprData;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use log::{info, trace};
 use notify_rust::{Notification, Urgency};
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::env::var;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
-use tokio::sync::Notify;
-
-use crate::cli::{CloseType, GuiConf, ModKey, ReverseKey, SimpleConf, SimpleOpts, SwitchType};
 
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
 
-pub mod daemon;
 pub mod cli;
 pub mod client;
+pub mod daemon;
+pub mod envs;
 pub mod handle;
 
 #[derive(Debug, Clone)]
@@ -39,7 +39,6 @@ pub struct MonitorData {
 /// we need both id and name for the workspace (special workspaces need the name)
 #[derive(Debug, Clone)]
 pub struct WorkspaceData {
-    pub id: WorkspaceId,
     pub name: String,
     pub x: i32,
     pub y: i32,
@@ -57,7 +56,6 @@ pub struct ClientData {
     pub height: i16,
     pub class: String,
     pub title: String,
-    pub address: Address,
     pub workspace: WorkspaceId,
     pub monitor: MonitorId,
     pub focus_history_id: i8,
@@ -84,6 +82,14 @@ pub struct Config {
     pub switch_type: SwitchType,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct InitConfig {
+    custom_css: Option<PathBuf>,
+    show_title: bool,
+    workspaces_per_row: u8,
+    size_factor: f64,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GuiConfig {
     pub max_switch_offset: u8,
@@ -92,6 +98,8 @@ pub struct GuiConfig {
     pub close: CloseType,
     pub reverse_key: ReverseKey,
     pub hide_active_window_border: bool,
+    pub monitors: Option<Monitors>,
+    pub show_workspaces_on_all_monitors: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,20 +117,28 @@ pub struct Transfer {
 }
 
 #[derive(Debug, Default)]
-pub struct Data {
-    pub clients: Vec<ClientData>,
-    pub workspaces: BTreeMap<WorkspaceId, WorkspaceData>,
-    pub monitors: BTreeMap<MonitorId, MonitorData>,
+pub struct HyprlandData {
+    pub clients: Vec<(Address, ClientData)>,
+    pub workspaces: Vec<(WorkspaceId, WorkspaceData)>,
+    pub monitors: Vec<(MonitorId, MonitorData)>,
 }
 
 #[derive(Debug, Default)]
 pub struct SharedData {
     pub simple_config: Config,
     pub gui_config: GuiConfig,
-    pub data: Data,
+    pub hypr_data: HyprlandData,
     pub active: Active,
-    pub gui_show: bool,
+    pub launcher: LauncherConfig,
 }
+
+#[derive(Debug, Default)]
+pub struct LauncherConfig {
+    execs: Execs,
+    selected: Option<usize>,
+}
+
+type Execs = Vec<(Box<str>, Option<Box<str>>, bool)>;
 
 #[derive(Debug, Default)]
 pub enum Active {
@@ -133,8 +149,15 @@ pub enum Active {
     Unknown,
 }
 
-// config, clients, selected-client, gui-show
-pub type Share = Arc<(Mutex<SharedData>, Notify)>;
+#[derive(Debug, Clone, Copy)]
+pub enum GUISend {
+    Refresh,
+    New,
+    Hide,
+}
+
+// shared ARC with Mutex and Notify for new_gui and update_gui
+pub type Share = Arc<(Mutex<SharedData>, Sender<GUISend>, Receiver<bool>)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: OnceLock<bool> = OnceLock::new();
@@ -142,6 +165,16 @@ pub static DRY: OnceLock<bool> = OnceLock::new();
 /// global variable to store if daemon is active (displaying GUI)
 pub static ACTIVE: OnceLock<Mutex<bool>> = OnceLock::new();
 
+impl From<InitOpts> for InitConfig {
+    fn from(opts: InitOpts) -> Self {
+        Self {
+            custom_css: opts.custom_css,
+            show_title: opts.show_title,
+            workspaces_per_row: opts.workspaces_per_row,
+            size_factor: opts.size_factor,
+        }
+    }
+}
 impl From<SimpleConf> for Config {
     fn from(opts: SimpleConf) -> Self {
         Self {
@@ -175,22 +208,16 @@ impl From<GuiConf> for GuiConfig {
             close: opts.close,
             reverse_key: opts.reverse_key,
             hide_active_window_border: opts.hide_active_window_border,
-        }
-    }
-}
-
-impl<'a> From<&'a WorkspaceData> for WorkspaceBasic {
-    fn from(data: &'a WorkspaceData) -> Self {
-        WorkspaceBasic {
-            id: data.id,
-            name: data.name.clone(),
+            monitors: opts.monitors,
+            show_workspaces_on_all_monitors: opts.show_workspaces_on_all_monitors,
         }
     }
 }
 
 impl fmt::Display for ModKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self { // need snake_case
+        match self {
+            // need snake_case
             ModKey::SuperL => write!(f, "super_l"),
             ModKey::SuperR => write!(f, "super_r"),
             ModKey::AltL => write!(f, "alt_l"),
@@ -209,7 +236,9 @@ pub fn get_socket_path_buff() -> PathBuf {
     } else {
         PathBuf::from("/tmp")
     };
-
+    #[cfg(debug_assertions)]
+    buf.push("hyprswitch.debug.sock");
+    #[cfg(not(debug_assertions))]
     buf.push("hyprswitch.sock");
     buf
 }
@@ -219,7 +248,8 @@ pub fn check_version() -> anyhow::Result<()> {
         .context("Failed to get version! (Hyprland is probably outdated or too new??)")?;
 
     trace!("Hyprland {version:?}");
-    info!("Starting Hyprswitch ({}) on Hyprland {}",
+    info!(
+        "Starting Hyprswitch ({}) on Hyprland {}",
         option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"),
         version.tag
     );
@@ -230,7 +260,10 @@ pub fn check_version() -> anyhow::Result<()> {
     // TODO use .version in future and fall back to tag (only parse tag if version is not found => <v0.41.?)
     if version.tag == "unknown" || parsed_version.lt(&MIN_VERSION) {
         let _ = Notification::new()
-            .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+            .summary(&format!(
+                "Hyprswitch ({}) Error",
+                option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")
+            ))
             .body("Hyprland version too old or unknown")
             .timeout(5000)
             .hint(notify_rust::Hint::Urgency(Urgency::Critical))
@@ -238,4 +271,26 @@ pub fn check_version() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+pub trait FindByFirst<ID, Data> {
+    fn find_by_first(&self, id: &ID) -> Option<&Data>;
+}
+
+impl FindByFirst<Address, ClientData> for Vec<(Address, ClientData)> {
+    fn find_by_first(&self, id: &Address) -> Option<&ClientData> {
+        self.iter().find(|(addr, _)| *addr == *id).map(|(_, cd)| cd)
+    }
+}
+
+impl FindByFirst<WorkspaceId, WorkspaceData> for Vec<(WorkspaceId, WorkspaceData)> {
+    fn find_by_first(&self, id: &WorkspaceId) -> Option<&WorkspaceData> {
+        self.iter().find(|(wid, _)| *wid == *id).map(|(_, wd)| wd)
+    }
+}
+
+impl FindByFirst<MonitorId, MonitorData> for Vec<(MonitorId, MonitorData)> {
+    fn find_by_first(&self, id: &MonitorId) -> Option<&MonitorData> {
+        self.iter().find(|(mid, _)| *mid == *id).map(|(_, md)| md)
+    }
 }
