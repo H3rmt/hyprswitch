@@ -111,9 +111,6 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
         cd
     };
 
-    trace!("[DATA] client_data: {:?}", client_data);
-    trace!("[DATA] workspace_data: {:?}", workspace_data);
-    trace!("[DATA] monitor_data: {:?}", monitor_data);
 
     if config.ignore_monitors {
         client_data = update_clients(client_data, Some(&workspace_data), None);
@@ -132,7 +129,6 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
                     .map(|(address, client_data)| (address.clone(), client_data.focus_history_id)),
             );
         };
-        // client_data.
         client_data.sort_by(|(a_addr, a), (b_addr, b)| {
             let a_focus_id = focus_map.get(a_addr);
             let b_focus_id = focus_map.get(b_addr);
@@ -158,6 +154,13 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
     if config.ignore_monitors {
         client_data = update_clients(client_data, None, Some(&monitor_data));
     }
+
+    workspace_data.sort_by(|a, b| a.0.cmp(&b.0));
+    monitor_data.sort_by(|a, b| a.0.cmp(&b.0));
+
+    trace!("[DATA] client_data: {:?}", client_data);
+    trace!("[DATA] workspace_data: {:?}", workspace_data);
+    trace!("[DATA] monitor_data: {:?}", monitor_data);
 
     let active = Client::get_active()?;
     let active: Option<(String, WorkspaceId, MonitorId, Address)> = active.as_ref().map_or_else(

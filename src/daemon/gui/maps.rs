@@ -5,7 +5,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 use std::{env, fs::DirEntry, path::PathBuf, sync::OnceLock};
 
-type IconMap = BTreeMap<Box<str>, (Box<str>, u8, Box<Path>)>;
+type IconPathMap = BTreeMap<Box<str>, (Box<str>, u8, Box<Path>)>;
 type DesktopFileMap = Vec<(
     Box<str>,
     Option<Box<str>>,
@@ -14,9 +14,10 @@ type DesktopFileMap = Vec<(
     Option<Box<str>>,
     bool,
 )>;
+type IconMap = BTreeMap<Box<str>, String>;
 
-fn get_icon_map() -> &'static Mutex<IconMap> {
-    static MAP_LOCK: OnceLock<Mutex<IconMap>> = OnceLock::new();
+fn get_icon_path_map() -> &'static Mutex<IconPathMap> {
+    static MAP_LOCK: OnceLock<Mutex<IconPathMap>> = OnceLock::new();
     MAP_LOCK.get_or_init(|| Mutex::new(BTreeMap::new()))
 }
 
@@ -25,8 +26,26 @@ fn get_desktop_file_map() -> &'static Mutex<DesktopFileMap> {
     MAP_LOCK.get_or_init(|| Mutex::new(Vec::new()))
 }
 
-pub fn get_icon_name(icon: &str) -> Option<String> {
+fn get_icon_map() -> &'static Mutex<IconMap> {
+    static MAP_LOCK: OnceLock<Mutex<IconMap>> = OnceLock::new();
+    MAP_LOCK.get_or_init(|| Mutex::new(BTreeMap::new()))
+}
+
+pub fn get_icon_by_name(path: &str) -> Option<impl AsRef<Path>> {
     let map = get_icon_map().lock().expect("Failed to lock icon map");
+    map.get(path).map(|s| PathBuf::from(s.as_str()))
+}
+
+pub fn add_icon_to_map(icon: &str, path: impl AsRef<Path>) {
+    let mut map = get_icon_map().lock().expect("Failed to lock icon map");
+    map.insert(
+        Box::from(icon),
+        path.as_ref().to_string_lossy().into_owned(),
+    );
+}
+
+pub fn get_icon_path_by_name(icon: &str) -> Option<String> {
+    let map = get_icon_path_map().lock().expect("Failed to lock icon map");
     map.get(icon.to_ascii_lowercase().as_str())
         .map(|s| s.clone().0.into_string())
 }
@@ -39,7 +58,7 @@ pub fn get_all_desktop_files<'a>() -> MutexGuard<'a, DesktopFileMap> {
 }
 
 pub fn reload_desktop_maps() {
-    let mut map = get_icon_map().lock().expect("Failed to lock icon map");
+    let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
     let mut map2 = get_desktop_file_map()
         .lock()
         .expect("Failed to lock desktop file map");
@@ -105,7 +124,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
     res
 }
 
-fn fill_desktop_file_map(map: &mut IconMap, mut map2: Option<&mut DesktopFileMap>) {
+fn fill_desktop_file_map(map: &mut IconPathMap, mut map2: Option<&mut DesktopFileMap>) {
     let now = Instant::now();
     for entry in collect_desktop_files() {
         let file = std::fs::read_to_string(entry.path());

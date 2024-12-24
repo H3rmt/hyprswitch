@@ -5,6 +5,7 @@ use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
 use std::process::exit;
 use std::sync::Mutex;
+use hyprswitch::envs::envvar_dump;
 
 fn main() -> anyhow::Result<()> {
     let cli = cli::App::try_parse()
@@ -43,6 +44,8 @@ fn main() -> anyhow::Result<()> {
     ACTIVE
         .set(Mutex::new(false))
         .expect("unable to set ACTIVE (already filled???)");
+
+    envvar_dump();
 
     match cli.command {
         cli::Command::Init { init_opts } => {

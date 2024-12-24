@@ -1,3 +1,4 @@
+use crate::daemon::gui::maps::{add_icon_to_map, get_icon_by_name};
 use crate::daemon::gui::windows::click::{click_client, click_workspace};
 use crate::daemon::gui::{maps, MonitorData};
 use crate::envs::{ICON_SIZE, SHOW_DEFAULT_ICON};
@@ -75,7 +76,7 @@ pub fn init_windows(
         let clients = {
             let mut clients = clients_p
                 .iter()
-                .filter(|(_, client)| client.monitor == monitor_data.id && client.workspace == *wid)
+                .filter(|(_, client)| client.workspace == *wid)
                 .collect::<Vec<_>>();
             clients.sort_by(|(_, a), (_, b)| {
                 // prefer smaller windows
@@ -145,15 +146,20 @@ fn clear_monitor(monitor_data: &mut MonitorData) {
 }
 
 macro_rules! load_icon {
-    ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr) => {
+    ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr, $class:expr) => {
         let icon = $theme.lookup_icon(
-            $icon_name, &[], *ICON_SIZE, 1,
-            TextDirection::None, IconLookupFlags::PRELOAD,
+            $icon_name,
+            &[],
+            *ICON_SIZE,
+            1,
+            TextDirection::None,
+            IconLookupFlags::PRELOAD,
         );
         'block: {
             if let Some(icon_file) = icon.file() {
                 if let Some(path) = icon_file.path() {
-                    if apply_pixbuf_path(path, $pic, $enabled).ok().is_some() {
+                    if apply_pixbuf_path(&path, $pic, $enabled).ok().is_some() {
+                        add_icon_to_map(&$class, path);
                         break 'block; // successfully loaded Pixbuf
                     }
                 }
@@ -161,7 +167,7 @@ macro_rules! load_icon {
             warn!("[Icons] Failed to convert icon to pixbuf, using paintable");
             $pic.set_paintable(Some(&icon));
         }
-        trace!("[Icons]|{:.2?}| Applied Icon", $now.elapsed());
+        trace!("[Icons]|{:.2?}| Applied Icon for {}", $now.elapsed(), $class);
     };
 }
 
@@ -171,6 +177,15 @@ fn set_icon_spawn(client: &ClientData, pic: &Picture) {
     let pid = client.pid;
     let pic = pic.clone();
 
+    if let Some(a) = get_icon_by_name(&class) {
+        trace!("[Icons] Found icon for {} in cache", class);
+        if apply_pixbuf_path(a, &pic, enabled).is_ok() {
+            return;
+        }
+    } else {
+        trace!("[Icons] Icon for {} not found in cache", class);
+    }
+
     gtk4::glib::MainContext::default().spawn_local(async move {
         let now = Instant::now();
 
@@ -178,10 +193,10 @@ fn set_icon_spawn(client: &ClientData, pic: &Picture) {
         // trace!("[Icons] Looking for icon for {}", client.class);
         if theme.has_icon(&class) {
             trace!("[Icons]|{:.2?}| Icon found for {}", now.elapsed(), class);
-            load_icon!(theme, &class, &pic, enabled, now);
+            load_icon!(theme, &class, &pic, enabled, now, class);
         } else {
             trace!("[Icons]|{:.2?}| No Icon found for {}, looking in desktop file by class-name", now.elapsed(),class);
-            let icon_name = maps::get_icon_name(&class)
+            let icon_name = maps::get_icon_path_by_name(&class)
                 .or_else(|| {
                     if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
                         // convert x00 to space
@@ -192,7 +207,7 @@ fn set_icon_spawn(client: &ClientData, pic: &Picture) {
                             None
                         } else {
                             trace!("[Icons]|{:.2?}| Searching for icon for {} with CMD {} in desktop files", now.elapsed(), class, cmd);
-                            maps::get_icon_name(cmd).or_else(|| {
+                            maps::get_icon_path_by_name(cmd).or_else(|| {
                                 warn!("[Icons] Failed to find icon for CMD {}", cmd);
                                 None
                             })
@@ -206,15 +221,16 @@ fn set_icon_spawn(client: &ClientData, pic: &Picture) {
             if let Some(icon_name) = icon_name {
                 trace!("[Icons]|{:.2?}| Icon name found for {} in desktop file", now.elapsed(), class);
                 if icon_name.contains('/') {
-                    let _ = apply_pixbuf_path(icon_name, &pic, enabled);
+                    let _ = apply_pixbuf_path(&icon_name, &pic, enabled);
+                    add_icon_to_map(&class, &icon_name);
                     trace!("[Icons]|{:.2?}| Applied Icon", now.elapsed());
                 } else {
-                    load_icon!(theme, &icon_name, &pic, enabled, now);
+                    load_icon!(theme, &icon_name, &pic, enabled, now, class);
                 }
             } else {
                 // application-x-executable doesn't scale, idk why (it even is an svg)
                 if *SHOW_DEFAULT_ICON {
-                    load_icon!(theme, "application-x-executable", &pic, enabled, now);
+                    load_icon!(theme, "application-x-executable", &pic, enabled, now, "application-x-executable"); // caching this is effectively useless
                 }
             }
         }
