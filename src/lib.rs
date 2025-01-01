@@ -8,7 +8,7 @@ use async_channel::{Receiver, Sender};
 use hyprland::data::Version as HyprlandVersion;
 use hyprland::prelude::HyprData;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{info, trace};
+use log::{info, trace, warn};
 use notify_rust::{Notification, Urgency};
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -292,5 +292,25 @@ impl FindByFirst<WorkspaceId, WorkspaceData> for Vec<(WorkspaceId, WorkspaceData
 impl FindByFirst<MonitorId, MonitorData> for Vec<(MonitorId, MonitorData)> {
     fn find_by_first(&self, id: &MonitorId) -> Option<&MonitorData> {
         self.iter().find(|(mid, _)| *mid == *id).map(|(_, md)| md)
+    }
+}
+
+pub trait Warn {
+    fn warn(&self, msg: &str);
+}
+
+impl Warn for Option<()> {
+    fn warn(&self, msg: &str) {
+        if self.is_none() {
+            warn!("{}", msg);
+        }
+    }
+}
+
+impl<E: fmt::Display> Warn for Result<(), E> {
+    fn warn(&self, msg: &str) {
+        if let Err(e) = self {
+            warn!("{}: {}", msg, e);
+        }
     }
 }

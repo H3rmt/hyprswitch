@@ -65,16 +65,25 @@ fn connect_app(
 
         let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, MonitorData>>> =
             Rc::new(Mutex::new(HashMap::new()));
-        create_windows_save(
-            &share,
-            monitor_data_list.deref(),
-            init_config.workspaces_per_row as u32,
-            app,
-        );
+        {
+            let mut monitor_data_list = monitor_data_list.lock().expect("Failed to lock");
+            windows::create_windows(
+                &share,
+                &mut monitor_data_list,
+                init_config.workspaces_per_row as u32,
+                app,
+            )
+            .unwrap_or_else(|e| {
+                warn!("[GUI] {:?}", e);
+            });
+            drop(monitor_data_list);
+        }
 
         let launcher: LauncherRefs = Rc::new(Mutex::new(None));
         if *SHOW_LAUNCHER {
-            create_launcher_save(&share, launcher.clone(), app);
+            launcher::create_launcher(&share, launcher.clone(), app).unwrap_or_else(|e| {
+                warn!("[GUI] {:?}", e);
+            });
         }
 
         glib::spawn_future_local(clone!(
@@ -126,6 +135,24 @@ async fn handle_updates(
             let launcher_unlocked = launcher.lock().expect("Failed to lock, launcher");
             match mess {
                 Ok(GUISend::Refresh) => {
+                    // only update launcher wen using default close mode
+                    if data.gui_config.close == CloseType::Default {
+                        launcher_unlocked.as_ref().inspect(|(_, e, l)| {
+                            if data.launcher.selected.is_none() && !e.text().is_empty() {
+                                data.launcher.selected = Some(0);
+                            }
+                            if data.launcher.selected.is_some() && e.text().is_empty() {
+                                data.launcher.selected = None;
+                            }
+                            let selected = data.launcher.selected.clone();
+                            launcher::update_launcher(
+                                &e.text(),
+                                l,
+                                &mut data.launcher.execs,
+                                selected,
+                            )
+                        });
+                    }
                     for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
                         if let Some(monitors) = &data.gui_config.monitors {
                             if !monitors.0.iter().any(|m| *m == monitor_data.connector) {
@@ -135,22 +162,17 @@ async fn handle_updates(
                         trace!("[GUI] Refresh window {:?}", window);
                         windows::update_windows(monitor_data, &data)
                             .unwrap_or_else(|e| warn!("[GUI] {:?}", e));
-
-                        // only update launcher wen using default close mode
-                        if data.gui_config.close == CloseType::Default {
-                            launcher_unlocked.as_ref().inspect(|(_, e, l)| {
-                                if data.launcher.selected.is_none() && !e.text().is_empty() {
-                                    data.launcher.selected = Some(0);
-                                }
-                                if data.launcher.selected.is_some() && e.text().is_empty() {
-                                    data.launcher.selected = None;
-                                }
-                                launcher::update_launcher(&e.text(), l, &mut data.launcher.execs)
-                            });
-                        }
                     }
                 }
                 Ok(GUISend::New) => {
+                    // only open launcher when opening with default close mode
+                    if data.gui_config.close == CloseType::Default {
+                        launcher_unlocked.as_ref().inspect(|(w, e, _)| {
+                            w.show();
+                            e.set_text("");
+                            e.grab_focus();
+                        });
+                    }
                     for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
                         if let Some(monitors) = &data.gui_config.monitors {
                             if !monitors.0.iter().any(|m| *m == monitor_data.connector) {
@@ -172,22 +194,13 @@ async fn handle_updates(
                         windows::update_windows(monitor_data, &data)
                             .unwrap_or_else(|e| warn!("[GUI] {:?}", e));
                     }
-
-                    // only open launcher when opening with default close mode
-                    if data.gui_config.close == CloseType::Default {
-                        launcher_unlocked.as_ref().inspect(|(w, e, _)| {
-                            w.show();
-                            e.set_text("");
-                            e.grab_focus();
-                        });
-                    }
                 }
                 Ok(GUISend::Hide) => {
+                    launcher_unlocked.as_ref().inspect(|(w, _, _)| w.hide());
                     for (window, _) in &mut monitor_data_list_unlocked.iter_mut() {
                         trace!("[GUI] Hiding window {:?}", window);
                         window.hide();
                     }
-                    launcher_unlocked.as_ref().inspect(|(w, _, _)| w.hide());
                 }
                 Err(e) => {
                     warn!("[GUI] Receiver closed: {e}");
@@ -234,27 +247,7 @@ fn apply_css(custom_css: Option<&PathBuf>) {
     }
 }
 
-fn create_launcher_save(share: &Share, launcher: LauncherRefs, app: &Application) {
-    launcher::create_launcher(share, launcher, app).unwrap_or_else(|e| {
-        warn!("[GUI] {:?}", e);
-    });
-}
-
 type LauncherRefs = Rc<Mutex<Option<(ApplicationWindow, Entry, ListBox)>>>;
-
-fn create_windows_save(
-    share: &Share,
-    monitor_data_list: &Mutex<HashMap<ApplicationWindow, MonitorData>>,
-    workspaces_per_row: u32,
-    app: &Application,
-) {
-    let mut monitor_data_list = monitor_data_list.lock().expect("Failed to lock");
-    windows::create_windows(share, &mut monitor_data_list, workspaces_per_row, app).unwrap_or_else(
-        |e| {
-            warn!("[GUI] {:?}", e);
-        },
-    );
-}
 
 #[allow(dead_code)]
 #[allow(unused_variables)]

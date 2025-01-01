@@ -8,12 +8,17 @@ use log::{info, warn};
 use std::ops::Deref;
 use std::thread;
 
-pub(crate) fn switch(share: Share, command: Command) -> anyhow::Result<()> {
+pub(crate) fn switch(share: &Share, command: Command) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
+        let exec_len = lock.launcher.execs.len();
         if let Some(ref mut selected) = lock.launcher.selected {
-            *selected += command.offset as usize;
+            *selected = if command.reverse {
+                selected.saturating_sub(command.offset as usize)
+            } else {
+                (*selected + command.offset as usize).min(exec_len - 1)
+            };
         } else {
             let active = find_next(
                 &lock.simple_config.switch_type,
@@ -34,7 +39,7 @@ pub(crate) fn switch(share: Share, command: Command) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
+pub(crate) fn close(share: &Share, kill: bool) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
     {
         let lock = latest.lock().expect("Failed to lock");
@@ -73,7 +78,7 @@ pub(crate) fn close(share: Share, kill: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn init(share: Share, config: Config, gui_config: GuiConfig) -> anyhow::Result<()> {
+pub(crate) fn init(share: &Share, config: Config, gui_config: GuiConfig) -> anyhow::Result<()> {
     let (clients_data, active) = collect_data(config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", config.clone()))?;
 

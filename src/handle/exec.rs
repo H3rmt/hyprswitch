@@ -12,6 +12,22 @@ use crate::{Active, FindByFirst, HyprlandData, DRY};
 pub fn switch_to_active(active: &Active, clients_data: &HyprlandData) -> anyhow::Result<()> {
     match active {
         Active::Client(addr) => {
+            let data = clients_data
+                .clients
+                .find_by_first(addr)
+                .context("Client data not found")?;
+            debug!("Switching to client {}", data.title);
+            let workspace_data = clients_data
+                .workspaces
+                .find_by_first(&data.workspace)
+                .context("Workspace data not found")?;
+            switch_workspace(
+                &WorkspaceBasic {
+                    id: data.workspace,
+                    name: workspace_data.name.clone(),
+                },
+                *DRY.get().expect("DRY not set"),
+            ).expect("TODO: panic message");
             switch_client(addr, *DRY.get().expect("DRY not set"))
                 .with_context(|| format!("Failed to execute with addr {addr:?}"))?;
         }
@@ -27,9 +43,9 @@ pub fn switch_to_active(active: &Active, clients_data: &HyprlandData) -> anyhow:
                 },
                 *DRY.get().expect("DRY not set"),
             )
-            .with_context(|| {
-                format!("Failed to execute switch workspace with workspace_data {workspace_data:?}")
-            })?;
+                .with_context(|| {
+                    format!("Failed to execute switch workspace with workspace_data {workspace_data:?}")
+                })?;
         }
         Active::Monitor(mid) => {
             switch_monitor(mid, *DRY.get().expect("DRY not set")).with_context(|| {

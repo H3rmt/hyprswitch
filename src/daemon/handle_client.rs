@@ -18,7 +18,6 @@ pub(super) fn start_handler_blocking(share: &Share) {
         // Get the file descriptor from the environment variable set by systemd
         let fd = RawFd::from(3);
 
-        // Create a UnixListener from the file descriptor
         let listener = unsafe { UnixListener::from_raw_fd(fd) };
         info!(
             "Starting {:?} listener on fd {:?}",
@@ -130,7 +129,7 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
         TransferType::Init(config, gui_config) => {
             if !active {
                 info!("[HANDLE] Received init command {config:?} and {gui_config:?}");
-                match init(share, config.clone(), gui_config.clone()).with_context(|| {
+                match init(&share, config.clone(), gui_config.clone()).with_context(|| {
                     format!(
                         "Failed to init with config {:?} and gui_config {:?}",
                         config, gui_config
@@ -152,7 +151,7 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
         TransferType::Close(kill) => {
             if active {
                 info!("[HANDLE] Received close command with kill: {kill}");
-                match close(share, kill)
+                match close(&share, kill)
                     .with_context(|| format!("Failed to close gui  kill: {kill}"))
                 {
                     Ok(_) => {
@@ -170,7 +169,7 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
         TransferType::Switch(command) => {
             if active {
                 info!("[HANDLE] Received switch command {command:?}");
-                match switch(share, command)
+                match switch(&share, command)
                     .with_context(|| format!("Failed to execute with command {command:?}"))
                 {
                     Ok(_) => {
