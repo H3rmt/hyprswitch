@@ -69,7 +69,9 @@ jobs:
           ssh_keyscan_types: rsa,ecdsa,ed25519
       - name: Update Release branch
         run: |
+          git fetch origin main
+          git switch main
           git fetch origin release
-          git checkout release
+          git switch release
           git rebase main
           git push --force origin release
