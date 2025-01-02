@@ -1,12 +1,30 @@
 {
   "nodes": {
+    "flake-parts": {
+      "inputs": {
+        "nixpkgs-lib": "nixpkgs-lib"
+      },
+      "locked": {
+        "lastModified": 1735774679,
+        "narHash": "sha256-soePLBazJk0qQdDVhdbM98vYdssfs3WFedcq+raipRI=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "f2f7418ce0ab4a5309a4596161d154cfc877af66",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1711588226,
-        "narHash": "sha256-nd7goEu+nH/WZ/uCxvbWzSYqzZZn25kWTeKfANOhCjU=",
+        "lastModified": 1735831304,
+        "narHash": "sha256-92A/Zr8UzZzlFYmkgO3HAgX/Cr53eodgNyvJA+Ibkz0=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "7232f19f7fb710e3554cafaa9d8e93cff8273b59",
+        "rev": "0725951bfc4bbc2efff3a537837ca13159b4aec9",
         "type": "github"
       },
       "original": {
@@ -15,8 +33,21 @@
         "type": "github"
       }
     },
+    "nixpkgs-lib": {
+      "locked": {
+        "lastModified": 1735774519,
+        "narHash": "sha256-CewEm1o2eVAnoqb6Ml+Qi9Gg/EfNAxbRx1lANGVyoLI=",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/e9b51731911566bbf7e4895475a87fe06961de0b.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/e9b51731911566bbf7e4895475a87fe06961de0b.tar.gz"
+      }
+    },
     "root": {
       "inputs": {
+        "flake-parts": "flake-parts",
         "nixpkgs": "nixpkgs"
       }
     }
