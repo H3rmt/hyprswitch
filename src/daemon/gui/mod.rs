@@ -144,7 +144,7 @@ async fn handle_updates(
                             if data.launcher.selected.is_some() && e.text().is_empty() {
                                 data.launcher.selected = None;
                             }
-                            let selected = data.launcher.selected.clone();
+                            let selected = data.launcher.selected;
                             launcher::update_launcher(
                                 &e.text(),
                                 l,

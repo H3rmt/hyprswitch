@@ -170,6 +170,10 @@ pub struct GuiConf {
     #[arg(long)]
     pub key: String,
 
+    /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
+    #[arg(long, value_parser = clap::value_parser!(ReverseKey), default_value = "mod=shift")]
+    pub reverse_key: ReverseKey,
+
     /// How to close hyprswitch
     #[clap(long, default_value_t, value_enum)]
     pub close: CloseType,
@@ -177,10 +181,6 @@ pub struct GuiConf {
     /// The maximum offset you can switch to with number keys and is shown in the GUI (pass 0 to disable the number keys and index)
     #[arg(long, default_value = "6", value_parser = clap::value_parser!(u8).range(0..=9))]
     pub max_switch_offset: u8,
-
-    /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
-    #[arg(long, value_parser = clap::value_parser!(ReverseKey), default_value = "mod=shift")]
-    pub reverse_key: ReverseKey,
 
     /// Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
     #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args= 0..=1

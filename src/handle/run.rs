@@ -1,5 +1,5 @@
 use crate::envs::DEFAULT_TERMINAL;
-use log::{info, trace, warn};
+use log::{info, warn};
 use std::io;
 use std::ops::Deref;
 use std::process::{Child, Command, Stdio};
@@ -13,7 +13,7 @@ pub fn run_program(run: &str, path: &Option<Box<str>>, terminal: bool) {
                 warn!("Failed to run command: {}", e);
             }
         } else {
-            trace!("No default terminal found, trying to find one. (pass DEFAULT_TERMINAL to set a default terminal)");
+            info!("No default terminal found, trying to find one. (pass DEFAULT_TERMINAL to set a default terminal)");
             for term in TERMINALS {
                 let mut process = Command::new(term);
                 process.arg("-e");
