@@ -24,6 +24,7 @@ pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps
 mod launcher;
 mod maps;
 mod windows;
+mod icon;
 
 pub(super) fn start_gui_blocking(
     share: &Share,

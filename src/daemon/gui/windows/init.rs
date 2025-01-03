@@ -1,17 +1,9 @@
-use crate::daemon::gui::maps::{add_icon_to_map, get_icon_by_name};
+use crate::daemon::gui::icon::set_icon_spawn;
 use crate::daemon::gui::windows::click::{click_client, click_workspace};
-use crate::daemon::gui::{maps, MonitorData};
-use crate::envs::{ICON_SIZE, SHOW_DEFAULT_ICON};
+use crate::daemon::gui::MonitorData;
 use crate::{ClientData, Share, WorkspaceData};
-use gtk4::gdk_pixbuf::Pixbuf;
-use gtk4::{
-    pango, prelude::*, Fixed, Frame, IconLookupFlags, IconTheme, Label, Overflow, Overlay, Picture,
-    TextDirection,
-};
+use gtk4::{pango, prelude::*, Fixed, Frame, Image, Label, Overflow, Overlay};
 use hyprland::shared::{Address, WorkspaceId};
-use log::{trace, warn};
-use std::fs;
-use std::time::Instant;
 
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
@@ -90,8 +82,8 @@ pub fn init_windows(
         };
         for (address, client) in clients {
             let client_overlay = {
-                let picture = Picture::builder().css_classes(vec!["client-image"]).build();
-                set_icon_spawn(client, &picture);
+                let picture = Image::builder().css_classes(vec!["client-image"]).build();
+                set_client_icon_spawn(client, &picture);
                 let title = if show_title && !client.title.trim().is_empty() {
                     &client.title
                 } else {
@@ -145,109 +137,11 @@ fn clear_monitor(monitor_data: &mut MonitorData) {
     }
 }
 
-macro_rules! load_icon {
-    ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr, $class:expr) => {
-        let icon = $theme.lookup_icon(
-            $icon_name,
-            &[],
-            *ICON_SIZE,
-            1,
-            TextDirection::None,
-            IconLookupFlags::PRELOAD,
-        );
-        'block: {
-            if let Some(icon_file) = icon.file() {
-                if let Some(path) = icon_file.path() {
-                    if apply_pixbuf_path(&path, $pic, $enabled).ok().is_some() {
-                        add_icon_to_map(&$class, path);
-                        break 'block; // successfully loaded Pixbuf
-                    }
-                }
-            }
-            warn!("[Icons] Failed to convert icon to pixbuf, using paintable");
-            $pic.set_paintable(Some(&icon));
-        }
-        trace!("[Icons]|{:.2?}| Applied Icon for {}", $now.elapsed(), $class);
-    };
-}
-
-fn set_icon_spawn(client: &ClientData, pic: &Picture) {
+fn set_client_icon_spawn(client: &ClientData, pic: &Image) {
     let class = client.class.clone();
     let enabled = client.enabled;
     let pid = client.pid;
     let pic = pic.clone();
 
-    if let Some(a) = get_icon_by_name(&class) {
-        trace!("[Icons] Found icon for {} in cache", class);
-        if apply_pixbuf_path(a, &pic, enabled).is_ok() {
-            return;
-        }
-    } else {
-        trace!("[Icons] Icon for {} not found in cache", class);
-    }
-
-    gtk4::glib::MainContext::default().spawn_local(async move {
-        let now = Instant::now();
-
-        let theme = IconTheme::new();
-        // trace!("[Icons] Looking for icon for {}", client.class);
-        if theme.has_icon(&class) {
-            trace!("[Icons]|{:.2?}| Icon found for {}", now.elapsed(), class);
-            load_icon!(theme, &class, &pic, enabled, now, class);
-        } else {
-            trace!("[Icons]|{:.2?}| No Icon found for {}, looking in desktop file by class-name", now.elapsed(),class);
-            let icon_name = maps::get_icon_path_by_name(&class)
-                .or_else(|| {
-                    if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
-                        // convert x00 to space
-                        trace!("[Icons]|{:.2?}| No Icon found for {}, using Icon by cmdline {} by PID ({})", now.elapsed(), class, cmdline, pid);
-                        let cmd = cmdline.split('\x00').next().unwrap_or_default().split('/').last().unwrap_or_default();
-                        if cmd.is_empty() {
-                            warn!("[Icons] Failed to read cmdline for PID {}", pid);
-                            None
-                        } else {
-                            trace!("[Icons]|{:.2?}| Searching for icon for {} with CMD {} in desktop files", now.elapsed(), class, cmd);
-                            maps::get_icon_path_by_name(cmd).or_else(|| {
-                                warn!("[Icons] Failed to find icon for CMD {}", cmd);
-                                None
-                            })
-                        }
-                    } else {
-                        warn!("[Icons] Failed to read cmdline for PID {}", pid);
-                        None
-                    }
-                });
-
-            if let Some(icon_name) = icon_name {
-                trace!("[Icons]|{:.2?}| Icon name found for {} in desktop file", now.elapsed(), class);
-                if icon_name.contains('/') {
-                    let _ = apply_pixbuf_path(&icon_name, &pic, enabled);
-                    add_icon_to_map(&class, &icon_name);
-                    trace!("[Icons]|{:.2?}| Applied Icon", now.elapsed());
-                } else {
-                    load_icon!(theme, &icon_name, &pic, enabled, now, class);
-                }
-            } else {
-                // application-x-executable doesn't scale, idk why (it even is an svg)
-                if *SHOW_DEFAULT_ICON {
-                    load_icon!(theme, "application-x-executable", &pic, enabled, now, "application-x-executable"); // caching this is effectively useless
-                }
-            }
-        }
-    });
-}
-
-fn apply_pixbuf_path(
-    path: impl AsRef<std::path::Path>,
-    pic: &Picture,
-    enabled: bool,
-) -> Result<(), ()> {
-    if let Ok(buff) = Pixbuf::from_file_at_scale(path, *ICON_SIZE, *ICON_SIZE, true) {
-        if !enabled {
-            buff.saturate_and_pixelate(&buff, 0.08, false);
-        }
-        pic.set_pixbuf(Some(&buff));
-        return Ok(());
-    }
-    Err(())
+    set_icon_spawn(&class, enabled, Some(pid), &pic);
 }

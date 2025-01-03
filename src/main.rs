@@ -5,6 +5,7 @@ use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
 use std::process::exit;
 use std::sync::Mutex;
+use gtk4::prelude::FileExt;
 use hyprswitch::envs::envvar_dump;
 
 fn main() -> anyhow::Result<()> {
@@ -152,11 +153,11 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
                 (false, true) => {
-                    let map = hyprswitch::daemon::gui::get_desktop_files_debug();
+                    let map = hyprswitch::daemon::gui::get_desktop_files_debug()?;
 
                     for (name, file) in map {
                         info!(
-                            "Desktop file: {name} -> {} ({}) [{:?}]",
+                            "Desktop file: {name} -> {:?} ({}) [{:?}]",
                             file.0,
                             match file.1 {
                                 0 => "Name",
@@ -169,6 +170,11 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
                 _ => {
+                    if class.is_empty() {
+                        warn!("No class provided");
+                        return Ok(());
+                    }
+
                     info!("Icon for class {class}");
                     gtk4::init().context("Failed to init gtk")?;
                     let theme = gtk4::IconTheme::new();
@@ -181,7 +187,8 @@ fn main() -> anyhow::Result<()> {
                                 format!("Failed to get icon name for class {class}")
                             })?;
                         info!(
-                            "name from desktop file: {:?} from {}",
+                            "name ({:?}) from desktop file: {:?} from {}",
+                            name.0.path(),
                             name.2,
                             match name.1 {
                                 0 => "Name",
@@ -190,11 +197,6 @@ fn main() -> anyhow::Result<()> {
                                 _ => "Unknown",
                             }
                         );
-                        if theme.has_icon(&name.0) {
-                            info!("Theme contains icon for name {}", name.0);
-                        } else {
-                            info!("Theme does not contain icon for name {}", name.0);
-                        }
                     }
                 }
             }

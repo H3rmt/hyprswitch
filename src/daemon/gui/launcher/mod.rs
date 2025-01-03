@@ -1,18 +1,16 @@
+use crate::daemon::gui::icon::{apply_texture_path};
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
+use crate::daemon::handle_fns::close;
 use crate::envs::LAUNCHER_MAX_ITEMS;
 use crate::{Execs, GUISend, Share, Warn};
 use gtk4::gdk::{Key, ModifierType};
 use gtk4::glib::{clone, Propagation};
 use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
-use gtk4::{
-    glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image, Label,
-    ListBox, ListBoxRow, Orientation, SelectionMode,
-};
+use gtk4::{gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image, Label, ListBox, ListBoxRow, Orientation, SelectionMode};
 use gtk4_layer_shell::{Layer, LayerShell};
 use log::warn;
 use std::ops::Deref;
-use crate::daemon::handle_fns::close;
 
 pub(super) fn create_launcher(
     share: &Share,
@@ -129,7 +127,9 @@ pub(super) fn update_launcher(
             .iter()
             .any(|k| k.to_ascii_lowercase().contains(&text.to_ascii_lowercase()))
         {
-            matches.push((name, icon, exec, path, terminal));
+            if !matches.iter().any(|(n, _, _, _, _)| name.eq(n)) {
+                matches.push((name, icon, exec, path, terminal));
+            }
         }
     }
 
@@ -145,7 +145,7 @@ pub(super) fn update_launcher(
 
 fn create_launch_widget(
     name: &str,
-    icon: &Option<Box<str>>,
+    icon_path: &Option<gio::File>,
     index: usize,
     selected: bool,
 ) -> ListBoxRow {
@@ -157,11 +157,9 @@ fn create_launch_widget(
         .build();
 
     // TODO use correct icon
-    if let Some(icon_name) = icon {
-        let icon = Image::builder()
-            .icon_name(icon_name.to_string())
-            .icon_size(IconSize::Large)
-            .build();
+    if let Some(icon_path) = icon_path {
+        let icon = Image::builder().icon_size(IconSize::Large).build();
+        apply_texture_path(icon_path, &icon, true).warn("Failed to apply icon");
         hbox.append(&icon);
     }
 

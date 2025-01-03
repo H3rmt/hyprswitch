@@ -11,8 +11,12 @@
     --border-radius: 12px;
 }
 
+.monochrome {
+    filter: grayscale(100%);
+}
+
 .client-image {
-    margin: 10px;
+    margin: 15px;
 }
 
 .client {
@@ -75,7 +79,7 @@
 .index {
     margin: 3px;
     padding: 2px 4px;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: bold;
     font-family: monospace;
     border-radius: var(--border-radius);
