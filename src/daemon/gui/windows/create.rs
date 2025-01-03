@@ -50,6 +50,7 @@ pub fn create_windows(
             .default_width(10)
             .build();
         window.init_layer_shell();
+        window.set_namespace("hyprswitch");
         window.set_layer(Layer::Overlay);
         window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::None);
         window.set_monitor(monitor);
