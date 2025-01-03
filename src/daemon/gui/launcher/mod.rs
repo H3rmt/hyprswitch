@@ -1,13 +1,16 @@
-use crate::daemon::gui::icon::{apply_texture_path};
+use crate::daemon::gui::icon::apply_texture_path;
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
-use crate::daemon::handle_fns::close;
+use crate::daemon::handle_fns::{close, switch};
 use crate::envs::LAUNCHER_MAX_ITEMS;
-use crate::{Execs, GUISend, Share, Warn};
+use crate::{Command, Execs, GUISend, Share, Warn};
 use gtk4::gdk::{Key, ModifierType};
 use gtk4::glib::{clone, Propagation};
-use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
-use gtk4::{gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image, Label, ListBox, ListBoxRow, Orientation, SelectionMode};
+use gtk4::prelude::{BoxExt, EditableExt, EntryExt, GtkWindowExt, WidgetExt};
+use gtk4::{
+    gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image,
+    Label, ListBox, ListBoxRow, Orientation, SelectionMode,
+};
 use gtk4_layer_shell::{Layer, LayerShell};
 use log::warn;
 use std::ops::Deref;
@@ -34,30 +37,59 @@ pub(super) fn create_launcher(
         }
     ));
     let controller = EventControllerKey::new();
-    controller.connect_key_pressed(clone!(#[strong] share, move |_, k, _, m| {
-        warn!("Key pressed: {:?}", k);
-        match (k, m) {
-            (Key::Return, _) => { // fix this
-                close(&share, false).warn("Failed to close");
-                Propagation::Stop
+    controller.connect_key_pressed(clone!(
+        #[strong]
+        share,
+        move |_, k, _, m| {
+            warn!("Key pressed: {:?}", k);
+            match (k, m) {
+                (Key::Down, _) => {
+                    switch(
+                        &share,
+                        Command {
+                            reverse: false,
+                            offset: 1,
+                        },
+                    )
+                    .warn("Failed to switch");
+                    Propagation::Stop
+                }
+                (Key::Up, _) => {
+                    switch(
+                        &share,
+                        Command {
+                            reverse: true,
+                            offset: 1,
+                        },
+                    )
+                    .warn("Failed to switch");
+                    Propagation::Stop
+                }
+                (Key::_1, ModifierType::CONTROL_MASK) => {
+                    switch(
+                        &share,
+                        Command {
+                            reverse: false,
+                            offset: 1,
+                        },
+                    )
+                    .warn("Failed to switch");
+                    close(&share, false).warn("Failed to close");
+                    Propagation::Stop
+                }
+                (Key::Tab, _) => Propagation::Stop,
+                (Key::ISO_Left_Tab, _) => Propagation::Stop,
+                _ => Propagation::Proceed,
             }
-            (Key::Down, _) => {
-                warn!("Down pressed");
-                Propagation::Stop
-            }
-            (Key::Up, _) => {
-                warn!("Up pressed");
-                Propagation::Stop
-            }
-            (Key::_1, ModifierType::CONTROL_MASK) => {
-                warn!("Ctrl+1 pressed");
-                Propagation::Stop
-            }
-            (Key::Tab, _) => Propagation::Stop,
-            (Key::ISO_Left_Tab, _) => Propagation::Stop,
-            _ => Propagation::Proceed,
         }
-    }));
+    ));
+    entry.connect_activate(clone!(
+        #[strong]
+        share,
+        move |_| {
+            close(&share, false).warn("Failed to close");
+        }
+    ));
     entry.add_controller(controller);
     main_vbox.append(&entry);
 
@@ -156,7 +188,6 @@ fn create_launch_widget(
         .vexpand(true)
         .build();
 
-    // TODO use correct icon
     if let Some(icon_path) = icon_path {
         let icon = Image::builder().icon_size(IconSize::Large).build();
         apply_texture_path(icon_path, &icon, true).warn("Failed to apply icon");

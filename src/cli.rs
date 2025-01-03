@@ -202,7 +202,7 @@ pub struct GuiConf {
     pub show_workspaces_on_all_monitors: bool,
 }
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, Serialize, Deserialize)]
 #[clap(rename_all = "snake_case")]
 pub enum ModKeyInput {
     // = alt_l
@@ -217,6 +217,10 @@ pub enum ModKeyInput {
     Super,
     SuperL,
     SuperR,
+    // = shift_l
+    Shift,
+    ShiftL,
+    ShiftR,
 }
 
 #[derive(ValueEnum, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -228,6 +232,8 @@ pub enum ModKey {
     #[default]
     SuperL,
     SuperR,
+    ShiftL,
+    ShiftR,
 }
 
 impl From<ModKeyInput> for ModKey {
@@ -239,6 +245,8 @@ impl From<ModKeyInput> for ModKey {
             ModKeyInput::CtrlR => ModKey::CtrlR,
             ModKeyInput::Super | ModKeyInput::SuperL => ModKey::SuperL,
             ModKeyInput::SuperR => ModKey::SuperR,
+            ModKeyInput::Shift | ModKeyInput::ShiftL => ModKey::ShiftL,
+            ModKeyInput::ShiftR => ModKey::ShiftR,
         }
     }
 }
@@ -277,13 +285,13 @@ pub enum CloseType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReverseKey {
-    Mod(String),
+    Mod(ModKey),
     Key(String),
 }
 
 impl Default for ReverseKey {
     fn default() -> Self {
-        ReverseKey::Mod("shift".to_string())
+        ReverseKey::Mod(ModKey::ShiftL)
     }
 }
 
@@ -293,10 +301,12 @@ impl FromStr for ReverseKey {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split('=').collect();
         if parts.len() != 2 {
-            return Err(format!("Invalid format for reverse: {}", s));
+            return Err(format!("Invalid format for reverse: {} (use mod=<modifier> or key=<key>)", s));
         }
         match (parts[0], parts[1]) {
-            ("mod", value) => Ok(ReverseKey::Mod(value.to_string())),
+            ("mod", value) => Ok(ReverseKey::Mod(ModKey::from(ModKeyInput::from_str(
+                value, true,
+            )?))),
             ("key", value) => Ok(ReverseKey::Key(value.to_string())),
             _ => Err(format!("Invalid format for reverse: {}", s)),
         }

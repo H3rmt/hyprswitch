@@ -208,5 +208,6 @@ fn get_mod_from_mod_key(mod_key: ModKey) -> &'static str {
         ModKey::SuperL | ModKey::SuperR => "super",
         ModKey::AltL | ModKey::AltR => "alt",
         ModKey::CtrlL | ModKey::CtrlR => "ctrl",
+        ModKey::ShiftL | ModKey::ShiftR => "shift",
     }
 }

@@ -1,4 +1,4 @@
-use crate::daemon::gui::maps::{add_path_for_icon, get_icon_path_by_name};
+use crate::daemon::gui::maps::{add_path_for_icon, get_icon_path_by_name, Source};
 use crate::envs::{ICON_SIZE, SHOW_DEFAULT_ICON};
 use anyhow::bail;
 use gtk4::gdk::Texture;
@@ -10,7 +10,7 @@ use std::fs;
 use std::time::Instant;
 
 macro_rules! load_icon {
-    ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr, $name:expr) => {
+    ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr, $name:expr, $source:expr) => {
         let icon = $theme.lookup_icon(
             $icon_name,
             &[],
@@ -25,7 +25,7 @@ macro_rules! load_icon {
                     .ok()
                     .is_some()
                 {
-                    add_path_for_icon(&$name, icon_file);
+                    add_path_for_icon(&$name, icon_file, $source);
                     break 'block; // successfully loaded Texture
                 }
             }
@@ -34,30 +34,38 @@ macro_rules! load_icon {
         }
         trace!("[Icons]|{:.2?}| Applied Icon for {}", $now.elapsed(), $name);
     };
+        ($theme:expr, $icon_name:expr, $pic:expr, $now:expr) => {
+        let icon = $theme.lookup_icon(
+            $icon_name,
+            &[],
+            *ICON_SIZE,
+            1,
+            TextDirection::None,
+            IconLookupFlags::PRELOAD,
+        );
+        $pic.set_paintable(Some(&icon));
+        trace!("[Icons]|{:.2?}| Applied Icon for {}", $now.elapsed(), $icon_name);
+    };
 }
 
-pub fn set_icon_spawn(name: &str, enabled: bool, pid: Option<i32>, pic: &Image) {
+pub fn set_icon_spawn(class: &str, enabled: bool, pid: Option<i32>, pic: &Image) {
     let pic = pic.clone();
-    let name = name.to_string();
+    let class = class.to_string();
 
-    if let Some(a) = get_icon_path_by_name(&name) {
-        trace!("[Icons] Found icon for {} in cache", name);
+    if let Some(a) = get_icon_path_by_name(&class) {
+        trace!("[Icons] Found icon for {} in cache", class);
         if apply_texture_path(&a, &pic, enabled).is_ok() {
             return;
         }
     } else {
-        trace!("[Icons] Icon for {} not found in cache", name);
+        trace!("[Icons] Icon for {} not found in cache", class);
     }
 
-    // gtk4::glib::MainContext::default().spawn_local(async move {
     let now = Instant::now();
-
     let theme = IconTheme::new();
-    // theme.lookup_icon()
-    // trace!("[Icons] Looking for icon for {}", client.class);
-    if theme.has_icon(&name) {
-        trace!("[Icons]|{:.2?}| Icon found for {}", now.elapsed(), name);
-        load_icon!(theme, &name, &pic, enabled, now, name);
+    if theme.has_icon(&class) {
+        trace!("[Icons]|{:.2?}| Icon found for {}", now.elapsed(), class);
+        load_icon!(theme, &class, &pic, enabled, now, class, Source::ByClass);
     } else {
         if let Some(pid) = pid {
             if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
@@ -65,7 +73,7 @@ pub fn set_icon_spawn(name: &str, enabled: bool, pid: Option<i32>, pic: &Image) 
                 trace!(
                     "[Icons]|{:.2?}| No Icon found for {}, using Icon by cmdline {} by PID ({})",
                     now.elapsed(),
-                    name,
+                    class,
                     cmdline,
                     pid
                 );
@@ -82,10 +90,10 @@ pub fn set_icon_spawn(name: &str, enabled: bool, pid: Option<i32>, pic: &Image) 
                     trace!(
                         "[Icons]|{:.2?}| Searching for icon for {} with CMD {}",
                         now.elapsed(),
-                        name,
+                        class,
                         cmd
                     );
-                    load_icon!(theme, cmd, &pic, enabled, now, name);
+                    load_icon!(theme, cmd, &pic, enabled, now, class, Source::ByPid);
                 }
             } else {
                 warn!("[Icons] Failed to read cmdline for PID {}", pid);
@@ -98,13 +106,10 @@ pub fn set_icon_spawn(name: &str, enabled: bool, pid: Option<i32>, pic: &Image) 
                 theme,
                 "application-x-executable",
                 &pic,
-                enabled,
-                now,
-                "application-x-executable"
-            ); // caching this is effectively useless
+                now
+            );
         }
     }
-    // });
 }
 
 pub fn apply_texture_path(file: &gio::File, pic: &Image, enabled: bool) -> anyhow::Result<()> {

@@ -1,12 +1,12 @@
 use anyhow::Context;
 use clap::Parser;
+use gtk4::prelude::FileExt;
+use hyprswitch::envs::envvar_dump;
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
 use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
 use std::process::exit;
 use std::sync::Mutex;
-use gtk4::prelude::FileExt;
-use hyprswitch::envs::envvar_dump;
 
 fn main() -> anyhow::Result<()> {
     let cli = cli::App::try_parse()
@@ -149,54 +149,39 @@ fn main() -> anyhow::Result<()> {
                     gtk4::init().context("Failed to init gtk")?;
                     let theme = gtk4::IconTheme::new();
                     for icon in theme.icon_names() {
-                        info!("Icon: {icon}");
+                        println!("Icon: {icon}");
                     }
                 }
                 (false, true) => {
                     let map = hyprswitch::daemon::gui::get_desktop_files_debug()?;
 
                     for (name, file) in map {
-                        info!(
-                            "Desktop file: {name} -> {:?} ({}) [{:?}]",
-                            file.0,
-                            match file.1 {
-                                0 => "Name",
-                                1 => "Exec",
-                                2 => "StartupWMClass",
-                                _ => "Unknown",
-                            },
-                            file.2
+                        println!(
+                            "Desktop file: {} -> {:?} ({:?}) [{:?}]",
+                            name.0, file.0, file.1, name.1
                         );
                     }
                 }
                 _ => {
                     if class.is_empty() {
-                        warn!("No class provided");
+                        eprintln!("No class provided");
                         return Ok(());
                     }
 
-                    info!("Icon for class {class}");
+                    println!("Icon for class {class}");
                     gtk4::init().context("Failed to init gtk")?;
                     let theme = gtk4::IconTheme::new();
+
+                    let name = hyprswitch::daemon::gui::get_icon_name_debug(&class)
+                        .with_context(|| format!("Failed to get icon name for class {class}"))?;
+                    println!(
+                        "Icon: ({:?}) from desktop file cache: {:?} found by {:?}",
+                        name.0.path(),
+                        name.2,
+                        name.1
+                    );
                     if theme.has_icon(&class) {
-                        info!("Theme contains icon for class {class}");
-                    } else {
-                        info!("Theme does not contain icon for class {class}");
-                        let name = hyprswitch::daemon::gui::get_icon_name_debug(&class)
-                            .with_context(|| {
-                                format!("Failed to get icon name for class {class}")
-                            })?;
-                        info!(
-                            "name ({:?}) from desktop file: {:?} from {}",
-                            name.0.path(),
-                            name.2,
-                            match name.1 {
-                                0 => "Name",
-                                1 => "Exec",
-                                2 => "StartupWMClass",
-                                _ => "Unknown",
-                            }
-                        );
+                        println!("Theme contains icon for class {class}");
                     }
                 }
             }

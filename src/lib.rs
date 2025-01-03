@@ -224,6 +224,8 @@ impl fmt::Display for ModKey {
             ModKey::AltR => write!(f, "alt_r"),
             ModKey::CtrlL => write!(f, "ctrl_l"),
             ModKey::CtrlR => write!(f, "ctrl_r"),
+            ModKey::ShiftL => write!(f, "shift_l"),
+            ModKey::ShiftR => write!(f, "shift_r"),
         }
     }
 }

@@ -3,13 +3,22 @@ use crate::Warn;
 use anyhow::Context;
 use gtk4::{gio, IconLookupFlags, TextDirection};
 use log::{debug, trace, warn};
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 use std::{env, fs::DirEntry, path::PathBuf, sync::OnceLock};
 
-type IconPathMap = BTreeMap<Box<str>, (gio::File, u8, Box<Path>)>; // (path, 0 = name, 1 = exec_name, 2 = startup_wm_class, 3 = added later)
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub enum Source {
+    DesktopFileName,
+    DesktopFileStartupWmClass,
+    DesktopFileExecName,
+    ByPid,
+    ByClass,
+}
+
+type IconPathMap = HashMap<(Box<str>, Source), (gio::File, Box<Path>)>;
 type DesktopFileMap = Vec<(
     Box<str>,
     Option<gio::File>,
@@ -21,7 +30,7 @@ type DesktopFileMap = Vec<(
 
 fn get_icon_path_map() -> &'static Mutex<IconPathMap> {
     static MAP_LOCK: OnceLock<Mutex<IconPathMap>> = OnceLock::new();
-    MAP_LOCK.get_or_init(|| Mutex::new(BTreeMap::new()))
+    MAP_LOCK.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 fn get_desktop_file_map() -> &'static Mutex<DesktopFileMap> {
@@ -31,15 +40,14 @@ fn get_desktop_file_map() -> &'static Mutex<DesktopFileMap> {
 
 pub fn get_icon_path_by_name(name: &str) -> Option<gio::File> {
     let map = get_icon_path_map().lock().expect("Failed to lock icon map");
-    map.get(name.to_ascii_lowercase().as_str())
-        .map(|s| s.clone().0)
+    find_icon_path_by_name(map.clone(), name).map(|s| s.0)
 }
 
-pub fn add_path_for_icon(icon: &str, path: gio::File) {
+pub fn add_path_for_icon(icon: &str, path: gio::File, source: Source) {
     let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
     map.insert(
-        Box::from(icon.to_ascii_lowercase()),
-        (path, 3, Box::from(Path::new(""))),
+        (Box::from(icon.to_ascii_lowercase()), source),
+        (path, Box::from(Path::new(""))),
     );
 }
 
@@ -51,6 +59,7 @@ pub fn get_all_desktop_files<'a>() -> MutexGuard<'a, DesktopFileMap> {
 }
 
 pub fn reload_desktop_maps() {
+    // needed to init gtk to search for correct file paths
     gtk4::glib::MainContext::default().spawn(async move {
         let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
         let mut map2 = get_desktop_file_map()
@@ -168,20 +177,26 @@ fn fill_desktop_file_map(
 
                 if let (Some(name), Some(icon)) = (name, &icon) {
                     map.insert(
-                        Box::from(name.to_lowercase()),
-                        (icon.clone(), 0, entry.path().into_boxed_path()),
-                    );
-                }
-                if let (Some(exec_name), Some(icon)) = (exec_name, &icon) {
-                    map.insert(
-                        Box::from(exec_name.to_lowercase()),
-                        (icon.clone(), 1, entry.path().into_boxed_path()),
+                        (Box::from(name.to_lowercase()), Source::DesktopFileName),
+                        (icon.clone(), entry.path().into_boxed_path()),
                     );
                 }
                 if let (Some(startup_wm_class), Some(icon)) = (startup_wm_class, &icon) {
                     map.insert(
-                        Box::from(startup_wm_class.to_lowercase()),
-                        (icon.clone(), 2, entry.path().into_boxed_path()),
+                        (
+                            Box::from(startup_wm_class.to_lowercase()),
+                            Source::DesktopFileStartupWmClass,
+                        ),
+                        (icon.clone(), entry.path().into_boxed_path()),
+                    );
+                }
+                if let (Some(exec_name), Some(icon)) = (exec_name, &icon) {
+                    map.insert(
+                        (
+                            Box::from(exec_name.to_lowercase()),
+                            Source::DesktopFileExecName,
+                        ),
+                        (icon.clone(), entry.path().into_boxed_path()),
                     );
                 }
 
@@ -249,13 +264,44 @@ fn fill_desktop_file_map(
     Ok(())
 }
 
-pub fn get_icon_name_debug(icon: &str) -> Option<(gio::File, u8, Box<Path>)> {
-    let mut map = BTreeMap::new();
+pub fn get_icon_name_debug(icon: &str) -> Option<(gio::File, Box<Path>, Source)> {
+    let mut map = HashMap::new();
     fill_desktop_file_map(&mut map, None).ok()?;
-    map.get(icon.to_ascii_lowercase().as_str()).cloned()
+    find_icon_path_by_name(map, icon)
 }
-pub fn get_desktop_files_debug() -> anyhow::Result<BTreeMap<Box<str>, (gio::File, u8, Box<Path>)>> {
-    let mut map = BTreeMap::new();
+pub fn get_desktop_files_debug(
+) -> anyhow::Result<HashMap<(Box<str>, Source), (gio::File, Box<Path>)>> {
+    let mut map = HashMap::new();
     fill_desktop_file_map(&mut map, None)?;
     Ok(map)
+}
+
+fn find_icon_path_by_name(map: IconPathMap, name: &str) -> Option<(gio::File, Box<Path>, Source)> {
+    map.get(&(Box::from(name.to_ascii_lowercase()), Source::ByClass))
+        .map(|s| (s.0.clone(), s.1.clone(), Source::ByClass))
+        .or_else(|| {
+            map.get(&(Box::from(name.to_ascii_lowercase()), Source::ByPid))
+                .map(|s| (s.0.clone(), s.1.clone(), Source::ByPid))
+        })
+        .or_else(|| {
+            map.get(&(
+                Box::from(name.to_ascii_lowercase()),
+                Source::DesktopFileName,
+            ))
+            .map(|s| (s.0.clone(), s.1.clone(), Source::DesktopFileName))
+        })
+        .or_else(|| {
+            map.get(&(
+                Box::from(name.to_ascii_lowercase()),
+                Source::DesktopFileStartupWmClass,
+            ))
+            .map(|s| (s.0.clone(), s.1.clone(), Source::DesktopFileStartupWmClass))
+        })
+        .or_else(|| {
+            map.get(&(
+                Box::from(name.to_ascii_lowercase()),
+                Source::DesktopFileExecName,
+            ))
+            .map(|s| (s.0.clone(), s.1.clone(), Source::DesktopFileExecName))
+        })
 }
