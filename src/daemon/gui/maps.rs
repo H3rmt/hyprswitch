@@ -269,6 +269,8 @@ pub fn get_icon_name_debug(icon: &str) -> Option<(gio::File, Box<Path>, Source)>
     fill_desktop_file_map(&mut map, None).ok()?;
     find_icon_path_by_name(map, icon)
 }
+
+#[allow(clippy::type_complexity)]
 pub fn get_desktop_files_debug(
 ) -> anyhow::Result<HashMap<(Box<str>, Source), (gio::File, Box<Path>)>> {
     let mut map = HashMap::new();

@@ -158,10 +158,9 @@ pub(super) fn update_launcher(
         if keywords
             .iter()
             .any(|k| k.to_ascii_lowercase().contains(&text.to_ascii_lowercase()))
+            && !matches.iter().any(|(n, _, _, _, _)| name.eq(n))
         {
-            if !matches.iter().any(|(n, _, _, _, _)| name.eq(n)) {
-                matches.push((name, icon, exec, path, terminal));
-            }
+            matches.push((name, icon, exec, path, terminal));
         }
     }
 
