@@ -23,10 +23,6 @@ jobs:
           # trim the v from the tag an use it as the version
           export VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
           
-          # replace the version = "x.x.x" with the latest version
-          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" ./Cargo.toml
-          cargo update hyprswitch
-          
           # replace the version in the PKGBUILD
           sed -i "s/^pkgver=.*$/pkgver=$VERSION/" ./PKGBUILD
       - uses: EndBug/add-and-commit@v9
