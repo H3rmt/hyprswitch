@@ -141,16 +141,12 @@ pub(super) fn update_launcher(
             name,
             icon,
             &match &reverse_key {
-                ReverseKey::Mod(m) => {
-                    if i == 0 {
-                        "Return".to_string()
-                    } else if i > 0 {
-                        i.to_string()
-                    } else {
-                        format!("{} + {}", m, i.abs())
-                    }
-                }
-                ReverseKey::Key(k) => {
+                ReverseKey::Mod(m) => match i {
+                    0 => "Return".to_string(),
+                    i if i > 0 => i.to_string(),
+                    _ => format!("{} + {}", m, i.abs()),
+                },
+                ReverseKey::Key(_k) => {
                     if i == 0 {
                         "Return".to_string()
                     } else if i == -1 {
