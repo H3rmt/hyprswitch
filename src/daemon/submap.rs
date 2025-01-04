@@ -7,7 +7,6 @@ use log::{debug, error, trace};
 
 use crate::cli::ReverseKey::{Key, Mod};
 use crate::cli::{CloseType, ModKey};
-use crate::envs::SHOW_LAUNCHER;
 use crate::GuiConfig;
 
 // TODO in the future generate a hash and reuse the old keymap (check if it has been deleted)
@@ -98,9 +97,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
             }
             CloseType::Default => {
                 // bind return to close
-                if !*SHOW_LAUNCHER {
-                    keyword_list.push(("bind", format!(" ,return , exec, {} close", current_exe)));
-                }
+                keyword_list.push(("bind", format!(" ,return , exec, {} close", current_exe)));
             }
         };
 
@@ -128,25 +125,23 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                 }
             }
             CloseType::Default => {
-                if !*SHOW_LAUNCHER {
-                    for i in 1..=9 {
+                for i in 1..=9 {
+                    keyword_list.push((
+                        "bind",
+                        format!(
+                            ",{}, exec, {} dispatch -o={} && {} close",
+                            i, current_exe, i, current_exe
+                        ),
+                    ));
+                    if let Mod(modkey) = gui_config.reverse_key.clone() {
                         keyword_list.push((
                             "bind",
                             format!(
-                                ",{}, exec, {} dispatch -o={} && {} close",
-                                i, current_exe, i, current_exe
+                                "{},{}, exec, {} dispatch -o={} -r && {} close",
+                                modkey, i, current_exe, i, current_exe
                             ),
                         ));
-                        if let Mod(modkey) = gui_config.reverse_key.clone() {
-                            keyword_list.push((
-                                "bind",
-                                format!(
-                                    "{},{}, exec, {} dispatch -o={} -r && {} close",
-                                    modkey, i, current_exe, i, current_exe
-                                ),
-                            ));
-                        };
-                    }
+                    };
                 }
             }
         };
@@ -154,11 +149,10 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         // use arrow keys to navigate
         match gui_config.close {
             CloseType::Default => {
-                if !*SHOW_LAUNCHER {
-                    keyword_list.push(("bind", format!(",right, exec, {} dispatch", current_exe)));
-                    keyword_list
-                        .push(("bind", format!(",left, exec, {} dispatch -r", current_exe)));
-                }
+                // if !*SHOW_LAUNCHER {
+                keyword_list.push(("bind", format!(",right, exec, {} dispatch", current_exe)));
+                keyword_list.push(("bind", format!(",left, exec, {} dispatch -r", current_exe)));
+                // }
             }
             CloseType::ModKeyRelease => {
                 keyword_list.push((

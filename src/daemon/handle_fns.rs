@@ -15,9 +15,9 @@ pub(crate) fn switch(share: &Share, command: Command) -> anyhow::Result<()> {
         let exec_len = lock.launcher.execs.len();
         if let Some(ref mut selected) = lock.launcher.selected {
             *selected = if command.reverse {
-                selected.saturating_sub(command.offset as usize)
+                selected.saturating_sub(command.offset as u16)
             } else {
-                (*selected + command.offset as usize).min(exec_len - 1)
+                (*selected + command.offset as u16).min((exec_len - 1) as u16)
             };
         } else {
             let active = find_next(
@@ -45,7 +45,7 @@ pub(crate) fn close(share: &Share, kill: bool) -> anyhow::Result<()> {
         let lock = latest.lock().expect("Failed to lock");
         if !kill {
             if let Some(selected) = lock.launcher.selected {
-                if let Some((run, path, terminal)) = lock.launcher.execs.get(selected) {
+                if let Some((run, path, terminal)) = lock.launcher.execs.get(selected as usize) {
                     run_program(run, path, *terminal);
                 } else {
                     warn!("Selected program (nr. {}) not found, killing", selected);

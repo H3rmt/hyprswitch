@@ -21,10 +21,11 @@ use crate::cli::CloseType;
 use crate::envs::SHOW_LAUNCHER;
 pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
 
+mod icon;
 mod launcher;
 mod maps;
+mod switch_fns;
 mod windows;
-mod icon;
 
 pub(super) fn start_gui_blocking(
     share: &Share,
@@ -124,6 +125,7 @@ async fn handle_updates(
     launcher: LauncherRefs,
 ) {
     loop {
+        debug!("[GUI] Waiting for GUI update");
         let mess = receiver.recv().await;
         debug!("[GUI] Rebuilding GUI {mess:?}");
 
@@ -146,12 +148,14 @@ async fn handle_updates(
                                 data.launcher.selected = None;
                             }
                             let selected = data.launcher.selected;
-                            launcher::update_launcher(
+                            let reverse_key = data.gui_config.reverse_key.clone();
+                            let execs = launcher::update_launcher(
                                 &e.text(),
                                 l,
-                                &mut data.launcher.execs,
                                 selected,
-                            )
+                                reverse_key,
+                            );
+                            data.launcher.execs = execs;
                         });
                     }
                     for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
@@ -217,6 +221,7 @@ async fn handle_updates(
             .send(true)
             .await
             .expect("Failed to send return_sender");
+        debug!("[GUI] GUI update finished");
     }
 }
 

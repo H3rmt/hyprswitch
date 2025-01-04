@@ -1,7 +1,7 @@
 use crate::envs::ICON_SIZE;
 use crate::Warn;
 use anyhow::Context;
-use gtk4::{gio, IconLookupFlags, TextDirection};
+use gtk4::{gio, glib, IconLookupFlags, TextDirection};
 use log::{debug, trace, warn};
 use std::collections::HashMap;
 use std::path::Path;
@@ -60,7 +60,7 @@ pub fn get_all_desktop_files<'a>() -> MutexGuard<'a, DesktopFileMap> {
 
 pub fn reload_desktop_maps() {
     // needed to init gtk to search for correct file paths
-    gtk4::glib::MainContext::default().spawn(async move {
+    glib::spawn_future(async {
         let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
         let mut map2 = get_desktop_file_map()
             .lock()

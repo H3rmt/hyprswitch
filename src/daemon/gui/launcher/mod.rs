@@ -1,18 +1,18 @@
+use crate::cli::ReverseKey;
 use crate::daemon::gui::icon::apply_texture_path;
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
-use crate::daemon::handle_fns::{close, switch};
 use crate::envs::LAUNCHER_MAX_ITEMS;
-use crate::{Command, Execs, GUISend, Share, Warn};
-use gtk4::gdk::{Key, ModifierType};
+use crate::{Execs, GUISend, Share, Warn};
+use anyhow::Context;
+use gtk4::gdk::Key;
 use gtk4::glib::{clone, Propagation};
-use gtk4::prelude::{BoxExt, EditableExt, EntryExt, GtkWindowExt, WidgetExt};
+use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
 use gtk4::{
     gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image,
     Label, ListBox, ListBoxRow, Orientation, SelectionMode,
 };
 use gtk4_layer_shell::{Layer, LayerShell};
-use log::warn;
 use std::ops::Deref;
 
 pub(super) fn create_launcher(
@@ -41,53 +41,19 @@ pub(super) fn create_launcher(
         #[strong]
         share,
         move |_, k, _, m| {
-            warn!("Key pressed: {:?}", k);
             match (k, m) {
                 (Key::Down, _) => {
-                    switch(
-                        &share,
-                        Command {
-                            reverse: false,
-                            offset: 1,
-                        },
-                    )
-                    .warn("Failed to switch");
+                    switch(&share, false).warn("Failed to switch");
                     Propagation::Stop
                 }
                 (Key::Up, _) => {
-                    switch(
-                        &share,
-                        Command {
-                            reverse: true,
-                            offset: 1,
-                        },
-                    )
-                    .warn("Failed to switch");
-                    Propagation::Stop
-                }
-                (Key::_1, ModifierType::CONTROL_MASK) => {
-                    switch(
-                        &share,
-                        Command {
-                            reverse: false,
-                            offset: 1,
-                        },
-                    )
-                    .warn("Failed to switch");
-                    close(&share, false).warn("Failed to close");
+                    switch(&share, true).warn("Failed to switch");
                     Propagation::Stop
                 }
                 (Key::Tab, _) => Propagation::Stop,
                 (Key::ISO_Left_Tab, _) => Propagation::Stop,
                 _ => Propagation::Proceed,
             }
-        }
-    ));
-    entry.connect_activate(clone!(
-        #[strong]
-        share,
-        move |_| {
-            close(&share, false).warn("Failed to close");
         }
     ));
     entry.add_controller(controller);
@@ -107,8 +73,10 @@ pub(super) fn create_launcher(
         .default_width(10)
         .build();
     window.init_layer_shell();
+    window.set_namespace("hyprswitch");
     window.set_layer(Layer::Overlay);
-    window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive);
+    // using Exclusive causes weird problems
+    window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::OnDemand);
     window.set_anchor(gtk4_layer_shell::Edge::Top, true);
     window.set_margin(gtk4_layer_shell::Edge::Top, 20);
 
@@ -132,17 +100,18 @@ pub(super) fn create_launcher(
 pub(super) fn update_launcher(
     text: &str,
     list: &ListBox,
-    execs: &mut Execs,
-    selected: Option<usize>,
-) {
+    selected: Option<u16>,
+    reverse_key: ReverseKey,
+) -> Execs {
     while let Some(child) = list.first_child() {
         list.remove(&child);
     }
 
-    execs.clear();
     if text.is_empty() {
-        return;
+        return vec![];
     }
+
+    let mut execs = Vec::new();
 
     let entries = get_all_desktop_files();
     let mut matches = Vec::new();
@@ -167,17 +136,46 @@ pub(super) fn update_launcher(
     for (index, (name, icon, exec, path, terminal)) in
         matches.into_iter().take(*LAUNCHER_MAX_ITEMS).enumerate()
     {
-        let widget =
-            create_launch_widget(name, icon, index, selected.map_or(false, |s| s == index));
+        let i = index as i32 - selected.unwrap_or(0) as i32;
+        let widget = create_launch_widget(
+            name,
+            icon,
+            &match &reverse_key {
+                ReverseKey::Mod(m) => {
+                    if i == 0 {
+                        "Return".to_string()
+                    } else if i > 0 {
+                        i.to_string()
+                    } else {
+                        format!("{} + {}", m, i.abs())
+                    }
+                }
+                ReverseKey::Key(k) => {
+                    if i == 0 {
+                        "Return".to_string()
+                    } else if i == -1 {
+                        // k.to_string() // TODO fix this
+                        "".to_string()
+                    } else if i > 0 {
+                        i.to_string()
+                    } else {
+                        "".to_string()
+                    }
+                }
+            },
+            selected.map_or(false, |s| s == index as u16),
+        );
         list.append(&widget);
         execs.push((exec.clone(), path.clone(), *terminal));
     }
+
+    execs
 }
 
 fn create_launch_widget(
     name: &str,
     icon_path: &Option<gio::File>,
-    index: usize,
+    index: &str,
     selected: bool,
 ) -> ListBoxRow {
     let hbox = gtk4::Box::builder()
@@ -201,15 +199,10 @@ fn create_launch_widget(
         .build();
     hbox.append(&title);
 
-    let i = if index == 0 {
-        "Return"
-    } else {
-        &index.to_string()
-    };
     let index = Label::builder()
         .halign(Align::End)
         .valign(Align::Center)
-        .label(i)
+        .label(index)
         .build();
     hbox.append(&index);
 
@@ -224,4 +217,26 @@ fn create_launch_widget(
         .vexpand(true)
         .child(&hbox)
         .build()
+}
+
+pub(crate) fn switch(share: &Share, reverse: bool) -> anyhow::Result<()> {
+    let (latest, send, _) = share.deref();
+    {
+        let mut lock = latest.lock().expect("Failed to lock");
+        let exec_len = lock.launcher.execs.len();
+        if let Some(ref mut selected) = lock.launcher.selected {
+            *selected = if reverse {
+                selected.saturating_sub(1)
+            } else {
+                (*selected + 1).min((exec_len - 1) as u16)
+            };
+        } else {
+            return Ok(());
+        };
+        drop(lock);
+    }
+    send.send_blocking(GUISend::Refresh)
+        .context("Unable to refresh the GUI")?;
+    // don't wait on receiver as this blocks the gui(gtk event loop) from receiving the refresh
+    Ok(())
 }

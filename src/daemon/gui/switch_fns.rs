@@ -10,7 +10,7 @@ use std::ops::Deref;
 use std::thread;
 
 /// don't close anything, close is called after this function
-pub(crate) fn switch_gui_client(share: Share, address: Address) -> anyhow::Result<()> {
+pub(crate) fn switch_gui_client(share: &Share, address: Address) -> anyhow::Result<()> {
     let (latest, send, _) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
@@ -24,7 +24,7 @@ pub(crate) fn switch_gui_client(share: Share, address: Address) -> anyhow::Resul
 }
 
 /// don't close anything, close is called after this function
-pub(crate) fn switch_gui_workspace(share: Share, id: WorkspaceId) -> anyhow::Result<()> {
+pub(crate) fn switch_gui_workspace(share: &Share, id: WorkspaceId) -> anyhow::Result<()> {
     let (latest, send, _) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
@@ -39,7 +39,7 @@ pub(crate) fn switch_gui_workspace(share: Share, id: WorkspaceId) -> anyhow::Res
 
 /// don't close anything, close is called after this function
 #[allow(dead_code)]
-pub(crate) fn switch_gui_monitor(share: Share, id: MonitorId) -> anyhow::Result<()> {
+pub(crate) fn switch_gui_monitor(share: &Share, id: MonitorId) -> anyhow::Result<()> {
     let (latest, send, _) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
@@ -52,7 +52,7 @@ pub(crate) fn switch_gui_monitor(share: Share, id: MonitorId) -> anyhow::Result<
     Ok(())
 }
 
-pub(crate) fn close_gui(share: Share) -> anyhow::Result<()> {
+pub(crate) fn close_gui(share: &Share) -> anyhow::Result<()> {
     let (latest, send, _) = share.deref();
     {
         let lock = latest.lock().expect("Failed to lock");

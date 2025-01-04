@@ -223,7 +223,7 @@ pub enum ModKeyInput {
     ShiftR,
 }
 
-#[derive(ValueEnum, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[derive(ValueEnum, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ModKey {
     AltL,
     AltR,
@@ -283,7 +283,7 @@ pub enum CloseType {
     ModKeyRelease,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ReverseKey {
     Mod(ModKey),
     Key(String),
@@ -301,7 +301,10 @@ impl FromStr for ReverseKey {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split('=').collect();
         if parts.len() != 2 {
-            return Err(format!("Invalid format for reverse: {} (use mod=<modifier> or key=<key>)", s));
+            return Err(format!(
+                "Invalid format for reverse: {} (use mod=<modifier> or key=<key>)",
+                s
+            ));
         }
         match (parts[0], parts[1]) {
             ("mod", value) => Ok(ReverseKey::Mod(ModKey::from(ModKeyInput::from_str(

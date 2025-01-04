@@ -19,7 +19,7 @@ pub fn create_windows(
 ) -> anyhow::Result<()> {
     let monitors = get_monitors();
     let gtk_monitors = Display::default()
-        .context("Could not connect to a display.")?
+        .context("Could not connect to a display")?
         .monitors()
         .iter()
         .filter_map(|m| m.ok())

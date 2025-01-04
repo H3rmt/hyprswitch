@@ -135,7 +135,7 @@ pub struct SharedData {
 #[derive(Debug, Default)]
 pub struct LauncherConfig {
     execs: Execs,
-    selected: Option<usize>,
+    selected: Option<u16>,
 }
 
 type Execs = Vec<(Box<str>, Option<Box<str>>, bool)>;
