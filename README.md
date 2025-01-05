@@ -132,7 +132,7 @@ exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 
 
 $key = tab
 $mod = super
-bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9 --close mod-key
+bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9
 ```
 
 **Keyboard (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to next window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the next window, press ``$reverse(`)`` to switch backwards, release alt to switch
