@@ -1,6 +1,6 @@
 {
   "always-update": true,
-  "last-release-sha": "94f95d443ecca7c53e12883503e5d79010977a02",
+  "last-release-sha": "643cbc4fb78da6c895dfc04a9612bdb0f51c3d7c",
   "packages": {
     ".": {
       "release-type": "rust"
