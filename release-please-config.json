@@ -1,5 +1,6 @@
 {
   "always-update": true,
+  "include-component-in-tag": false,
   "last-release-sha": "643cbc4fb78da6c895dfc04a9612bdb0f51c3d7c",
   "packages": {
     ".": {
