@@ -221,6 +221,9 @@ pub(crate) fn switch(share: &Share, reverse: bool) -> anyhow::Result<()> {
         let mut lock = latest.lock().expect("Failed to lock");
         let exec_len = lock.launcher.execs.len();
         if let Some(ref mut selected) = lock.launcher.selected {
+            if exec_len == 0 {
+                return Ok(());
+            }
             *selected = if reverse {
                 selected.saturating_sub(1)
             } else {
