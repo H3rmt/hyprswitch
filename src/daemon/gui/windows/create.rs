@@ -13,7 +13,7 @@ use crate::Share;
 
 pub fn create_windows(
     share: &Share,
-    monitor_data_list: &mut HashMap<ApplicationWindow, MonitorData>,
+    monitor_data_list: &mut HashMap<ApplicationWindow, (MonitorData, Monitor)>,
     workspaces_per_row: u32,
     app: &Application,
 ) -> anyhow::Result<()> {
@@ -53,6 +53,7 @@ pub fn create_windows(
         window.set_namespace("hyprswitch");
         window.set_layer(Layer::Overlay);
         window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::None);
+        window.set_anchor(gtk4_layer_shell::Edge::Bottom, true);
         window.set_monitor(monitor);
         window.present();
         glib::spawn_future_local(clone!(
@@ -65,14 +66,14 @@ pub fn create_windows(
 
         monitor_data_list.insert(
             window,
-            MonitorData {
+            (MonitorData {
                 connector: monitor.connector().unwrap_or_default(),
                 id: monitor_id,
                 workspaces_flow,
                 workspaces_flow_overlay: (workspaces_flow_overlay, None),
                 workspace_refs: HashMap::new(),
                 client_refs: HashMap::new(),
-            },
+            }, monitor.clone()),
         );
         trace!("[GUI] Created window for monitor {:?}", monitor.connector());
     }

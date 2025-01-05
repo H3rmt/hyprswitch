@@ -1,0 +1,27 @@
+.launcher {
+    min-width: 550px;
+    font-size: 20px;
+}
+
+.launcher-entry {
+    margin: 6px;
+    padding-top: 6px;
+    padding-bottom: 4px;
+    padding-left: 12px;
+}
+
+.launcher-list {
+    margin-left: 2px;
+    margin-right: 2px;
+}
+
+.launcher-item {
+    background-color: var(--bg-color);
+    border-radius: var(--border-radius);
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.launcher-item-selected {
+    background-color: var(--bg-color-hover);
+}

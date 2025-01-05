@@ -1,20 +1,3 @@
-* {
-    border: unset;
-}
-
-:root {
-    --border-color: rgba(90, 90, 110, 0.4);
-    --border-color-active: rgba(239, 9, 9, 0.9);
-    --bg-color: rgba(20, 20, 20, 1);
-    --bg-color-hover: rgba(40, 40, 50, 1);
-    --index-border-color: rgba(20, 170, 170, 0.7);
-    --border-radius: 12px;
-}
-
-.monochrome {
-    filter: grayscale(100%);
-}
-
 .client-image {
     margin: 15px;
 }
@@ -85,32 +68,4 @@
     border-radius: var(--border-radius);
     background-color: var(--bg-color);
     border: 3px solid var(--index-border-color);
-}
-
-.launcher {
-    min-width: 520px;
-    font-size: 1.3em;
-}
-
-.launcher-entry {
-    margin: 6px;
-    padding-top: 6px;
-    padding-bottom: 4px;
-    padding-left: 12px;
-}
-
-.launcher-list {
-    margin-left: 2px;
-    margin-right: 2px;
-}
-
-.launcher-item {
-    background-color: var(--bg-color);
-    border-radius: var(--border-radius);
-    padding-left: 6px;
-    padding-right: 6px;
-}
-
-.launcher-item-selected {
-    background-color: var(--bg-color-hover);
 }

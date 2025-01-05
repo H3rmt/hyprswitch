@@ -216,7 +216,7 @@ bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --clo
 }
 ```
 
-### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/CSS) for more info and [CSS File](./src/daemon/gui/style.css) for the default Style
+### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/CSS) for more info and [Default](src/daemon/gui/defaults.css), [Windows](src/daemon/gui/windows/windows.css) and [Launcher](src/daemon/gui/launcher/launcher.css) for the default Styles
 
 # Other
 

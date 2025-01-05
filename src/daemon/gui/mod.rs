@@ -1,25 +1,26 @@
+use crate::cli::CloseType;
+use crate::envs::SHOW_LAUNCHER;
 use crate::{GUISend, InitConfig, Share};
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
-use gtk4::gdk::Display;
+use gtk4::gdk::{Display, Monitor};
 use gtk4::glib::{clone, GString};
-use gtk4::prelude::{ApplicationExt, ApplicationExtManual, EditableExt, WidgetExt};
+use gtk4::prelude::{ApplicationExt, ApplicationExtManual, EditableExt, MonitorExt, WidgetExt};
 use gtk4::{
     glib, style_context_add_provider_for_display, Application, ApplicationWindow, CssProvider,
     Entry, FlowBox, Label, ListBox, Overlay, STYLE_PROVIDER_PRIORITY_APPLICATION,
     STYLE_PROVIDER_PRIORITY_USER,
 };
+use gtk4_layer_shell::LayerShell;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use log::{debug, error, info, trace, warn};
+pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
+use std::cmp::max;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-
-use crate::cli::CloseType;
-use crate::envs::SHOW_LAUNCHER;
-pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
 
 mod icon;
 mod launcher;
@@ -65,7 +66,7 @@ fn connect_app(
         trace!("[GUI] start connect_activate");
         apply_css(init_config.custom_css.as_ref());
 
-        let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, MonitorData>>> =
+        let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>> =
             Rc::new(Mutex::new(HashMap::new()));
         {
             let mut monitor_data_list = monitor_data_list.lock().expect("Failed to lock");
@@ -121,7 +122,7 @@ async fn handle_updates(
     init_config: InitConfig,
     receiver: Receiver<GUISend>,
     return_sender: Sender<bool>,
-    monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, MonitorData>>>,
+    monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>>,
     launcher: LauncherRefs,
 ) {
     loop {
@@ -149,16 +150,12 @@ async fn handle_updates(
                             }
                             let selected = data.launcher.selected;
                             let reverse_key = data.gui_config.reverse_key.clone();
-                            let execs = launcher::update_launcher(
-                                &e.text(),
-                                l,
-                                selected,
-                                reverse_key,
-                            );
+                            let execs =
+                                launcher::update_launcher(&e.text(), l, selected, reverse_key);
                             data.launcher.execs = execs;
                         });
                     }
-                    for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
+                    for (window, (monitor_data, _)) in &mut monitor_data_list_unlocked.iter_mut() {
                         if let Some(monitors) = &data.gui_config.monitors {
                             if !monitors.0.iter().any(|m| *m == monitor_data.connector) {
                                 continue;
@@ -178,13 +175,34 @@ async fn handle_updates(
                             e.grab_focus();
                         });
                     }
-                    for (window, monitor_data) in &mut monitor_data_list_unlocked.iter_mut() {
+                    for (window, (monitor_data, monitor)) in
+                        &mut monitor_data_list_unlocked.iter_mut()
+                    {
                         if let Some(monitors) = &data.gui_config.monitors {
                             if !monitors.0.iter().any(|m| *m == monitor_data.connector) {
                                 continue;
                             }
                         }
                         trace!("[GUI] Rebuilding window {:?}", window);
+
+                        let workspaces = data
+                            .hypr_data
+                            .workspaces
+                            .iter()
+                            .filter(|(_, w)| {
+                                data.gui_config.show_workspaces_on_all_monitors
+                                    || w.monitor == monitor_data.id
+                            })
+                            .collect::<Vec<_>>()
+                            .len() as i32;
+                        let rows = (workspaces as f32 / init_config.workspaces_per_row as f32)
+                            .ceil() as i32;
+                        let height = monitor.geometry().height();
+                        window.set_margin(
+                            gtk4_layer_shell::Edge::Bottom,
+                            max(30, (height / 2) - ((height / 5) * rows)),
+                        );
+
                         window.show();
                         windows::init_windows(
                             share.clone(),
@@ -227,7 +245,12 @@ async fn handle_updates(
 
 fn apply_css(custom_css: Option<&PathBuf>) {
     let provider_app = CssProvider::new();
-    provider_app.load_from_data(include_str!("style.css"));
+    provider_app.load_from_data(&format!(
+        "{}\n{}\n{}",
+        include_str!("defaults.css"),
+        include_str!("windows/windows.css"),
+        include_str!("launcher/launcher.css")
+    ));
     style_context_add_provider_for_display(
         &Display::default()
             .context("Could not connect to a display.")
