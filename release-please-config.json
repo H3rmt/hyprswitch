@@ -1,0 +1,14 @@
+{
+  "always-update": true,
+  "packages": {
+    ".": {
+      "release-type": "rust"
+    }
+  },
+  "extra-files": [
+    {
+      "type": "generic",
+      "path": "PKGBUILD"
+    }
+  ]
+}
