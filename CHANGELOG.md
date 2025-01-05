@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.2.3](https://github.com/H3rmt/hyprswitch/compare/v3.2.2...v3.2.3) (2025-01-05)
+
+
+### Bug Fixes
+
+* ci adding component to tag ([e1c16e8](https://github.com/H3rmt/hyprswitch/commit/e1c16e802f4eaae7eb96485e64f9ee8502974e75))
+* ci adding component to tag ([759e711](https://github.com/H3rmt/hyprswitch/commit/759e7111a1f80ecaae96e4b29d21f85d2f346282))
+* fix some examples ([87e8868](https://github.com/H3rmt/hyprswitch/commit/87e8868c4336de653c39bbf4af406374b0068b0b))
+* prevent poisoned lock when switching execs in empty list ([33a4d6b](https://github.com/H3rmt/hyprswitch/commit/33a4d6b55367122d61f239ebc29ce5dac0634654))
+* reposition windows when using launcher ([7da33e3](https://github.com/H3rmt/hyprswitch/commit/7da33e34194fdde08e6696a8bb77999d6ea56a9e))
+* switch default terminal order ([4bd2fe9](https://github.com/H3rmt/hyprswitch/commit/4bd2fe9e3cfdc385620f5c62eca8c7e48487a4d1))
+
 ## [3.2.2](https://github.com/H3rmt/hyprswitch/compare/v3.2.1...v3.2.2) (2025-01-04)
 
 
