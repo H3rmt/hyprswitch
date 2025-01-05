@@ -43,6 +43,8 @@ fn run_command(command: &mut Command, run: &str, path: &Option<Box<str>>) -> io:
 
 // from https://github.com/i3/i3/blob/next/i3-sensible-terminal
 const TERMINALS: [&str; 29] = [
+    "alacritty",
+    "kitty",
     "x-terminal-emulator",
     "mate-terminal",
     "gnome-terminal",
@@ -65,10 +67,8 @@ const TERMINALS: [&str; 29] = [
     "tilix",
     "terminix",
     "konsole",
-    "kitty",
     "guake",
     "tilda",
-    "alacritty",
     "hyper",
     "wezterm",
     "rio",
