@@ -1,0 +1,15 @@
+{
+  "always-update": true,
+  "last-release-sha": "94f95d443ecca7c53e12883503e5d79010977a02",
+  "packages": {
+    ".": {
+      "release-type": "rust"
+    }
+  },
+  "extra-files": [
+    {
+      "type": "generic",
+      "path": "PKGBUILD"
+    }
+  ]
+}

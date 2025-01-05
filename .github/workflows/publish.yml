@@ -16,34 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
-      - name: update projects
-        run: |
-          # trim the v from the tag an use it as the version
-          export VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
-          
-          # replace the version in the PKGBUILD
-          sed -i "s/^pkgver=.*$/pkgver=$VERSION/" ./PKGBUILD
-      - uses: EndBug/add-and-commit@v9
-        id: commit
-        with:
-          message: "chore: update Cargo.toml and PKGBUILD"
-          pull: "--rebase --autostash"
-          new_branch: "main"
-          push: true
-          default_author: github_actor
-          author_name: github-actions[bot]
-          author_email: 41898282+github-actions[bot]@users.noreply.github.com
       - name: Install gtk4-layer-shell
-        run: sudo apt-get update
-          && sudo apt -y install git libglib2.0-dev libgraphene-1.0-dev meson ninja-build libwayland-dev libgtk-4-dev gobject-introspection libadwaita-1-dev libgirepository1.0-dev python3 valac
-          && git clone https://github.com/wmww/gtk4-layer-shell
-          && cd gtk4-layer-shell
-          && meson setup build
-          && ninja -C build
-          && sudo ninja -C build install
-          && sudo ldconfig
+        working-directory: /tmp
+        run: |
+          sudo apt-get update
+          sudo apt -y install git libglib2.0-dev libgraphene-1.0-dev meson ninja-build libwayland-dev libgtk-4-dev gobject-introspection libadwaita-1-dev libgirepository1.0-dev python3 valac
+          git clone https://github.com/wmww/gtk4-layer-shell
+          cd gtk4-layer-shell
+          meson setup build
+          ninja -C build
+          sudo ninja -C build install
+          sudo ldconfig
       - name: Publish to crates.io
         run: cargo publish --all-features --allow-dirty --token ${{ secrets.CRATES_TOKEN }}
       - name: Check if tag is -rc or -alpha and exit if it is
@@ -63,11 +50,9 @@ jobs:
           commit_message: Update AUR package
           updpkgsums: true
           ssh_keyscan_types: rsa,ecdsa,ed25519
-      - name: Update Release branch
+      - name: Push commits from tag to release
         run: |
-          git fetch origin main
-          git switch main
           git fetch origin release
           git switch release
-          git rebase main
-          git push --force origin release
+          git cherry-pick ${{ github.sha }}
+          git push origin release
