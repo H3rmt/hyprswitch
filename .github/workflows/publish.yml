@@ -54,5 +54,6 @@ jobs:
         run: |
           git fetch origin release
           git switch release
+          git pull origin release
           git cherry-pick ${{ github.sha }}
           git push origin release
