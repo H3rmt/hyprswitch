@@ -1,0 +1,60 @@
+* {
+    color: black;
+}
+
+.monitor {
+    background: darkseagreen;
+}
+
+.monitor_active {
+    border: var(--border-size) solid darkslategray;
+}
+
+.index {
+    background: orange;
+}
+
+.workspace {
+    background: aqua;
+}
+
+.workspace_special {
+    border: var(--border-size) solid yellow;
+}
+
+.workspace_active {
+    border: var(--border-size) solid purple;
+}
+
+.client-image {
+    background: springgreen;
+}
+
+.client {
+    background: green;
+}
+
+.client_active {
+    border: var(--border-size) solid blue;
+}
+
+
+.launcher {
+    background: pink;
+}
+
+.launcher-entry {
+    background: greenyellow;
+}
+
+.launcher-list {
+    background: blue;
+}
+
+.launcher-item {
+    background: red;
+}
+
+.launcher-item-selected {
+    background-color: aqua;
+}

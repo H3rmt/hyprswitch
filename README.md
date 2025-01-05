@@ -175,12 +175,13 @@ bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --clo
 
 ```css
 :root {
-    --border-color: rgba(90, 90, 110, 0.4);
+    --border-color: rgba(90, 90, 120, 0.4);
     --border-color-active: rgba(239, 9, 9, 0.9);
     --bg-color: rgba(20, 20, 20, 1);
     --bg-color-hover: rgba(40, 40, 50, 1);
     --index-border-color: rgba(20, 170, 170, 0.7);
     --border-radius: 12px;
+    --border-size: 3px;
 }
 ```
 

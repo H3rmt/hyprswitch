@@ -1,61 +1,13 @@
-.client-image {
-    margin: 15px;
+.monitor {
+    font-size: 20px;
 }
-
-.client {
-    font-size: 16px;
-    font-weight: normal;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--border-color);
-}
-
-.client:hover {
-    background-color: var(--bg-color-hover);
-}
-
-.client_active {
-    border: 3px solid var(--border-color-active);
-}
-
-
-.workspace {
-    font-size: 24px;
-    font-weight: bold;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--border-color);
-}
-
-.workspace:hover {
-    background-color: var(--bg-color-hover);
-}
-
-.workspace_special {
-    border: 3px solid rgba(0, 255, 0, 0.4);
-}
-
-.workspace_active {
-    border: 3px solid var(--border-color-active);
-}
-
 
 .monitor:hover {
     background-color: var(--bg-color-hover);
 }
 
-.window_active {
-    border: 3px solid var(--border-color-active);
-}
-
-.window {
-    padding: 2px;
-
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--border-color);
+.monitor_active {
+    border: var(--border-size) solid var(--border-color-active);
 }
 
 
@@ -67,5 +19,49 @@
     font-family: monospace;
     border-radius: var(--border-radius);
     background-color: var(--bg-color);
-    border: 3px solid var(--index-border-color);
+    border: var(--border-size) solid var(--index-border-color);
+}
+
+
+.workspace {
+    font-size: 24px;
+    font-weight: bold;
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: var(--border-size) solid var(--border-color);
+}
+
+.workspace:hover {
+    background-color: var(--bg-color-hover);
+}
+
+.workspace_special {
+    border: var(--border-size) solid rgba(0, 255, 0, 0.4);
+}
+
+.workspace_active {
+    border: var(--border-size) solid var(--border-color-active);
+}
+
+
+.client-image {
+    margin: 15px;
+}
+
+.client {
+    font-size: 16px;
+    font-weight: normal;
+
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    border: var(--border-size) solid var(--border-color);
+}
+
+.client:hover {
+    background-color: var(--bg-color-hover);
+}
+
+.client_active {
+    border: var(--border-size) solid var(--border-color-active);
 }
