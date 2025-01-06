@@ -2,6 +2,8 @@ name: Rust
 
 on:
   push:
+    branches-ignore:
+      - 'release-please/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
