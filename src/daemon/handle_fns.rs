@@ -62,18 +62,17 @@ pub(crate) fn close(share: &Share, kill: bool) -> anyhow::Result<()> {
         drop(lock);
     }
     deactivate_submap()?;
+    *(ACTIVE
+        .get()
+        .expect("ACTIVE not set")
+        .lock()
+        .expect("Failed to lock")) = false;
 
     send.send_blocking(GUISend::Hide)
         .context("Unable to refresh the GUI")?;
     receive
         .recv_blocking()
         .context("Unable to receive GUI update")?;
-
-    *(ACTIVE
-        .get()
-        .expect("ACTIVE not set")
-        .lock()
-        .expect("Failed to lock")) = false;
     clear_recent_clients();
     thread::spawn(|| {
         reload_desktop_maps();
@@ -120,17 +119,16 @@ pub(crate) fn init(share: &Share, config: Config, gui_config: GuiConfig) -> anyh
         drop(lock);
     }
     activate_submap(gui_config.clone())?;
+    *(ACTIVE
+        .get()
+        .expect("ACTIVE not set")
+        .lock()
+        .expect("Failed to lock")) = true;
 
     send.send_blocking(GUISend::New)
         .context("Unable to refresh the GUI")?;
     receive
         .recv_blocking()
         .context("Unable to receive GUI update")?;
-
-    *(ACTIVE
-        .get()
-        .expect("ACTIVE not set")
-        .lock()
-        .expect("Failed to lock")) = true;
     Ok(())
 }
