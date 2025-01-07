@@ -158,10 +158,6 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
     workspace_data.sort_by(|a, b| a.0.cmp(&b.0));
     monitor_data.sort_by(|a, b| a.0.cmp(&b.0));
 
-    trace!("[DATA] client_data: {:?}", client_data);
-    trace!("[DATA] workspace_data: {:?}", workspace_data);
-    trace!("[DATA] monitor_data: {:?}", monitor_data);
-
     let active = Client::get_active()?;
     let active: Option<(String, WorkspaceId, MonitorId, Address)> = active.as_ref().map_or_else(
         || None,
@@ -205,6 +201,10 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
             .iter()
             .any(|(_, c)| c.enabled && c.monitor == *id);
     }
+
+    trace!("[DATA] client_data: {:?}", client_data);
+    trace!("[DATA] workspace_data: {:?}", workspace_data);
+    trace!("[DATA] monitor_data: {:?}", monitor_data);
 
     Ok((
         HyprlandData {
