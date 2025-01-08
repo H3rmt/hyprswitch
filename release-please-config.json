@@ -1,7 +1,7 @@
 {
   "always-update": true,
   "include-component-in-tag": false,
-  "changelog-type": "github",
+  "changelog-type": "default",
   "packages": {
     ".": {
       "release-type": "rust"
