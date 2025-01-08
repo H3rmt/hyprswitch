@@ -22,14 +22,16 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install gtk4-layer-shell
-        run: sudo apt-get update
-          && sudo apt -y install git libglib2.0-dev libgraphene-1.0-dev meson ninja-build libwayland-dev libgtk-4-dev gobject-introspection libadwaita-1-dev libgirepository1.0-dev python3 valac
-          && git clone https://github.com/wmww/gtk4-layer-shell
-          && cd gtk4-layer-shell
-          && meson setup build
-          && ninja -C build
-          && sudo ninja -C build install
-          && sudo ldconfig
+        working-directory: /tmp
+        run: |
+          sudo apt-get update
+          sudo apt -y install git libglib2.0-dev libgraphene-1.0-dev meson ninja-build libwayland-dev libgtk-4-dev gobject-introspection libadwaita-1-dev libgirepository1.0-dev python3 valac
+          git clone https://github.com/wmww/gtk4-layer-shell
+          cd gtk4-layer-shell
+          meson setup build
+          ninja -C build
+          sudo ninja -C build install
+          sudo ldconfig
       - name: Load Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -47,14 +49,16 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install gtk4-layer-shell
-        run: sudo apt-get update
-          && sudo apt -y install git libglib2.0-dev libgraphene-1.0-dev meson ninja-build libwayland-dev libgtk-4-dev gobject-introspection libadwaita-1-dev libgirepository1.0-dev python3 valac
-          && git clone https://github.com/wmww/gtk4-layer-shell
-          && cd gtk4-layer-shell
-          && meson setup build
-          && ninja -C build
-          && sudo ninja -C build install
-          && sudo ldconfig
+        working-directory: /tmp
+        run: |
+          sudo apt-get update
+          sudo apt -y install git libglib2.0-dev libgraphene-1.0-dev meson ninja-build libwayland-dev libgtk-4-dev gobject-introspection libadwaita-1-dev libgirepository1.0-dev python3 valac
+          git clone https://github.com/wmww/gtk4-layer-shell
+          cd gtk4-layer-shell
+          meson setup build
+          ninja -C build
+          sudo ninja -C build install
+          sudo ldconfig
       - name: Load Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
