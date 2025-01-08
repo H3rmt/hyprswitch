@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.2.5](https://github.com/H3rmt/hyprswitch/compare/v3.2.4...v3.2.5) (2025-01-08)
+
+
+### Bug Fixes
+
+* -v and -vv work again, added -q for quiet output, fix [#104](https://github.com/H3rmt/hyprswitch/issues/104) ([0b09905](https://github.com/H3rmt/hyprswitch/commit/0b09905fcba41e1d499aa435b563e81491a14a68))
+* add REMOVE_HTML_FROM_WORKSPACE_NAME flag ([41f572f](https://github.com/H3rmt/hyprswitch/commit/41f572f375a1f8bd4fca0657538f594ffa7a07ca))
+
 ## [3.2.4](https://github.com/H3rmt/hyprswitch/compare/v3.2.3...v3.2.4) (2025-01-08)
 
 

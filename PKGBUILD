@@ -1,6 +1,6 @@
 pkgname=hyprswitch
 # x-release-please-start-version
-pkgver=3.2.4
+pkgver=3.2.5
 # x-release-please-end
 pkgrel=1
 pkgdesc="A CLI/GUI that allows switching between windows in Hyprland"
