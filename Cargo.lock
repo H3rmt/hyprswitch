@@ -1058,6 +1058,7 @@ dependencies = [
  "notify-rust",
  "rand",
  "random_color",
+ "regex",
  "semver",
  "serde",
  "svg",

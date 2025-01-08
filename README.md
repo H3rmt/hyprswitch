@@ -270,6 +270,7 @@ bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --clo
 - `ICON_SIZE` i32 [default: 512]: Argument passed to the theme.lookup_icon function (Determines the resolution of the
   Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
 - `SHOW_DEFAULT_ICON` bool [default: false]: Show a icon if no icon was found (`application-x-executable` doesn't scale good)
+- `REMOVE_HTML_FROM_WORKSPACE_NAME` bool [default: true]: Remove HTML tag (currently only `<span>{}</span>`) from workspace name
 - `SHOW_LAUNCHER` bool [default: true]: Show a Launcher Icon in the GUI when using default `--close` mode
 - `LAUNCHER_MAX_ITEMS` i32 [default: 5]: Maximum number of items in the Launcher
 - `DEFAULT_TERMINAL` string [default: ""]: Terminal to use for launching terminal applications, e.g., `alacritty`. (If

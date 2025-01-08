@@ -29,8 +29,11 @@ lazy_static! {
     pub static ref LOG_MODULE_PATH: bool = env::var("LOG_MODULE_PATH")
         .map(|s| s.parse().expect("Failed to parse LOG_MODULE_PATH"))
         .unwrap_or(false);
+    pub static ref REMOVE_HTML_FROM_WORKSPACE_NAME: bool = env::var("REMOVE_HTML_FROM_WORKSPACE_NAME")
+        .map(|s| s.parse().expect("Failed to parse REMOVE_HTML_FROM_WORKSPACE_NAME"))
+        .unwrap_or(true);
 }
 
 pub fn envvar_dump() {
-    debug!("ENV dump: ICON_SIZE: {}, SHOW_DEFAULT_ICON: {}, SHOW_LAUNCHER: {}, LAUNCHER_MAX_ITEMS: {}, DEFAULT_TERMINAL: {:?}, ASYNC_SOCKET: {:?}, LOG_MODULE_PATH: {:?}", *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS, *DEFAULT_TERMINAL, *ASYNC_SOCKET, *LOG_MODULE_PATH);
+    debug!("ENV dump: ICON_SIZE: {}, SHOW_DEFAULT_ICON: {}, SHOW_LAUNCHER: {}, LAUNCHER_MAX_ITEMS: {}, DEFAULT_TERMINAL: {:?}, ASYNC_SOCKET: {:?}, LOG_MODULE_PATH: {:?}, REMOVE_HTML_FROM_WORKSPACE_NAME: {:?}", *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS, *DEFAULT_TERMINAL, *ASYNC_SOCKET, *LOG_MODULE_PATH, *REMOVE_HTML_FROM_WORKSPACE_NAME);
 }

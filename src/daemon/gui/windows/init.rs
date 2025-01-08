@@ -1,9 +1,12 @@
 use crate::daemon::gui::icon::set_icon;
 use crate::daemon::gui::windows::click::{click_client, click_workspace};
 use crate::daemon::gui::MonitorData;
+use crate::envs::REMOVE_HTML_FROM_WORKSPACE_NAME;
 use crate::{ClientData, Share, WorkspaceData};
 use gtk4::{pango, prelude::*, Fixed, Frame, Image, Label, Overflow, Overlay};
 use hyprland::shared::{Address, WorkspaceId};
+use regex::Regex;
+use std::borrow::Cow;
 
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
@@ -37,9 +40,15 @@ pub fn init_windows(
 
         let id_string = wid.to_string();
         let title = if show_title && !workspace.name.trim().is_empty() {
-            &workspace.name
+            if *REMOVE_HTML_FROM_WORKSPACE_NAME {
+                Regex::new(r"<span[^>]*>(.*?)</span>")
+                    .unwrap()
+                    .replace_all(&workspace.name, "$1")
+            } else {
+                Cow::from(&workspace.name)
+            }
         } else {
-            &id_string
+            Cow::from(&id_string)
         };
 
         let workspace_frame = Frame::builder()
