@@ -5,11 +5,12 @@ use crate::{ClientData, Config, HyprlandData, MonitorData, WorkspaceData};
 use hyprland::data::{Client, Clients, Monitors, Workspaces};
 use hyprland::prelude::{HyprData, HyprDataActiveOptional};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{trace, warn};
+use tracing::{span, trace, warn, Level};
 
 type Active = (Option<Address>, Option<WorkspaceId>, Option<MonitorId>);
 
 pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
+    let _span = span!(Level::TRACE, "collect_data").entered();
     let clients = Clients::get()?
         .into_iter()
         .filter(|c| c.workspace.id != -1) // ignore clients on invalid workspaces
@@ -171,7 +172,7 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
         },
     );
 
-    trace!("[DATA] active: {:?}", active);
+    trace!("active: {:?}", active);
 
     for (_, client) in client_data.iter_mut() {
         client.enabled = (!config.filter_same_class
@@ -202,9 +203,9 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
             .any(|(_, c)| c.enabled && c.monitor == *id);
     }
 
-    trace!("[DATA] client_data: {:?}", client_data);
-    trace!("[DATA] workspace_data: {:?}", workspace_data);
-    trace!("[DATA] monitor_data: {:?}", monitor_data);
+    trace!("client_data: {:?}", client_data);
+    trace!("workspace_data: {:?}", workspace_data);
+    trace!("monitor_data: {:?}", monitor_data);
 
     Ok((
         HyprlandData {

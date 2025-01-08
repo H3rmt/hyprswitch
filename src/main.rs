@@ -3,10 +3,12 @@ use clap::Parser;
 use gtk4::prelude::FileExt;
 use hyprswitch::envs::envvar_dump;
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
-use log::{debug, info, warn};
 use notify_rust::{Notification, Urgency};
 use std::process::exit;
 use std::sync::Mutex;
+use tracing::level_filters::LevelFilter;
+use tracing::{debug, info, warn};
+use tracing_subscriber::EnvFilter;
 
 fn main() -> anyhow::Result<()> {
     let cli = cli::App::try_parse()
@@ -28,11 +30,16 @@ fn main() -> anyhow::Result<()> {
             eprintln!("{}", e);
             exit(1);
         });
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(cli.global_opts.verbose as usize + 1)
-        .init()
-        .context("Failed to initialize logging :(")
+
+    let filter = EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into());
+    let subscriber = tracing_subscriber::fmt()
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        // .with_target(true)
+        .with_target(false)
+        .with_env_filter(filter)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber)
+        .context("Failed to initialize logging")
         .unwrap_or_else(|e| warn!("{:?}", e));
 
     let _ = check_version().map_err(|e| {

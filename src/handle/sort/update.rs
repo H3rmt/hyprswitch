@@ -1,5 +1,5 @@
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::error;
+use tracing::error;
 
 use crate::{ClientData, FindByFirst, MonitorData, WorkspaceData};
 

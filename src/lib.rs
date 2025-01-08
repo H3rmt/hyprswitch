@@ -8,14 +8,15 @@ use async_channel::{Receiver, Sender};
 use hyprland::data::Version as HyprlandVersion;
 use hyprland::prelude::HyprData;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{info, trace, warn};
 use notify_rust::{Notification, Urgency};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::env::var;
 use std::fmt;
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
+use tracing::{info, trace, warn};
 
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
@@ -156,8 +157,25 @@ pub enum GUISend {
     Hide,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum UpdateCause {
+    Client(u8),
+    LauncherUpdate,
+    GuiClick
+}
+
+impl Display for UpdateCause {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UpdateCause::Client(id) => write!(f, "id:{}", id),
+            UpdateCause::LauncherUpdate => write!(f, "lu"),
+            UpdateCause::GuiClick => write!(f, "gc"),
+        }
+    }
+}
+
 // shared ARC with Mutex and Notify for new_gui and update_gui
-pub type Share = Arc<(Mutex<SharedData>, Sender<GUISend>, Receiver<bool>)>;
+pub type Share = Arc<(Mutex<SharedData>, Sender<(GUISend, UpdateCause)>, Receiver<bool>)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: OnceLock<bool> = OnceLock::new();
@@ -214,7 +232,7 @@ impl From<GuiConf> for GuiConfig {
     }
 }
 
-impl fmt::Display for ModKey {
+impl Display for ModKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             // need snake_case
@@ -309,7 +327,7 @@ impl Warn for Option<()> {
     }
 }
 
-impl<E: fmt::Display> Warn for Result<(), E> {
+impl<E: Display> Warn for Result<(), E> {
     fn warn(&self, msg: &str) {
         if let Err(e) = self {
             warn!("{}: {}", msg, e);

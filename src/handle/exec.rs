@@ -5,11 +5,12 @@ use hyprland::dispatch::{
 };
 use hyprland::prelude::HyprDataActive;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{debug, warn};
+use tracing::{debug, span, warn, Level};
 
 use crate::{Active, FindByFirst, HyprlandData, DRY};
 
 pub fn switch_to_active(active: &Active, clients_data: &HyprlandData) -> anyhow::Result<()> {
+    let _span = span!(Level::TRACE, "exec", active = ?active).entered();
     match active {
         Active::Client(addr) => {
             let data = clients_data

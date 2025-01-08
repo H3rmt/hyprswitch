@@ -1,4 +1,4 @@
-use crate::daemon::gui::icon::set_icon_spawn;
+use crate::daemon::gui::icon::set_icon;
 use crate::daemon::gui::windows::click::{click_client, click_workspace};
 use crate::daemon::gui::MonitorData;
 use crate::{ClientData, Share, WorkspaceData};
@@ -83,7 +83,7 @@ pub fn init_windows(
         for (address, client) in clients {
             let client_overlay = {
                 let picture = Image::builder().css_classes(vec!["client-image"]).build();
-                set_client_icon_spawn(client, &picture);
+                set_icon(&client.class, client.enabled, Some(client.pid), &picture);
                 let title = if show_title && !client.title.trim().is_empty() {
                     &client.title
                 } else {
@@ -135,13 +135,4 @@ fn clear_monitor(monitor_data: &mut MonitorData) {
             .0
             .remove_overlay(&overlay_ref_label);
     }
-}
-
-fn set_client_icon_spawn(client: &ClientData, pic: &Image) {
-    let class = client.class.clone();
-    let enabled = client.enabled;
-    let pid = client.pid;
-    let pic = pic.clone();
-
-    set_icon_spawn(&class, enabled, Some(pid), &pic);
 }

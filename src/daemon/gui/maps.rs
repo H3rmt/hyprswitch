@@ -2,7 +2,7 @@ use crate::envs::ICON_SIZE;
 use crate::Warn;
 use anyhow::Context;
 use gtk4::{gio, glib, IconLookupFlags, TextDirection};
-use log::{debug, trace, warn};
+use tracing::{debug, span, trace, warn, Level};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
@@ -85,7 +85,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
             env::var_os("HOME")
                 .map(|p| PathBuf::from(p).join(".local/share"))
                 .or_else(|| {
-                    warn!("[ICONS] No XDG_DATA_HOME and HOME environment variable found");
+                    warn!("No XDG_DATA_HOME and HOME environment variable found");
                     None
                 })
         },
@@ -98,7 +98,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
     for dir in dirs {
         res.push(dir.join("applications"));
     }
-    trace!("[ICONS] searching for icons in dirs: {:?}", res);
+    trace!("searching for icons in dirs: {:?}", res);
     res
 }
 
@@ -118,12 +118,12 @@ fn collect_desktop_files() -> Vec<DirEntry> {
                 }
             }
             Err(e) => {
-                warn!("[ICONS] Failed to read dir {dir:?}: {e}");
+                warn!("Failed to read dir {dir:?}: {e}");
                 continue;
             }
         }
     }
-    debug!("[ICONS] found {} desktop files", res.len());
+    debug!("found {} desktop files", res.len());
     res
 }
 
@@ -131,6 +131,8 @@ fn fill_desktop_file_map(
     map: &mut IconPathMap,
     mut map2: Option<&mut DesktopFileMap>,
 ) -> anyhow::Result<()> {
+    let _span = span!(Level::TRACE, "fill_desktop_file_map").entered();
+
     let now = Instant::now();
     gtk4::init().context("Failed to init gtk")?;
     let theme = gtk4::IconTheme::new();
@@ -254,13 +256,13 @@ fn fill_desktop_file_map(
             }
             Err(e) => {
                 warn!(
-                    "[ICONS] Failed to read file {}: {e}",
+                    "Failed to read file {}: {e}",
                     entry.path().display()
                 );
             }
         }
     }
-    debug!("[ICONS] filled icon map in {}ms", now.elapsed().as_millis());
+    debug!("filled icon map in {}ms", now.elapsed().as_millis());
     Ok(())
 }
 

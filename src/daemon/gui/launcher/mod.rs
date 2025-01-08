@@ -3,7 +3,7 @@ use crate::daemon::gui::icon::apply_texture_path;
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
 use crate::envs::LAUNCHER_MAX_ITEMS;
-use crate::{Execs, GUISend, Share, Warn};
+use crate::{Execs, GUISend, Share, UpdateCause, Warn};
 use anyhow::Context;
 use gtk4::gdk::Key;
 use gtk4::glib::{clone, Propagation};
@@ -32,7 +32,7 @@ pub(super) fn create_launcher(
         move |_| {
             let (_, sender, _) = share.deref();
             sender
-                .send_blocking(GUISend::Refresh)
+                .send_blocking((GUISend::Refresh, UpdateCause::LauncherUpdate))
                 .warn("Failed to send refresh");
         }
     ));
@@ -234,7 +234,7 @@ pub(crate) fn switch(share: &Share, reverse: bool) -> anyhow::Result<()> {
         };
         drop(lock);
     }
-    send.send_blocking(GUISend::Refresh)
+    send.send_blocking((GUISend::Refresh, UpdateCause::LauncherUpdate))
         .context("Unable to refresh the GUI")?;
     // don't wait on receiver as this blocks the gui(gtk event loop) from receiving the refresh
     Ok(())

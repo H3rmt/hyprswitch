@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
+use crate::{GUISend, InitConfig, Share, SharedData, UpdateCause};
 use gtk4::glib::clone;
-
-use crate::{InitConfig, Share, SharedData};
+use tracing::{span, Level};
 
 pub mod gui;
 mod handle_client;
@@ -14,7 +14,7 @@ pub use submap::deactivate_submap;
 pub fn start_daemon(init_config: InitConfig) -> anyhow::Result<()> {
     // we don't have any config here, so we just create a default one with no filtering (but fill the monitors as they are needed for gtk)
     // create arc to send to threads containing the config the daemon was initialized with and the data (clients, etc.)
-    let (sender, receiver) = async_channel::unbounded();
+    let (sender, receiver) = async_channel::unbounded::<(GUISend, UpdateCause)>();
     let (return_sender, return_receiver) = async_channel::unbounded();
     let share: Share = Arc::new((Mutex::new(SharedData::default()), sender, return_receiver));
 
@@ -23,13 +23,13 @@ pub fn start_daemon(init_config: InitConfig) -> anyhow::Result<()> {
             #[strong]
             share,
             move || {
+                let _span = span!(Level::TRACE, "handle").entered();
                 handle_client::start_handler_blocking(&share);
             }
         ));
-        scope.spawn(|| {
-            gui::reload_desktop_maps();
-        });
         scope.spawn(move || {
+            let _span = span!(Level::TRACE, "gui").entered();
+            gui::reload_desktop_maps();
             gui::start_gui_blocking(&share, init_config, receiver, return_sender);
         });
     });

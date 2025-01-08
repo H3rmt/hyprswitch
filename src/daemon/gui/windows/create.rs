@@ -5,7 +5,7 @@ use gtk4::gdk::{Display, Monitor};
 use gtk4::glib::clone;
 use gtk4::prelude::{DisplayExt, GtkWindowExt, ListModelExtManual, MonitorExt, WidgetExt};
 use gtk4_layer_shell::{Layer, LayerShell};
-use log::trace;
+use tracing::trace;
 use crate::daemon::gui::MonitorData;
 use crate::daemon::gui::windows::click::click_monitor;
 use crate::handle::get_monitors;

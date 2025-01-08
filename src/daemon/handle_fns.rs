@@ -2,13 +2,12 @@ use crate::cli::SwitchType;
 use crate::daemon::gui::reload_desktop_maps;
 use crate::daemon::submap::{activate_submap, deactivate_submap};
 use crate::handle::{clear_recent_clients, collect_data, find_next, run_program, switch_to_active};
-use crate::{Active, Command, Config, GUISend, GuiConfig, Share, ACTIVE};
+use crate::{Active, Command, Config, GUISend, GuiConfig, Share, UpdateCause, ACTIVE};
 use anyhow::Context;
-use log::{info, warn};
 use std::ops::Deref;
-use std::thread;
+use tracing::{info, trace, warn};
 
-pub(crate) fn switch(share: &Share, command: Command) -> anyhow::Result<()> {
+pub(crate) fn switch(share: &Share, command: Command, client_id: u8) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
@@ -33,7 +32,9 @@ pub(crate) fn switch(share: &Share, command: Command) -> anyhow::Result<()> {
         }
         drop(lock);
     }
-    send.send_blocking(GUISend::Refresh)
+
+    trace!("Sending refresh to GUI");
+    send.send_blocking((GUISend::Refresh, UpdateCause::Client(client_id)))
         .context("Unable to refresh the GUI")?;
     receive
         .recv_blocking()
@@ -42,7 +43,7 @@ pub(crate) fn switch(share: &Share, command: Command) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn close(share: &Share, kill: bool) -> anyhow::Result<()> {
+pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
     {
         let lock = latest.lock().expect("Failed to lock");
@@ -68,19 +69,24 @@ pub(crate) fn close(share: &Share, kill: bool) -> anyhow::Result<()> {
         .lock()
         .expect("Failed to lock")) = false;
 
-    send.send_blocking(GUISend::Hide)
+    trace!("Sending refresh to GUI");
+    send.send_blocking((GUISend::Hide, UpdateCause::Client(client_id)))
         .context("Unable to refresh the GUI")?;
     receive
         .recv_blocking()
         .context("Unable to receive GUI update")?;
+
     clear_recent_clients();
-    thread::spawn(|| {
-        reload_desktop_maps();
-    });
+    reload_desktop_maps();
     Ok(())
 }
 
-pub(crate) fn init(share: &Share, config: Config, gui_config: GuiConfig) -> anyhow::Result<()> {
+pub(crate) fn init(
+    share: &Share,
+    config: Config,
+    gui_config: GuiConfig,
+    client_id: u8,
+) -> anyhow::Result<()> {
     let (clients_data, active) = collect_data(config.clone())
         .with_context(|| format!("Failed to collect data with config {:?}", config.clone()))?;
 
@@ -125,7 +131,8 @@ pub(crate) fn init(share: &Share, config: Config, gui_config: GuiConfig) -> anyh
         .lock()
         .expect("Failed to lock")) = true;
 
-    send.send_blocking(GUISend::New)
+    trace!("Sending refresh to GUI");
+    send.send_blocking((GUISend::New, UpdateCause::Client(client_id)))
         .context("Unable to refresh the GUI")?;
     receive
         .recv_blocking()

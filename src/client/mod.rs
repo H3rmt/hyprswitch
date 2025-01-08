@@ -2,7 +2,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 
 use anyhow::Context;
-use log::{debug, trace};
+use tracing::{debug, trace};
 
 use crate::{get_socket_path_buff, Command, Config, GuiConfig, Transfer, TransferType, DRY};
 

@@ -1,5 +1,8 @@
+use crate::client::daemon_running;
+use crate::daemon::handle_fns::{close, init, switch};
+use crate::envs::ASYNC_SOCKET;
+use crate::{get_socket_path_buff, Share, Transfer, TransferType, ACTIVE};
 use anyhow::Context;
-use log::{debug, error, info, trace, warn};
 use notify_rust::{Notification, Urgency};
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
@@ -8,10 +11,9 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
 use std::time::Instant;
 use std::{env, thread};
-
-use crate::client::daemon_running;
-use crate::daemon::handle_fns::{close, init, switch};
-use crate::{get_socket_path_buff, Share, Transfer, TransferType, ACTIVE};
+use rand::Rng;
+use tracing::{error, info, trace, warn};
+use tracing::{span, Level};
 
 pub(super) fn start_handler_blocking(share: &Share) {
     let listener = if env::var("LISTEN_FDS").is_ok() {
@@ -47,9 +49,22 @@ pub(super) fn start_handler_blocking(share: &Share) {
     loop {
         match listener.accept() {
             Ok((stream, _)) => {
-                let now = Instant::now();
                 let arc_share = share.clone();
-                thread::spawn(move || {
+                if *ASYNC_SOCKET {
+                    thread::spawn(move || {
+                        handle_client(stream, arc_share).context("Failed to handle client")
+                            .unwrap_or_else(|e| {
+                                let _ = Notification::new()
+                                    .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
+                                    .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
+                                    .timeout(10000)
+                                    .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+                                    .show();
+
+                                warn!("{:?}", e)
+                            });
+                    });
+                } else {
                     handle_client(stream, arc_share).context("Failed to handle client")
                         .unwrap_or_else(|e| {
                             let _ = Notification::new()
@@ -61,8 +76,7 @@ pub(super) fn start_handler_blocking(share: &Share) {
 
                             warn!("{:?}", e)
                         });
-                    trace!("[HANDLE] Handled client in {:?}", now.elapsed());
-                });
+                }
             }
             Err(e) => {
                 error!("Failed to accept client: {}", e);
@@ -71,7 +85,12 @@ pub(super) fn start_handler_blocking(share: &Share) {
     }
 }
 
-pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Result<()> {
+pub(super) fn handle_client(stream: UnixStream, share: Share) -> anyhow::Result<()> {
+    let now = Instant::now();
+    // 0 = unknown client, 100 - 255 = tcp_client caused update
+    let rand_id = rand::thread_rng().gen_range(100..=255);
+    let _span = span!(Level::TRACE, "handle_client", id = rand_id).entered();
+
     let reader_stream = stream.try_clone().context("Failed to clone stream")?;
     let mut reader = BufReader::new(reader_stream);
     let mut buffer = Vec::new();
@@ -81,13 +100,23 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
 
     // client checked if socket is OK
     if buffer.is_empty() {
-        debug!("[HANDLE] Received empty buffer");
+        // debug!("Received empty buffer");
         return Ok(());
     }
+    handle_client_transfer(stream, buffer, share, rand_id)?;
+    trace!("Handled client in {:?}", now.elapsed());
+    Ok(())
+}
 
+pub(super) fn handle_client_transfer(
+    mut stream: UnixStream,
+    buffer: Vec<u8>,
+    share: Share,
+    client_id: u8,
+) -> anyhow::Result<()> {
     let transfer: Transfer = bincode::deserialize(&buffer)
         .with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
-    trace!("[HANDLE] Received command: {transfer:?}");
+    trace!("Received command: {transfer:?}");
 
     // check the major and minor number, exclude patch number
     if *env!("CARGO_PKG_VERSION")
@@ -123,18 +152,21 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
 
     match transfer.transfer {
         TransferType::Check => {
-            info!("[HANDLE] Received running? command");
+            info!("Received running? command");
             return_success(active, &mut stream)?;
         }
         TransferType::Init(config, gui_config) => {
             if !active {
-                info!("[HANDLE] Received init command {config:?} and {gui_config:?}");
-                match init(&share, config.clone(), gui_config.clone()).with_context(|| {
-                    format!(
-                        "Failed to init with config {:?} and gui_config {:?}",
-                        config, gui_config
-                    )
-                }) {
+                let _span = span!(Level::TRACE, "init").entered();
+                info!("Received init command {config:?} and {gui_config:?}");
+                match init(&share, config.clone(), gui_config.clone(), client_id).with_context(
+                    || {
+                        format!(
+                            "Failed to init with config {:?} and gui_config {:?}",
+                            config, gui_config
+                        )
+                    },
+                ) {
                     Ok(_) => {
                         return_success(true, &mut stream)?;
                     }
@@ -150,8 +182,9 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
         }
         TransferType::Close(kill) => {
             if active {
+                let _span = span!(Level::TRACE, "close").entered();
                 info!("[HANDLE] Received close command with kill: {kill}");
-                match close(&share, kill)
+                match close(&share, kill, client_id)
                     .with_context(|| format!("Failed to close gui  kill: {kill}"))
                 {
                     Ok(_) => {
@@ -168,8 +201,9 @@ pub(super) fn handle_client(mut stream: UnixStream, share: Share) -> anyhow::Res
         }
         TransferType::Switch(command) => {
             if active {
+                let _span = span!(Level::TRACE, "switch").entered();
                 info!("[HANDLE] Received switch command {command:?}");
-                match switch(&share, command)
+                match switch(&share, command, client_id)
                     .with_context(|| format!("Failed to execute with command {command:?}"))
                 {
                     Ok(_) => {

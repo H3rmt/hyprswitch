@@ -5,7 +5,7 @@ use anyhow::Context;
 use hyprland::data::{Client, Monitor, Monitors};
 use hyprland::prelude::{HyprData, HyprDataActiveOptional, HyprDataVec};
 use hyprland::shared::Address;
-use log::info;
+use tracing::info;
 
 pub use data::collect_data;
 pub use exec::switch_to_active;
@@ -40,7 +40,7 @@ pub fn find_next(
                 },
             )
             .with_context(|| format!("Failed to find next client with command {command:?}"))?;
-            info!("[NEXT] Next client: {:?}", addr);
+            info!("Next client: {:?}", addr);
             Ok(Active::Client(addr.clone()))
         }
         SwitchType::Workspace => {
@@ -54,7 +54,7 @@ pub fn find_next(
                 },
             )
             .with_context(|| format!("Failed to find next workspace with command {command:?}"))?;
-            info!("[NEXT] Next workspace: {:?}", workspace_id);
+            info!("Next workspace: {:?}", workspace_id);
             Ok(Active::Workspace(*workspace_id))
         }
         SwitchType::Monitor => {
@@ -68,7 +68,7 @@ pub fn find_next(
                 },
             )
             .with_context(|| format!("Failed to find next monitor with command {command:?}"))?;
-            info!("[NEXT] Next monitor: {:?}", monitor_id);
+            info!("Next monitor: {:?}", monitor_id);
             Ok(Active::Monitor(*monitor_id))
         }
     }

@@ -7,7 +7,7 @@ use gtk4::glib::clone;
 use gtk4::prelude::GestureExt;
 use gtk4::{EventSequenceState, GestureClick};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{info, warn};
+use tracing::{info, warn};
 
 pub(crate) fn click_client(share: &Share, address: &Address) -> GestureClick {
     let gesture = GestureClick::new();

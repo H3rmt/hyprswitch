@@ -1,5 +1,5 @@
 use crate::envs::DEFAULT_TERMINAL;
-use log::{info, warn};
+use tracing::{info, warn};
 use std::io;
 use std::ops::Deref;
 use std::process::{Child, Command, Stdio};

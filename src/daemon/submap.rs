@@ -3,7 +3,7 @@ use std::env;
 use anyhow::Context;
 use hyprland::dispatch::{Dispatch, DispatchType};
 use hyprland::keyword::Keyword;
-use log::{debug, error, trace};
+use tracing::{debug, error, span, trace, Level};
 
 use crate::cli::ReverseKey::{Key, Mod};
 use crate::cli::{CloseType, ModKey};
@@ -15,6 +15,7 @@ fn generate_submap_name(_keyword_list: &[(&str, String)]) -> String {
 }
 
 pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
+    let _span = span!(Level::TRACE, "submap").entered();
     let mut keyword_list = Vec::<(&str, String)>::new();
     (|| -> anyhow::Result<()> {
         let current_exe = env::current_exe()?;
@@ -23,7 +24,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
             .with_context(|| format!("unable to convert path {:?} to string", current_exe))?
             .trim_end_matches(" (deleted)");
         let main_mod = get_mod_from_mod_key(gui_config.mod_key.clone());
-        trace!("[SUBMAP] current_exe: {}", current_exe);
+        trace!("current_exe: {}", current_exe);
 
         // always bind escape to kill
         keyword_list.push((
@@ -171,12 +172,12 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         let name = generate_submap_name(&keyword_list);
         Keyword::set("submap", name.clone())?;
 
-        trace!("[SUBMAP] keyword_list: ");
+        trace!("keyword_list: ");
         for (key, value) in keyword_list {
-            trace!("[SUBMAP] {} = {}", key, value);
+            trace!("{} = {}", key, value);
             Keyword::set(key, value)?;
         }
-        trace!("[SUBMAP] keyword_list end");
+        trace!("keyword_list end");
 
         Dispatch::call(DispatchType::Custom("submap", &name))?;
         Ok(())
@@ -184,7 +185,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
     .inspect_err(|_| {
         // reset submap if failed
         Dispatch::call(DispatchType::Custom("submap", "reset")).unwrap_or_else(|e| {
-            error!("[SUBMAP] {:?}", e);
+            error!("{:?}", e);
         });
     })?;
 
@@ -192,8 +193,11 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
 }
 
 pub fn deactivate_submap() -> anyhow::Result<()> {
-    Dispatch::call(DispatchType::Custom("submap", "reset"))?;
-    debug!("[SUBMAP] Deactivated submap");
+    let _span = span!(Level::TRACE, "submap").entered();
+    Dispatch::call(DispatchType::Custom("submap", "reset")).inspect_err(|e| {
+        error!("{:?}", e);
+    })?;
+    debug!("Deactivated submap");
     Ok(())
 }
 

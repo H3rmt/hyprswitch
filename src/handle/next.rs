@@ -1,6 +1,6 @@
 use anyhow::Context;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use log::{trace, warn};
+use tracing::{trace, warn};
 
 use crate::{ClientData, Command, MonitorData, WorkspaceData};
 

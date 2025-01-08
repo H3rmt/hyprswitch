@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use log::debug;
+use tracing::debug;
 use std::env;
 
 lazy_static! {
@@ -23,8 +23,11 @@ lazy_static! {
         .unwrap_or(5);
     pub static ref DEFAULT_TERMINAL: Option<String> =
         env::var("DEFAULT_TERMINAL").map_or(None, |s| Some(s.to_string()));
+    pub static ref ASYNC_SOCKET: bool = env::var("ASYNC_SOCKET")
+        .map(|s| s.parse().expect("Failed to parse SHOW_LAUNCHER"))
+        .unwrap_or(true);
 }
 
 pub fn envvar_dump() {
-    debug!("ICON_SIZE: {}, SHOW_DEFAULT_ICON: {}, SHOW_LAUNCHER: {}, LAUNCHER_MAX_ITEMS: {}, DEFAULT_TERMINAL: {:?}", *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS, *DEFAULT_TERMINAL);
+    debug!("ENV dump: ICON_SIZE: {}, SHOW_DEFAULT_ICON: {}, SHOW_LAUNCHER: {}, LAUNCHER_MAX_ITEMS: {}, DEFAULT_TERMINAL: {:?}, ASYNC_SOCKET: {:?}", *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS, *DEFAULT_TERMINAL, *ASYNC_SOCKET);
 }
