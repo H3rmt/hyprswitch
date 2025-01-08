@@ -32,6 +32,7 @@ lazy_static! {
     pub static ref REMOVE_HTML_FROM_WORKSPACE_NAME: bool = env::var("REMOVE_HTML_FROM_WORKSPACE_NAME")
         .map(|s| s.parse().expect("Failed to parse REMOVE_HTML_FROM_WORKSPACE_NAME"))
         .unwrap_or(true);
+    // TODO DISABLE_TOASTS
 }
 
 pub fn envvar_dump() {

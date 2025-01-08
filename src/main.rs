@@ -67,6 +67,14 @@ fn main() -> anyhow::Result<()> {
     envvar_dump();
 
     match cli.command {
+        #[cfg(feature = "config")]
+        cli::Command::Run { exe} => {
+            info!("Loading config");
+            let config = hyprswitch::daemon::config::load().context("Failed to load config")?;
+            let text = hyprswitch::daemon::config::create_binds_and_submaps(exe, config)
+                .context("Failed to create binds and submaps")?;
+            dbg!(text);
+        }
         cli::Command::Init { init_opts } => {
             info!("Starting daemon");
             let init_config = InitConfig::from(init_opts);
