@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.2.4](https://github.com/H3rmt/hyprswitch/compare/v3.2.3...v3.2.4) (2025-01-08)
+
+
+### Bug Fixes
+
+* added new logging (tracing) ([330b11f](https://github.com/H3rmt/hyprswitch/commit/330b11f854708133ef8b1a1c7113a60cdf4d637a))
+* change changelog generation ([e93dd60](https://github.com/H3rmt/hyprswitch/commit/e93dd602073b7df1e2250c18af249ea840eda789))
+* set active before waiting for GUI update ([82a470e](https://github.com/H3rmt/hyprswitch/commit/82a470eb9abc30228c870468260f1976671ae108))
+* trace data from collect_data after enabled has been set ([dbfc1b2](https://github.com/H3rmt/hyprswitch/commit/dbfc1b211024854c72597a1dee576dc14965f7d0))
+
 ## [3.2.3](https://github.com/H3rmt/hyprswitch/compare/v3.2.2...v3.2.3) (2025-01-05)
 
 
