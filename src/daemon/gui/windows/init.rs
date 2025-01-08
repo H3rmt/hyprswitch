@@ -135,4 +135,10 @@ fn clear_monitor(monitor_data: &mut MonitorData) {
             .0
             .remove_overlay(&overlay_ref_label);
     }
+
+    // remove active class from monitor
+    monitor_data
+        .workspaces_flow_overlay
+        .0
+        .remove_css_class("monitor_active");
 }

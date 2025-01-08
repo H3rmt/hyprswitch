@@ -27,9 +27,13 @@ pub struct GlobalOpts {
     #[arg(short = 'd', long, global = true)]
     pub dry_run: bool,
 
-    /// Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
+    /// Increase the verbosity level (-v: debug, -vv: trace)
     #[arg(short = 'v', action = clap::ArgAction::Count, global = true)]
     pub verbose: u8,
+
+    /// Turn off all output
+    #[arg(short = 'q', long, global = true)]
+    pub quiet: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]

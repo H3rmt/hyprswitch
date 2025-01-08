@@ -68,7 +68,8 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 ### This list only includes the most common options or values, (see `hyprswitch gui --help` / `hyprswitch init --help` / ... for more detailed info)
 
 - `--dry-run / -d` Print the command that would be executed instead of executing it
-- `-v` Increase the verbosity level (-v: info, -vv: debug, -vvv: trace)
+- `-v` Increase the verbosity level (-v: debug, -vv: trace) (Use [RUST_LOG](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) env-var for more control)
+- `-q` Turn off all output (Except when using `--dry-run`)
 
 - `init` Initialize and start the Daemon
     - `--custom-css <PATH>` Specify a path to custom CSS file
@@ -85,7 +86,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
         - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER)
     - `--max-switch-offset <MAX_SWITCH_OFFSET>` [default=6] The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
     - `--hide-active-window-border` [default=false] Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
-    - `--monitors` Show the GUI only on this monitor(s) [default: display on all monitors] Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1` Available values: `hyprctl monitors -j | jq '.[].name'` 
+    - `--monitors` Show the GUI only on this monitor(s) [default: display on all monitors] Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1` Available values: `hyprctl monitors -j | jq '.[].name'`
       (You might want to use this together with the next option as using arrow keys to select a window on a different monitor will still be possible. Or use `--filter-current-monitor` to only show windows of the current monitor)
     - `--show-workspaces-on-all-monitors` Show all workspaces on all monitors [default: only show workspaces on the corresponding monitor]
     - Same options as `simple` except `--offset` and `--reverse`
@@ -268,7 +269,7 @@ bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --clo
 
 - `ICON_SIZE` i32 [default: 512]: Argument passed to the theme.lookup_icon function (Determines the resolution of the
   Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
-- `SHOW_DEFAULT_ICON` bool [default: false]: Show a Icon if no icon was found (`application-x-executable` Doesn't scale good)
+- `SHOW_DEFAULT_ICON` bool [default: false]: Show a icon if no icon was found (`application-x-executable` doesn't scale good)
 - `SHOW_LAUNCHER` bool [default: true]: Show a Launcher Icon in the GUI when using default `--close` mode
 - `LAUNCHER_MAX_ITEMS` i32 [default: 5]: Maximum number of items in the Launcher
 - `DEFAULT_TERMINAL` string [default: ""]: Terminal to use for launching terminal applications, e.g., `alacritty`. (If

@@ -183,7 +183,7 @@ pub(super) fn handle_client_transfer(
         TransferType::Close(kill) => {
             if active {
                 let _span = span!(Level::TRACE, "close").entered();
-                info!("[HANDLE] Received close command with kill: {kill}");
+                info!("Received close command with kill: {kill}");
                 match close(&share, kill, client_id)
                     .with_context(|| format!("Failed to close gui  kill: {kill}"))
                 {
@@ -202,7 +202,7 @@ pub(super) fn handle_client_transfer(
         TransferType::Switch(command) => {
             if active {
                 let _span = span!(Level::TRACE, "switch").entered();
-                info!("[HANDLE] Received switch command {command:?}");
+                info!("Received switch command {command:?}");
                 match switch(&share, command, client_id)
                     .with_context(|| format!("Failed to execute with command {command:?}"))
                 {

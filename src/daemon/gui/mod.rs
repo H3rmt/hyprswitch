@@ -20,7 +20,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, error, info, span, trace, warn, Level};
+use tracing::{error, info, span, trace, warn, Level};
 
 mod icon;
 mod launcher;
@@ -126,7 +126,7 @@ async fn handle_updates(
     launcher: LauncherRefs,
 ) {
     loop {
-        debug!("Waiting for GUI update");
+        trace!("Waiting for GUI update");
         let mess = receiver.recv().await;
 
         let (data_mut, _, _) = share.deref();
@@ -138,7 +138,8 @@ async fn handle_updates(
             let launcher_unlocked = launcher.lock().expect("Failed to lock, launcher");
             match mess {
                 Ok((GUISend::New, update_cause)) => {
-                    let _span = span!(Level::TRACE, "new", cause = update_cause.to_string()).entered();
+                    let _span =
+                        span!(Level::TRACE, "new", cause = update_cause.to_string()).entered();
                     // only open launcher when opening with default close mode
                     if data.gui_config.close == CloseType::Default {
                         launcher_unlocked.as_ref().inspect(|(w, e, _)| {
@@ -191,7 +192,8 @@ async fn handle_updates(
                     }
                 }
                 Ok((GUISend::Refresh, update_cause)) => {
-                    let _span = span!(Level::TRACE, "refresh", cause = update_cause.to_string()).entered();
+                    let _span =
+                        span!(Level::TRACE, "refresh", cause = update_cause.to_string()).entered();
                     // only update launcher wen using default close mode
                     if data.gui_config.close == CloseType::Default {
                         launcher_unlocked.as_ref().inspect(|(_, e, l)| {
@@ -220,7 +222,8 @@ async fn handle_updates(
                     }
                 }
                 Ok((GUISend::Hide, update_cause)) => {
-                    let _span = span!(Level::TRACE, "hide", cause = update_cause.to_string()).entered();
+                    let _span =
+                        span!(Level::TRACE, "hide", cause = update_cause.to_string()).entered();
                     launcher_unlocked.as_ref().inspect(|(w, _, _)| w.hide());
                     for (window, _) in &mut monitor_data_list_unlocked.iter_mut() {
                         trace!("Hiding window {:?}", window);
@@ -241,7 +244,7 @@ async fn handle_updates(
             .send(true)
             .await
             .expect("Failed to send return_sender");
-        debug!("GUI update finished");
+        trace!("GUI update finished");
     }
 }
 

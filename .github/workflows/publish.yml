@@ -53,3 +53,5 @@ jobs:
       - name: Push commits from tag to release
         run: |
           gh pr merge --squash --auto $(gh pr create --title "Release ${{ github.ref }}" --fill-verbose --base release --head main)
+        env:
+          GH_TOKEN: ${{ github.token }}

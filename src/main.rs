@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use gtk4::prelude::FileExt;
-use hyprswitch::envs::envvar_dump;
+use hyprswitch::envs::{envvar_dump, LOG_MODULE_PATH};
 use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
 use notify_rust::{Notification, Urgency};
 use std::process::exit;
@@ -31,11 +31,22 @@ fn main() -> anyhow::Result<()> {
             exit(1);
         });
 
-    let filter = EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into());
+    let filter = EnvFilter::from_default_env().add_directive(
+        if cli.global_opts.quiet {
+            LevelFilter::OFF
+        } else {
+            match cli.global_opts.verbose {
+                0 => LevelFilter::INFO,
+                1 => LevelFilter::DEBUG,
+                2.. => LevelFilter::TRACE,
+            }
+        }
+        .into(),
+    );
     let subscriber = tracing_subscriber::fmt()
         .with_timer(tracing_subscriber::fmt::time::uptime())
-        // .with_target(true)
-        .with_target(false)
+        .with_target(*LOG_MODULE_PATH)
+        // .with_target(false)
         .with_env_filter(filter)
         .finish();
     tracing::subscriber::set_global_default(subscriber)

@@ -19,6 +19,7 @@
 .window {
     padding: 2px;
 
+    color: rgb(245, 245, 245);
     border-radius: var(--border-radius);
     background-color: var(--bg-color);
     border: 3px solid var(--border-color);

@@ -24,10 +24,13 @@ lazy_static! {
     pub static ref DEFAULT_TERMINAL: Option<String> =
         env::var("DEFAULT_TERMINAL").map_or(None, |s| Some(s.to_string()));
     pub static ref ASYNC_SOCKET: bool = env::var("ASYNC_SOCKET")
-        .map(|s| s.parse().expect("Failed to parse SHOW_LAUNCHER"))
+        .map(|s| s.parse().expect("Failed to parse ASYNC_SOCKET"))
         .unwrap_or(true);
+    pub static ref LOG_MODULE_PATH: bool = env::var("LOG_MODULE_PATH")
+        .map(|s| s.parse().expect("Failed to parse LOG_MODULE_PATH"))
+        .unwrap_or(false);
 }
 
 pub fn envvar_dump() {
-    debug!("ENV dump: ICON_SIZE: {}, SHOW_DEFAULT_ICON: {}, SHOW_LAUNCHER: {}, LAUNCHER_MAX_ITEMS: {}, DEFAULT_TERMINAL: {:?}, ASYNC_SOCKET: {:?}", *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS, *DEFAULT_TERMINAL, *ASYNC_SOCKET);
+    debug!("ENV dump: ICON_SIZE: {}, SHOW_DEFAULT_ICON: {}, SHOW_LAUNCHER: {}, LAUNCHER_MAX_ITEMS: {}, DEFAULT_TERMINAL: {:?}, ASYNC_SOCKET: {:?}, LOG_MODULE_PATH: {:?}", *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS, *DEFAULT_TERMINAL, *ASYNC_SOCKET, *LOG_MODULE_PATH);
 }
