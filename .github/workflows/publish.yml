@@ -52,8 +52,4 @@ jobs:
           ssh_keyscan_types: rsa,ecdsa,ed25519
       - name: Push commits from tag to release
         run: |
-          git fetch origin release
-          git switch release
-          git pull origin release
-          git cherry-pick ${{ github.sha }}
-          git push origin release
+          gh pr merge --squash --auto $(gh pr create --title "Release ${{ github.ref }}" --fill-verbose --base release --head main)
