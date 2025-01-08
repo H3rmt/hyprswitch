@@ -12,12 +12,10 @@ env:
 jobs:
   publish:
     permissions:
-      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install gtk4-layer-shell
@@ -52,6 +50,8 @@ jobs:
           ssh_keyscan_types: rsa,ecdsa,ed25519
       - name: Push commits from tag to release
         run: |
-          gh pr merge --squash --auto $(gh pr create --title "Release ${{ github.ref }}" --fill-verbose --base release --head main)
+          PR_URL=$(gh pr create --title "Release ${GITHUB_REF#refs/tags/}" --fill --base release --head main)
+          echo "Pull Request URL: $PR_URL"
+          gh pr merge --squash --auto $PR_URL
         env:
           GH_TOKEN: ${{ github.token }}
