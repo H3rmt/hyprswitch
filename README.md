@@ -67,7 +67,7 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 
 ### This list only includes the most common options or values, (see `hyprswitch gui --help` / `hyprswitch init --help` / ... for more detailed info)
 
-- `--dry-run / -d` Print the command that would be executed instead of executing it
+- `--dry-run / -d` Print the command that would be executed instead of executing it (Daemon/simple doesn't switch, client doesn't send command to daemon)
 - `-v` Increase the verbosity level (-v: debug, -vv: trace) (Use [RUST_LOG](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) env-var for more control)
 - `-q` Turn off all output (Except when using `--dry-run`)
 

@@ -29,6 +29,9 @@ regex = "1.11.1"
 gtk4 = { version = "0.9.5", default-features = false }
 gtk4-layer-shell = { version = "0.4.0" }
 
+ron = { version = "0.8.1", optional = true }
+smart-default = { version = "0.7.1", optional = true }
+
 [dev-dependencies]
 random_color = { version = "1.0.0", default-features = false }
 svg = { version = "0.18.0", default-features = false }
@@ -37,3 +40,7 @@ svg = { version = "0.18.0", default-features = false }
 strip = "debuginfo"
 lto = true
 opt-level = "s"
+
+[features]
+default = ["config"]
+config = ["ron", "smart-default"]

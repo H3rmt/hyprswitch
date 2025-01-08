@@ -38,6 +38,13 @@ pub struct GlobalOpts {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Command {
+    #[cfg(feature = "config")]
+    /// Configure the daemon and all keybinds according to the config file
+    Run {
+        /// Specify a path to custom hyprswitch executable, uses current executable if not set
+        #[arg(long)]
+        exe: Option<PathBuf>,
+    },
     /// Initialize and start the Daemon
     Init {
         #[clap(flatten)]
