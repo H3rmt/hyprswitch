@@ -20,11 +20,11 @@ Config(
         Press(
             open: (
                 modifier: super,
-                key: "Super"
+                key: "super"
             ),
             navigate: (
-                forward: "Tab",
-                backward: Key("Grave")
+                forward: "tab",
+                reverse: Key("grave")
             ),
             close: (
                 escape: true,
@@ -34,11 +34,11 @@ Config(
         Press(
             open: (
                 modifier: super,
-                key: "Tab"
+                key: "tab"
             ),
             navigate: (
-                forward: "Tab",
-                backward: Mod(shift),
+                forward: "tab",
+                reverse: Mod(shift),
                 arrow_keys: true
             ),
             other: (
@@ -51,8 +51,8 @@ Config(
                 modifier: alt,
             ),
             navigate: (
-                forward: "Tab",
-                backward: Key("Grave"),
+                forward: "tab",
+                reverse: Key("grave"),
                 arrow_keys: false
             ),
             close: (
@@ -68,8 +68,18 @@ Config(
         Press(
             open: (
                 modifier: super,
-                key: "Super_l"
+                key: "super_l"
             ),
-        )
+        ),
+        Hold(
+            open: (
+                modifier: alt,
+            ),
+            navigate: (
+                forward: "tab",
+                reverse: Mod(shift),
+                arrow_keys: true
+            )
+        ),
     ]
 )

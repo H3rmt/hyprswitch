@@ -1,4 +1,4 @@
-use crate::daemon::config::config_structs::Config;
+use crate::config::config_structs::Config;
 use anyhow::Context;
 use ron::extensions::Extensions;
 use ron::Options;
@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use tracing::{span, Level};
 
 pub use convert::create_binds_and_submaps;
+pub use convert::export;
 
 pub mod config_structs;
 mod convert;
@@ -17,7 +18,8 @@ pub fn load() -> anyhow::Result<Config> {
     let options = Options::default()
         .with_default_extension(Extensions::IMPLICIT_SOME)
         .with_default_extension(Extensions::UNWRAP_VARIANT_NEWTYPES);
-    let file = std::fs::File::open(&config).context("Failed to open config.ron")?;
+    let file = std::fs::File::open(&config)
+        .with_context(|| format!("Failed to open config at ({config:?})"))?;
     let config: Config = options
         .from_reader(file)
         .context("Failed to read config.ron")?;
@@ -30,7 +32,7 @@ fn get_path() -> Option<PathBuf> {
         .map(|val| PathBuf::from(val))
         .or_else(|| {
             get_config_dir().map(|mut path| {
-                path.push("hyprswitch");
+                path.push("hyprswitch/config.ron");
                 path
             })
         })

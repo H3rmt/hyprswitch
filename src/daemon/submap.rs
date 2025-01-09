@@ -150,10 +150,8 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         // use arrow keys to navigate
         match gui_config.close {
             CloseType::Default => {
-                // if !*SHOW_LAUNCHER {
                 keyword_list.push(("bind", format!(",right, exec, {} dispatch", current_exe)));
                 keyword_list.push(("bind", format!(",left, exec, {} dispatch -r", current_exe)));
-                // }
             }
             CloseType::ModKeyRelease => {
                 keyword_list.push((

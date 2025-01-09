@@ -68,12 +68,13 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         #[cfg(feature = "config")]
-        cli::Command::Run { exe} => {
+        cli::Command::Generate { exe } => {
             info!("Loading config");
-            let config = hyprswitch::daemon::config::load().context("Failed to load config")?;
-            let text = hyprswitch::daemon::config::create_binds_and_submaps(exe, config)
+            let config = hyprswitch::config::load().context("Failed to load config")?;
+            let list = hyprswitch::config::create_binds_and_submaps(exe, config)
                 .context("Failed to create binds and submaps")?;
-            dbg!(text);
+            let text = hyprswitch::config::export(list);
+            println!("{}", text);
         }
         cli::Command::Init { init_opts } => {
             info!("Starting daemon");
