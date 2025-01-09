@@ -4,8 +4,6 @@ use crate::{GUISend, InitConfig, Share, SharedData, UpdateCause};
 use gtk4::glib::clone;
 use tracing::{span, Level};
 
-#[cfg(feature = "config")]
-pub mod config;
 pub mod gui;
 mod handle_client;
 mod handle_fns;

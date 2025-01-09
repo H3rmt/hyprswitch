@@ -26,6 +26,8 @@ pub mod client;
 pub mod daemon;
 pub mod envs;
 pub mod handle;
+#[cfg(feature = "config")]
+pub mod config;
 
 #[derive(Debug, Clone)]
 pub struct MonitorData {
