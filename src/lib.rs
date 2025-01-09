@@ -23,11 +23,11 @@ const MIN_VERSION: Version = Version::new(0, 42, 0);
 
 pub mod cli;
 pub mod client;
+#[cfg(feature = "config")]
+pub mod config;
 pub mod daemon;
 pub mod envs;
 pub mod handle;
-#[cfg(feature = "config")]
-pub mod config;
 
 #[derive(Debug, Clone)]
 pub struct MonitorData {
@@ -163,7 +163,7 @@ pub enum GUISend {
 pub enum UpdateCause {
     Client(u8),
     LauncherUpdate,
-    GuiClick
+    GuiClick,
 }
 
 impl Display for UpdateCause {
@@ -177,7 +177,11 @@ impl Display for UpdateCause {
 }
 
 // shared ARC with Mutex and Notify for new_gui and update_gui
-pub type Share = Arc<(Mutex<SharedData>, Sender<(GUISend, UpdateCause)>, Receiver<bool>)>;
+pub type Share = Arc<(
+    Mutex<SharedData>,
+    Sender<(GUISend, UpdateCause)>,
+    Receiver<bool>,
+)>;
 
 /// global variable to store if we are in dry mode
 pub static DRY: OnceLock<bool> = OnceLock::new();
@@ -273,14 +277,17 @@ pub fn check_version() -> anyhow::Result<()> {
     info!(
         "Starting Hyprswitch ({}) on Hyprland {}",
         option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"),
-        version.tag
+        version.version.clone().unwrap_or(version.tag.clone()),
     );
 
-    let parsed_version = Version::parse(version.tag.trim_start_matches('v'))
-        .context("Unable to parse Hyprland Version")?;
+    let parsed_version = Version::parse(
+        &*version
+            .version
+            .unwrap_or(version.tag.trim_start_matches('v').to_string()),
+    )
+    .context("Unable to parse Hyprland Version")?;
 
-    // TODO use .version in future and fall back to tag (only parse tag if version is not found => <v0.41.?)
-    if version.tag == "unknown" || parsed_version.lt(&MIN_VERSION) {
+    if parsed_version.lt(&MIN_VERSION) {
         let _ = Notification::new()
             .summary(&format!(
                 "Hyprswitch ({}) Error",
