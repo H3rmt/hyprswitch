@@ -125,10 +125,16 @@ pub struct GuiConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TransferType {
+    // switch to next/prev workspace/monitor/client or next selection in launcher
     Switch(Command),
+    // init with config, gui_config and submap
     Init(Config, GuiConfig, Submap),
+    // close command with kill
     Close(bool),
-    Check,
+    // check if versions match (always succeeds)
+    VersionCheck,
+    // check if daemon is active (gui is open)
+    Active,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

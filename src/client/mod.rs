@@ -8,17 +8,30 @@ use crate::{
     get_socket_path_buff, Command, Config, GuiConfig, Submap, Transfer, TransferType, DRY,
 };
 
-pub fn send_check_command() -> anyhow::Result<bool> {
+pub fn send_version_check_command() -> anyhow::Result<bool> {
     let send_struct = Transfer {
-        transfer: TransferType::Check,
+        transfer: TransferType::VersionCheck,
         version: option_env!("CARGO_PKG_VERSION")
             .unwrap_or("?.?.?")
             .to_string(),
     };
-    debug!("Sending check command");
+    debug!("Sending version_check command");
     let serialized = serde_json::to_string(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send check command {serialized}"))
+    send(&serialized).with_context(|| format!("Failed to send version_check command {serialized}"))
+}
+
+pub fn send_active_command() -> anyhow::Result<bool> {
+    let send_struct = Transfer {
+        transfer: TransferType::Active,
+        version: option_env!("CARGO_PKG_VERSION")
+            .unwrap_or("?.?.?")
+            .to_string(),
+    };
+    debug!("Sending active command");
+    let serialized = serde_json::to_string(&send_struct)
+        .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
+    send(&serialized).with_context(|| format!("Failed to send active command {serialized}"))
 }
 
 ///

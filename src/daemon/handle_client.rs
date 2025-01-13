@@ -153,8 +153,12 @@ pub(super) fn handle_client_transfer(
         .expect("Failed to lock ACTIVE");
 
     match transfer.transfer {
-        TransferType::Check => {
-            info!("Received running? command");
+        TransferType::VersionCheck => {
+            info!("Received version check command");
+            return_success(true, &mut stream)?;
+        }
+        TransferType::Active => {
+            info!("Received active command");
             return_success(active, &mut stream)?;
         }
         TransferType::Init(config, gui_config, submap_config) => {

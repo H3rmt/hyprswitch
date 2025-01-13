@@ -91,7 +91,8 @@ fn main() -> anyhow::Result<()> {
             return Ok(());
         }
         cli::Command::Close { kill } => {
-            info!("Stopping daemon");
+            hyprswitch::client::send_version_check_command()
+                .context("Failed to send check command to daemon")?;
 
             if !hyprswitch::client::daemon_running() {
                 warn!("Daemon not running");
@@ -101,6 +102,9 @@ fn main() -> anyhow::Result<()> {
                 .context("Failed to send kill command to daemon")?;
         }
         cli::Command::Dispatch { simple_opts } => {
+            hyprswitch::client::send_version_check_command()
+                .context("Failed to send check command to daemon")?;
+
             let command = Command::from(simple_opts);
             hyprswitch::client::send_switch_command(command).with_context(|| {
                 format!("Failed to send switch command with command {command:?} to daemon")
@@ -113,8 +117,9 @@ fn main() -> anyhow::Result<()> {
             submap_info,
             reverse_key,
         } => {
-            hyprswitch::client::send_check_command()
+            hyprswitch::client::send_version_check_command()
                 .context("Failed to send check command to daemon")?;
+
             if !hyprswitch::client::daemon_running() {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
@@ -125,8 +130,6 @@ fn main() -> anyhow::Result<()> {
                 return Err(anyhow::anyhow!("Daemon not running"));
             }
 
-            // Daemon is not running
-            info!("initialising daemon");
             let config = Config::from(simple_config);
             let gui_config = GuiConfig::from(gui_conf);
             let submap_config = submap_conf
