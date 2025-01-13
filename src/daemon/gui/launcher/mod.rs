@@ -101,7 +101,7 @@ pub(super) fn update_launcher(
     text: &str,
     list: &ListBox,
     selected: Option<u16>,
-    reverse_key: ReverseKey,
+    reverse_key: &ReverseKey,
 ) -> Execs {
     while let Some(child) = list.first_child() {
         list.remove(&child);
@@ -140,7 +140,7 @@ pub(super) fn update_launcher(
         let widget = create_launch_widget(
             name,
             icon,
-            &match &reverse_key {
+            &match reverse_key {
                 ReverseKey::Mod(m) => match i {
                     0 => "Return".to_string(),
                     i if i > 0 => i.to_string(),

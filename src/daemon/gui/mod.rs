@@ -1,6 +1,5 @@
-use crate::cli::CloseType;
 use crate::envs::SHOW_LAUNCHER;
-use crate::{GUISend, InitConfig, Share, UpdateCause};
+use crate::{GUISend, InitConfig, Share, Submap, UpdateCause};
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
 use gtk4::gdk::{Display, Monitor};
@@ -141,7 +140,7 @@ async fn handle_updates(
                     let _span =
                         span!(Level::TRACE, "new", cause = update_cause.to_string()).entered();
                     // only open launcher when opening with default close mode
-                    if data.gui_config.close == CloseType::Default {
+                    if data.gui_config.show_launcher {
                         launcher_unlocked.as_ref().inspect(|(w, e, _)| {
                             w.show();
                             e.set_text("");
@@ -195,7 +194,7 @@ async fn handle_updates(
                     let _span =
                         span!(Level::TRACE, "refresh", cause = update_cause.to_string()).entered();
                     // only update launcher wen using default close mode
-                    if data.gui_config.close == CloseType::Default {
+                    if data.gui_config.show_launcher {
                         launcher_unlocked.as_ref().inspect(|(_, e, l)| {
                             if data.launcher.selected.is_none() && !e.text().is_empty() {
                                 data.launcher.selected = Some(0);
@@ -204,7 +203,10 @@ async fn handle_updates(
                                 data.launcher.selected = None;
                             }
                             let selected = data.launcher.selected;
-                            let reverse_key = data.gui_config.reverse_key.clone();
+                            let reverse_key = match &data.submap_info {
+                                Submap::Name((_, r)) => r,
+                                Submap::Config(c) => &c.reverse_key,
+                            };
                             let execs =
                                 launcher::update_launcher(&e.text(), l, selected, reverse_key);
                             data.launcher.execs = execs;

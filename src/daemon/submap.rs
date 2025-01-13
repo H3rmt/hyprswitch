@@ -7,14 +7,22 @@ use tracing::{debug, error, span, trace, Level};
 
 use crate::cli::ReverseKey::{Key, Mod};
 use crate::cli::{CloseType, ModKey};
-use crate::GuiConfig;
+use crate::SubmapConfig;
 
-// TODO in the future generate a hash and reuse the old keymap (check if it has been deleted)
+pub(super) fn activate_submap(submap_name: &str) -> anyhow::Result<()> {
+    let _span = span!(Level::TRACE, "submap").entered();
+    Dispatch::call(DispatchType::Custom("submap", submap_name)).inspect_err(|e| {
+        error!("{:?}", e);
+    })?;
+    debug!("Activated submap: {}", submap_name);
+    Ok(())
+}
+
 fn generate_submap_name(_keyword_list: &[(&str, String)]) -> String {
     format!("hyprswitch-{}", rand::random::<u16>())
 }
 
-pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
+pub(super) fn generate_submap(submap_config: SubmapConfig) -> anyhow::Result<()> {
     let _span = span!(Level::TRACE, "submap").entered();
     let mut keyword_list = Vec::<(&str, String)>::new();
     (|| -> anyhow::Result<()> {
@@ -23,7 +31,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
             .to_str()
             .with_context(|| format!("unable to convert path {:?} to string", current_exe))?
             .trim_end_matches(" (deleted)");
-        let main_mod = get_mod_from_mod_key(gui_config.mod_key.clone());
+        let main_mod = get_mod_from_mod_key(submap_config.mod_key.clone());
         trace!("current_exe: {}", current_exe);
 
         // always bind escape to kill
@@ -37,23 +45,23 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         ));
 
         // repeatable presses
-        match gui_config.close {
+        match submap_config.close {
             CloseType::ModKeyRelease => {
                 // allow repeatable presses to switch to next
                 keyword_list.push((
                     "bind",
                     format!(
                         "{}, {}, exec, {} dispatch",
-                        main_mod, gui_config.key, current_exe
+                        main_mod, submap_config.key, current_exe
                     ),
                 ));
-                match gui_config.reverse_key.clone() {
+                match submap_config.reverse_key.clone() {
                     Mod(modkey) => {
                         keyword_list.push((
                             "bind",
                             format!(
                                 "{} {}, {}, exec, {} dispatch -r",
-                                main_mod, modkey, gui_config.key, current_exe
+                                main_mod, modkey, submap_config.key, current_exe
                             ),
                         ));
                     }
@@ -70,28 +78,28 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                     "bind",
                     format!(
                         "{}, {}, exec, {} close --kill",
-                        main_mod, gui_config.key, current_exe
+                        main_mod, submap_config.key, current_exe
                     ),
                 ));
             }
         };
 
         // close on release of the mod key
-        match gui_config.close {
+        match submap_config.close {
             CloseType::ModKeyRelease => {
                 keyword_list.push((
                     "bindrt",
                     format!(
                         "{}, {}, exec, {} close",
-                        main_mod, gui_config.mod_key, current_exe
+                        main_mod, submap_config.mod_key, current_exe
                     ),
                 ));
-                if let Mod(modkey) = gui_config.reverse_key.clone() {
+                if let Mod(modkey) = submap_config.reverse_key.clone() {
                     keyword_list.push((
                         "bindrt",
                         format!(
                             "{} {}, {}, exec, {} close",
-                            main_mod, modkey, gui_config.mod_key, current_exe
+                            main_mod, modkey, submap_config.mod_key, current_exe
                         ),
                     ));
                 };
@@ -103,7 +111,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         };
 
         // jump to index
-        match gui_config.close {
+        match submap_config.close {
             CloseType::ModKeyRelease => {
                 // main_mod needed as it is still pressed
                 for i in 1..=9 {
@@ -114,7 +122,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                             main_mod, i, current_exe, i
                         ),
                     ));
-                    if let Mod(modkey) = gui_config.reverse_key.clone() {
+                    if let Mod(modkey) = submap_config.reverse_key.clone() {
                         keyword_list.push((
                             "bind",
                             format!(
@@ -134,7 +142,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
                             i, current_exe, i, current_exe
                         ),
                     ));
-                    if let Mod(modkey) = gui_config.reverse_key.clone() {
+                    if let Mod(modkey) = submap_config.reverse_key.clone() {
                         keyword_list.push((
                             "bind",
                             format!(
@@ -148,7 +156,7 @@ pub(super) fn activate_submap(gui_config: GuiConfig) -> anyhow::Result<()> {
         };
 
         // use arrow keys to navigate
-        match gui_config.close {
+        match submap_config.close {
             CloseType::Default => {
                 keyword_list.push(("bind", format!(",right, exec, {} dispatch", current_exe)));
                 keyword_list.push(("bind", format!(",left, exec, {} dispatch -r", current_exe)));

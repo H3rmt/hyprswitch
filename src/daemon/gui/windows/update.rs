@@ -1,6 +1,6 @@
 use crate::cli::ReverseKey;
 use crate::daemon::gui::MonitorData;
-use crate::{Active, SharedData};
+use crate::{Active, SharedData, Submap};
 use gtk4::prelude::WidgetExt;
 use gtk4::Align;
 use gtk4::Label;
@@ -9,7 +9,7 @@ use std::cmp::min;
 macro_rules! update_type {
     (
         $htypr_data:expr, $identifier_name:ident, $css_active_name:expr, $id:expr,
-        $overlay:expr, $label:expr, $active:expr, $gui_config:expr, $valign: expr
+        $overlay:expr, $label:expr, $active:expr, $gui_config:expr, $submap_info:expr, $valign: expr
     ) => {
         let find = $htypr_data.iter().find(|(i, _)| *i == $id);
         if let Some((_, data)) = find {
@@ -42,11 +42,10 @@ macro_rules! update_type {
                         selected_client_position,
                         position,
                         $gui_config.max_switch_offset,
-                        if let ReverseKey::Mod(_) = $gui_config.reverse_key.clone() {
-                            true
-                        } else {
-                            false
-                        },
+                        if let ReverseKey::Mod(_) = (match $submap_info {
+                            Submap::Name((_, r)) => r,
+                            Submap::Config(c) => &c.reverse_key,
+                        }) { true } else { false },
                         true,
                     );
                     if let Some(offset) = offset {
@@ -87,6 +86,7 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
                     label,
                     *addr,
                     &data.gui_config,
+                    &data.submap_info,
                     Align::End
                 );
             }
@@ -102,6 +102,7 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
                     label,
                     *active_id,
                     &data.gui_config,
+                    &data.submap_info,
                     Align::Start
                 );
             }
@@ -117,6 +118,7 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
                 label,
                 *active_id,
                 &data.gui_config,
+                &data.submap_info,
                 Align::Start
             );
         }
