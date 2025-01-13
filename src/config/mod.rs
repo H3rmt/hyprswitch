@@ -6,17 +6,20 @@ use std::env;
 use std::path::PathBuf;
 use tracing::{span, Level};
 
-pub use convert::create_binds_and_submaps;
-pub use convert::export;
+pub use generate::create_binds_and_submaps;
+pub use generate::export;
+pub use validate::validate;
 
 pub mod config_structs;
-mod convert;
+mod generate;
+mod validate;
 
 pub fn load() -> anyhow::Result<Config> {
     let _span = span!(Level::TRACE, "load_config").entered();
     let config = get_path().context("Failed to get config path")?;
     let options = Options::default()
         .with_default_extension(Extensions::IMPLICIT_SOME)
+        .with_default_extension(Extensions::UNWRAP_NEWTYPES)
         .with_default_extension(Extensions::UNWRAP_VARIANT_NEWTYPES);
     let file = std::fs::File::open(&config)
         .with_context(|| format!("Failed to open config at ({config:?})"))?;

@@ -1,8 +1,8 @@
 use crate::cli::SwitchType;
 use crate::daemon::gui::reload_desktop_maps;
-use crate::daemon::submap::{activate_submap, deactivate_submap};
+use crate::daemon::submap::{activate_submap, deactivate_submap, generate_submap};
 use crate::handle::{clear_recent_clients, collect_data, find_next, run_program, switch_to_active};
-use crate::{Active, Command, Config, GUISend, GuiConfig, Share, UpdateCause, ACTIVE};
+use crate::{Active, Command, Config, GUISend, GuiConfig, Share, Submap, UpdateCause, ACTIVE};
 use anyhow::Context;
 use std::ops::Deref;
 use tracing::{info, trace, warn};
@@ -85,6 +85,7 @@ pub(crate) fn init(
     share: &Share,
     config: Config,
     gui_config: GuiConfig,
+    submap_config: Submap,
     client_id: u8,
 ) -> anyhow::Result<()> {
     let (clients_data, active) = collect_data(config.clone())
@@ -124,7 +125,16 @@ pub(crate) fn init(
         lock.hypr_data = clients_data;
         drop(lock);
     }
-    activate_submap(gui_config.clone())?;
+
+    match submap_config {
+        Submap::Config(submap_config) => {
+            generate_submap(submap_config)?;
+        }
+        Submap::Name((submap_name, _)) => {
+            activate_submap(&submap_name)?;
+        }
+    }
+
     *(ACTIVE
         .get()
         .expect("ACTIVE not set")

@@ -2,7 +2,10 @@ use anyhow::Context;
 use clap::Parser;
 use gtk4::prelude::FileExt;
 use hyprswitch::envs::{envvar_dump, LOG_MODULE_PATH};
-use hyprswitch::{check_version, cli, Active, Command, Config, GuiConfig, InitConfig, ACTIVE, DRY};
+use hyprswitch::{
+    check_version, cli, Active, Command, Config, GuiConfig, InitConfig, Submap, SubmapConfig,
+    ACTIVE, DRY,
+};
 use notify_rust::{Notification, Urgency};
 use std::process::exit;
 use std::sync::Mutex;
@@ -71,6 +74,7 @@ fn main() -> anyhow::Result<()> {
         cli::Command::Generate { exe } => {
             info!("Loading config");
             let config = hyprswitch::config::load().context("Failed to load config")?;
+            hyprswitch::config::validate(&config).context("Failed to validate config")?;
             let list = hyprswitch::config::create_binds_and_submaps(exe, config)
                 .context("Failed to create binds and submaps")?;
             let text = hyprswitch::config::export(list);
@@ -104,8 +108,13 @@ fn main() -> anyhow::Result<()> {
         }
         cli::Command::Gui {
             gui_conf,
+            submap_conf,
             simple_config,
+            submap_info,
+            reverse_key,
         } => {
+            hyprswitch::client::send_check_command()
+                .context("Failed to send check command to daemon")?;
             if !hyprswitch::client::daemon_running() {
                 let _ = Notification::new()
                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
@@ -120,8 +129,12 @@ fn main() -> anyhow::Result<()> {
             info!("initialising daemon");
             let config = Config::from(simple_config);
             let gui_config = GuiConfig::from(gui_conf);
-            hyprswitch::client::send_init_command(config.clone(), gui_config.clone())
-                .with_context(|| format!("Failed to send init command with config {config:?} and gui_config {gui_config:?} to daemon"))?;
+            let submap_config = submap_conf
+                .map(|c| Submap::Config(SubmapConfig::from(c, reverse_key.clone())))
+                .or_else(|| submap_info.map(|a| Submap::Name((a.submap, reverse_key))))
+                .context("Failed to create submap config, no config or name provided")?;
+            hyprswitch::client::send_init_command(config.clone(), gui_config.clone(), submap_config.clone())
+                .with_context(|| format!("Failed to send init command with config {config:?} and gui_config {gui_config:?} and submap_config {submap_config:?} to daemon"))?;
 
             return Ok(());
         }

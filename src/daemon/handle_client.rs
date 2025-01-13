@@ -4,6 +4,7 @@ use crate::envs::ASYNC_SOCKET;
 use crate::{get_socket_path_buff, Share, Transfer, TransferType, ACTIVE};
 use anyhow::Context;
 use notify_rust::{Notification, Urgency};
+use rand::Rng;
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
 use std::os::fd::{FromRawFd, RawFd};
@@ -11,7 +12,6 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
 use std::time::Instant;
 use std::{env, thread};
-use rand::Rng;
 use tracing::{error, info, trace, warn};
 use tracing::{span, Level};
 
@@ -19,7 +19,6 @@ pub(super) fn start_handler_blocking(share: &Share) {
     let listener = if env::var("LISTEN_FDS").is_ok() {
         // Get the file descriptor from the environment variable set by systemd
         let fd = RawFd::from(3);
-
         let listener = unsafe { UnixListener::from_raw_fd(fd) };
         info!(
             "Starting {:?} listener on fd {:?}",
@@ -87,7 +86,6 @@ pub(super) fn start_handler_blocking(share: &Share) {
 
 pub(super) fn handle_client(stream: UnixStream, share: Share) -> anyhow::Result<()> {
     let now = Instant::now();
-    // 0 = unknown client, 100 - 255 = tcp_client caused update
     let rand_id = rand::thread_rng().gen_range(100..=255);
     let _span = span!(Level::TRACE, "handle_client", id = rand_id).entered();
 
@@ -114,7 +112,7 @@ pub(super) fn handle_client_transfer(
     share: Share,
     client_id: u8,
 ) -> anyhow::Result<()> {
-    let transfer: Transfer = bincode::deserialize(&buffer)
+    let transfer: Transfer = serde_json::from_slice(&buffer)
         .with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
     trace!("Received command: {transfer:?}");
 
@@ -140,7 +138,11 @@ pub(super) fn handle_client_transfer(
             .timeout(20000)
             .hint(notify_rust::Hint::Urgency(Urgency::Critical))
             .show();
-        // don't return (would trigger new toast)
+        return_success(false, &mut stream)?;
+
+        // automatically restart if in systemd mode
+
+        // don't return Error (would trigger new toast)
         return Ok(());
     }
 
@@ -155,18 +157,23 @@ pub(super) fn handle_client_transfer(
             info!("Received running? command");
             return_success(active, &mut stream)?;
         }
-        TransferType::Init(config, gui_config) => {
+        TransferType::Init(config, gui_config, submap_config) => {
             if !active {
                 let _span = span!(Level::TRACE, "init").entered();
-                info!("Received init command {config:?} and {gui_config:?}");
-                match init(&share, config.clone(), gui_config.clone(), client_id).with_context(
-                    || {
-                        format!(
-                            "Failed to init with config {:?} and gui_config {:?}",
-                            config, gui_config
-                        )
-                    },
-                ) {
+                info!("Received init command {config:?} and {gui_config:?} and {submap_config:?}");
+                match init(
+                    &share,
+                    config.clone(),
+                    gui_config.clone(),
+                    submap_config.clone(),
+                    client_id,
+                )
+                .with_context(|| {
+                    format!(
+                        "Failed to init with config {:?} and gui_config {:?}",
+                        config, gui_config
+                    )
+                }) {
                     Ok(_) => {
                         return_success(true, &mut stream)?;
                     }

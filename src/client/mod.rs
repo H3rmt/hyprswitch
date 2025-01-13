@@ -4,7 +4,9 @@ use std::os::unix::net::UnixStream;
 use anyhow::Context;
 use tracing::{debug, trace};
 
-use crate::{get_socket_path_buff, Command, Config, GuiConfig, Transfer, TransferType, DRY};
+use crate::{
+    get_socket_path_buff, Command, Config, GuiConfig, Submap, Transfer, TransferType, DRY,
+};
 
 pub fn send_check_command() -> anyhow::Result<bool> {
     let send_struct = Transfer {
@@ -14,9 +16,9 @@ pub fn send_check_command() -> anyhow::Result<bool> {
             .to_string(),
     };
     debug!("Sending check command");
-    let serialized = bincode::serialize(&send_struct)
+    let serialized = serde_json::to_string(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send switch command {serialized:?}"))
+    send(&serialized).with_context(|| format!("Failed to send check command {serialized}"))
 }
 
 ///
@@ -30,25 +32,29 @@ pub fn send_switch_command(command: Command) -> anyhow::Result<bool> {
             .to_string(),
     };
     debug!("Sending switch command {send_struct:?}");
-    let serialized = bincode::serialize(&send_struct)
+    let serialized = serde_json::to_string(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send switch command {serialized:?}"))
+    send(&serialized).with_context(|| format!("Failed to send switch command {serialized}"))
 }
 
 ///
 /// calls [`crate::daemon::handle_fns::init`]
 ///
-pub fn send_init_command(config: Config, gui_config: GuiConfig) -> anyhow::Result<bool> {
+pub fn send_init_command(
+    config: Config,
+    gui_config: GuiConfig,
+    submap: Submap,
+) -> anyhow::Result<bool> {
     let send_struct = Transfer {
-        transfer: TransferType::Init(config, gui_config),
+        transfer: TransferType::Init(config, gui_config, submap),
         version: option_env!("CARGO_PKG_VERSION")
             .unwrap_or("?.?.?")
             .to_string(),
     };
     debug!("Sending init command {send_struct:?}");
-    let serialized = bincode::serialize(&send_struct)
+    let serialized = serde_json::to_string(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send init command {serialized:?}"))
+    send(&serialized).with_context(|| format!("Failed to send init command {serialized}"))
 }
 
 ///
@@ -62,9 +68,9 @@ pub fn send_close_daemon(kill: bool) -> anyhow::Result<bool> {
             .to_string(),
     };
     debug!("Sending close command {send_struct:?}");
-    let serialized = bincode::serialize(&send_struct)
+    let serialized = serde_json::to_string(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send close command {serialized:?}"))
+    send(&serialized).with_context(|| format!("Failed to send close command {serialized}"))
 }
 
 pub fn daemon_running() -> bool {
@@ -84,7 +90,7 @@ pub fn daemon_running() -> bool {
     }
 }
 
-fn send(buffer: &[u8]) -> anyhow::Result<bool> {
+fn send(buffer: &str) -> anyhow::Result<bool> {
     if *DRY.get().expect("DRY not set") {
         debug!("DRY RUN: Would have sent {buffer:?}");
         return Ok(true);
@@ -95,7 +101,7 @@ fn send(buffer: &[u8]) -> anyhow::Result<bool> {
     let mut stream = UnixStream::connect(path)
         .with_context(|| format!("Failed to connect to socket {path:?}"))?;
     stream
-        .write_all(buffer)
+        .write_all(buffer.as_ref())
         .with_context(|| format!("Failed to write data {buffer:?} to socket {path:?}"))?;
     stream
         .write(b"\n")

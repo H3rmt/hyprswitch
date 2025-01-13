@@ -1,7 +1,8 @@
 #![deny(clippy::print_stdout)]
 
 use crate::cli::{
-    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SwitchType,
+    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SubmapConf,
+    SwitchType,
 };
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
@@ -93,22 +94,39 @@ pub struct InitConfig {
     size_factor: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Submap {
+    Name((String, ReverseKey)),
+    Config(SubmapConfig),
+}
+
+impl Default for Submap {
+    fn default() -> Self {
+        Self::Name(("".to_string(), ReverseKey::default()))
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct GuiConfig {
-    pub max_switch_offset: u8,
+pub struct SubmapConfig {
     pub mod_key: ModKey,
     pub key: String,
     pub close: CloseType,
     pub reverse_key: ReverseKey,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GuiConfig {
+    pub max_switch_offset: u8,
     pub hide_active_window_border: bool,
     pub monitors: Option<Monitors>,
     pub show_workspaces_on_all_monitors: bool,
+    pub show_launcher: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TransferType {
     Switch(Command),
-    Init(Config, GuiConfig),
+    Init(Config, GuiConfig, Submap),
     Close(bool),
     Check,
 }
@@ -129,6 +147,7 @@ pub struct HyprlandData {
 #[derive(Debug, Default)]
 pub struct SharedData {
     pub simple_config: Config,
+    pub submap_info: Submap,
     pub gui_config: GuiConfig,
     pub hypr_data: HyprlandData,
     pub active: Active,
@@ -227,13 +246,21 @@ impl From<GuiConf> for GuiConfig {
     fn from(opts: GuiConf) -> Self {
         Self {
             max_switch_offset: opts.max_switch_offset,
-            mod_key: ModKey::from(opts.mod_key),
-            key: opts.key,
-            close: opts.close,
-            reverse_key: opts.reverse_key,
             hide_active_window_border: opts.hide_active_window_border,
             monitors: opts.monitors,
             show_workspaces_on_all_monitors: opts.show_workspaces_on_all_monitors,
+            show_launcher: opts.show_launcher,
+        }
+    }
+}
+
+impl SubmapConfig {
+    pub fn from(opts: SubmapConf, rev: ReverseKey) -> Self {
+        Self {
+            mod_key: ModKey::from(opts.mod_key),
+            key: opts.key,
+            close: opts.close,
+            reverse_key: rev,
         }
     }
 }

@@ -32,6 +32,7 @@ Config(
             )
         ),
         Press(
+            show_launcher: true,
             open: (
                 modifier: super,
                 key: "tab"
@@ -42,8 +43,8 @@ Config(
                 arrow_keys: true
             ),
             other: (
-                show_launcher: false,
-                hide_active_window_border: true
+                hide_active_window_border: true,
+                switch_type: workspace
             )
         ),
         Hold(
@@ -62,7 +63,8 @@ Config(
                 max_switch_offset: 5,
                 hide_active_window_border: false,
                 monitors: ["HDMI-0", "DP-1"],
-                show_workspaces_on_all_monitors: false
+                show_workspaces_on_all_monitors: false,
+                filter_by: [current_monitor, current_workspace],
             )
         ),
         Press(
@@ -81,5 +83,27 @@ Config(
                 arrow_keys: true
             )
         ),
+        Simple(
+            reverse: false,
+            offset: 2,
+            open: (
+                modifier: ctrl,
+                key: "ctrl"
+            ),
+            other: (
+                switch_type: workspace,
+                sort_by_recent: true,
+                include_special_workspaces: true,
+                filter_by: [same_class]
+            )
+        ),
+        Simple(
+            reverse: false,
+            offset: 2,
+            open: (
+                modifier: super,
+                key: "super"
+            )
+        )
     ]
 )

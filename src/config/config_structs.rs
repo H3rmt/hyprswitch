@@ -51,20 +51,21 @@ pub struct Gui {
 pub enum Bind {
     Hold(HoldBindConfig),
     Press(PressBindConfig),
+    Simple(SimpleBindConfig),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct HoldBindConfig {
     pub open: OpenHold,
-    #[serde(default)]
     pub navigate: Navigate,
-    #[serde(default)]
     pub close: CloseHold,
-    #[serde(default)]
     pub other: Other,
 }
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct OpenHold {
+    #[default(Mod::Super)]
     pub modifier: Mod,
 }
 #[derive(SmartDefault, Debug, Deserialize, Serialize)]
@@ -74,20 +75,23 @@ pub struct CloseHold {
     pub escape: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct PressBindConfig {
+    #[default = true]
+    pub show_launcher: bool,
     pub open: OpenPress,
-    #[serde(default)]
     pub navigate: Navigate,
-    #[serde(default)]
     pub close: ClosePress,
-    #[serde(default)]
     pub other: Other,
 }
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct OpenPress {
+    #[default(Mod::Super)]
     pub modifier: Mod,
-    pub key: String,
+    #[default = "tab"]
+    pub key: KeyMaybeMod,
 }
 
 #[derive(SmartDefault, Debug, Deserialize, Serialize)]
@@ -116,17 +120,6 @@ pub enum Reverse {
     Mod(Mod),
 }
 
-impl Display for Mod {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Mod::Alt => write!(f, "alt"),
-            Mod::Ctrl => write!(f, "ctrl"),
-            Mod::Super => write!(f, "super"),
-            Mod::Shift => write!(f, "shift"),
-        }
-    }
-}
-
 impl Display for Reverse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -134,6 +127,22 @@ impl Display for Reverse {
             Reverse::Mod(modifier) => write!(f, "mod={:?}", modifier),
         }
     }
+}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SimpleBindConfig {
+    #[serde(default)]
+    pub reverse: bool,
+    #[serde(default)]
+    pub offset: u8,
+    pub open: OpenSimple,
+    #[serde(default)]
+    pub other: Other,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct OpenSimple {
+    pub modifier: Mod,
+    pub key: KeyMaybeMod,
 }
 
 #[derive(SmartDefault, Debug, Deserialize, Serialize)]
@@ -147,8 +156,41 @@ pub struct Other {
     pub monitors: Option<Vec<String>>,
     #[default = false]
     pub show_workspaces_on_all_monitors: bool,
-    #[default = "client"]
-    pub switch_type: String,
+
+    #[default(SwitchType::Client)]
+    pub switch_type: SwitchType,
+    #[default = false]
+    pub sort_by_recent: bool,
+    #[default = false]
+    pub include_special_workspaces: bool,
+    #[default(None)]
+    pub filter_by: Option<Vec<FilterBy>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FilterBy {
+    SameClass,
+    CurrentWorkspace,
+    CurrentMonitor,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SwitchType {
+    Client,
+    Workspace,
+    Monitor,
+}
+
+impl Display for SwitchType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SwitchType::Client => write!(f, "client"),
+            SwitchType::Workspace => write!(f, "workspace"),
+            SwitchType::Monitor => write!(f, "monitor"),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -159,3 +201,41 @@ pub enum Mod {
     Super,
     Shift,
 }
+
+impl Display for Mod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Mod::Alt => write!(f, "alt"),
+            Mod::Ctrl => write!(f, "ctrl"),
+            Mod::Super => write!(f, "super"),
+            Mod::Shift => write!(f, "shift"),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct KeyMaybeMod(String);
+impl From<&str> for KeyMaybeMod {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+pub trait ToKey {
+    fn to_key(&self) -> String;
+}
+
+impl ToKey for KeyMaybeMod {
+    fn to_key(&self) -> String {
+        match &*self.0.to_ascii_lowercase() {
+            "alt" => "alt_l".to_string(),
+            "ctrl" => "ctrl_l".to_string(),
+            "super" => "super_l".to_string(),
+            "shift" => "shift_l".to_string(),
+            a => a.to_string(),
+        }
+    }
+}
+
+// https://wiki.hyprland.org/Configuring/Variables/#variable-types
+// SHIFT CAPS CTRL/CONTROL ALT MOD2 MOD3 SUPER/WIN/LOGO/MOD4 MOD5
