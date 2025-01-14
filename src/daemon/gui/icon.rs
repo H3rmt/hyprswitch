@@ -5,9 +5,9 @@ use gtk4::gdk::Texture;
 use gtk4::prelude::*;
 use gtk4::IconTheme;
 use gtk4::{gio, IconLookupFlags, IconSize, Image, TextDirection};
-use tracing::{span, trace, warn, Level};
 use std::fs;
 use std::time::Instant;
+use tracing::{span, trace, warn, Level};
 
 macro_rules! load_icon {
     ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr, $name:expr, $source:expr) => {
@@ -34,7 +34,7 @@ macro_rules! load_icon {
         }
         trace!("|{:.2?}| Applied Icon for {}", $now.elapsed(), $name);
     };
-        ($theme:expr, $icon_name:expr, $pic:expr, $now:expr) => {
+    ($theme:expr, $icon_name:expr, $pic:expr, $now:expr) => {
         let icon = $theme.lookup_icon(
             $icon_name,
             &[],
@@ -55,7 +55,7 @@ pub fn set_icon(class: &str, enabled: bool, pid: Option<i32>, pic: &Image) {
 
     if let Some(a) = get_icon_path_by_name(&class) {
         trace!("Found icon for {} in cache", class);
-        if apply_texture_path(&a, &pic, enabled).is_ok() {
+        if apply_texture_path(&gio::File::for_path(&a), &pic, enabled).is_ok() {
             return;
         }
     } else {
@@ -103,17 +103,16 @@ pub fn set_icon(class: &str, enabled: bool, pid: Option<i32>, pic: &Image) {
 
         // application-x-executable doesn't scale, idk why (it even is an svg)
         if *SHOW_DEFAULT_ICON {
-            load_icon!(
-                theme,
-                "application-x-executable",
-                &pic,
-                now
-            );
+            load_icon!(theme, "application-x-executable", &pic, now);
         }
     }
 }
 
-pub fn apply_texture_path(file: &gio::File, pic: &Image, enabled: bool) -> anyhow::Result<()> {
+pub fn apply_texture_path(
+    file: &impl IsA<gio::File>,
+    pic: &Image,
+    enabled: bool,
+) -> anyhow::Result<()> {
     if let Ok(texture) = Texture::from_file(file) {
         if !enabled {
             pic.add_css_class("monochrome");

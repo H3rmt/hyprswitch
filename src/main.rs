@@ -1,6 +1,5 @@
 use anyhow::Context;
 use clap::Parser;
-use gtk4::prelude::FileExt;
 use hyprswitch::envs::{envvar_dump, LOG_MODULE_PATH};
 use hyprswitch::{
     check_version, cli, Active, Command, Config, GuiConfig, InitConfig, Submap, SubmapConfig,
@@ -200,8 +199,8 @@ fn main() -> anyhow::Result<()> {
 
                     for (name, file) in map {
                         println!(
-                            "Desktop file: {} -> {:?} ({:?}) [{:?}]",
-                            name.0, file.0, file.1, name.1
+                            "Desktop file: {} [{:?}] -> {:?} from {:?}",
+                            name.0, name.1, file.0, file.1,
                         );
                     }
                 }
@@ -218,8 +217,8 @@ fn main() -> anyhow::Result<()> {
                     let name = hyprswitch::daemon::gui::get_icon_name_debug(&class)
                         .with_context(|| format!("Failed to get icon name for class {class}"))?;
                     println!(
-                        "Icon: ({:?}) from desktop file cache: {:?} found by {:?}",
-                        name.0.path(),
+                        "Icon: {:?} from desktop file cache: {:?} found by {:?}",
+                        name.0,
                         name.2,
                         name.1
                     );
