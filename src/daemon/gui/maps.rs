@@ -1,13 +1,14 @@
 use crate::envs::ICON_SIZE;
 use crate::Warn;
 use anyhow::Context;
+use gtk4::prelude::FileExt;
 use gtk4::{gio, glib, IconLookupFlags, TextDirection};
-use tracing::{debug, span, trace, warn, Level};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 use std::{env, fs::DirEntry, path::PathBuf, sync::OnceLock};
+use tracing::{debug, span, trace, warn, Level};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum Source {
@@ -18,10 +19,10 @@ pub enum Source {
     ByClass,
 }
 
-type IconPathMap = HashMap<(Box<str>, Source), (gio::File, Box<Path>)>;
+type IconPathMap = HashMap<(Box<str>, Source), (Box<Path>, Box<Path>)>;
 type DesktopFileMap = Vec<(
     Box<str>,
-    Option<gio::File>,
+    Option<Box<Path>>,
     Vec<Box<str>>,
     Box<str>,
     Option<Box<str>>,
@@ -38,17 +39,19 @@ fn get_desktop_file_map() -> &'static Mutex<DesktopFileMap> {
     MAP_LOCK.get_or_init(|| Mutex::new(Vec::new()))
 }
 
-pub fn get_icon_path_by_name(name: &str) -> Option<gio::File> {
+pub fn get_icon_path_by_name(name: &str) -> Option<Box<Path>> {
     let map = get_icon_path_map().lock().expect("Failed to lock icon map");
     find_icon_path_by_name(map.clone(), name).map(|s| s.0)
 }
 
 pub fn add_path_for_icon(icon: &str, path: gio::File, source: Source) {
-    let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
-    map.insert(
-        (Box::from(icon.to_ascii_lowercase()), source),
-        (path, Box::from(Path::new(""))),
-    );
+    if let Some(path) = path.path() {
+        let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
+        map.insert(
+            (Box::from(icon.to_ascii_lowercase()), source),
+            (Box::from(path), Box::from(Path::new(""))),
+        );
+    }
 }
 
 pub fn get_all_desktop_files<'a>() -> MutexGuard<'a, DesktopFileMap> {
@@ -159,7 +162,8 @@ fn fill_desktop_file_map(
                                 )
                                 .file()
                         }
-                    });
+                    })
+                    .and_then(|i| i.path().map(|p| p.into_boxed_path()));
 
                 let name = file
                     .lines()
@@ -255,10 +259,7 @@ fn fill_desktop_file_map(
                 }
             }
             Err(e) => {
-                warn!(
-                    "Failed to read file {}: {e}",
-                    entry.path().display()
-                );
+                warn!("Failed to read file {}: {e}", entry.path().display());
             }
         }
     }
@@ -266,7 +267,7 @@ fn fill_desktop_file_map(
     Ok(())
 }
 
-pub fn get_icon_name_debug(icon: &str) -> Option<(gio::File, Box<Path>, Source)> {
+pub fn get_icon_name_debug(icon: &str) -> Option<(Box<Path>, Box<Path>, Source)> {
     let mut map = HashMap::new();
     fill_desktop_file_map(&mut map, None).ok()?;
     find_icon_path_by_name(map, icon)
@@ -274,13 +275,13 @@ pub fn get_icon_name_debug(icon: &str) -> Option<(gio::File, Box<Path>, Source)>
 
 #[allow(clippy::type_complexity)]
 pub fn get_desktop_files_debug(
-) -> anyhow::Result<HashMap<(Box<str>, Source), (gio::File, Box<Path>)>> {
+) -> anyhow::Result<HashMap<(Box<str>, Source), (Box<Path>, Box<Path>)>> {
     let mut map = HashMap::new();
     fill_desktop_file_map(&mut map, None)?;
     Ok(map)
 }
 
-fn find_icon_path_by_name(map: IconPathMap, name: &str) -> Option<(gio::File, Box<Path>, Source)> {
+fn find_icon_path_by_name(map: IconPathMap, name: &str) -> Option<(Box<Path>, Box<Path>, Source)> {
     map.get(&(Box::from(name.to_ascii_lowercase()), Source::ByClass))
         .map(|s| (s.0.clone(), s.1.clone(), Source::ByClass))
         .or_else(|| {

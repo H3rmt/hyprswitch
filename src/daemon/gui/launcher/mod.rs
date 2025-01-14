@@ -8,12 +8,10 @@ use anyhow::Context;
 use gtk4::gdk::Key;
 use gtk4::glib::{clone, Propagation};
 use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
-use gtk4::{
-    gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image,
-    Label, ListBox, ListBoxRow, Orientation, SelectionMode,
-};
+use gtk4::{gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image, Label, ListBox, ListBoxRow, Orientation, SelectionMode};
 use gtk4_layer_shell::{Layer, LayerShell};
 use std::ops::Deref;
+use std::path::Path;
 
 pub(super) fn create_launcher(
     share: &Share,
@@ -170,7 +168,7 @@ pub(super) fn update_launcher(
 
 fn create_launch_widget(
     name: &str,
-    icon_path: &Option<gio::File>,
+    icon_path: &Option<Box<Path>>,
     index: &str,
     selected: bool,
 ) -> ListBoxRow {
@@ -183,7 +181,7 @@ fn create_launch_widget(
 
     if let Some(icon_path) = icon_path {
         let icon = Image::builder().icon_size(IconSize::Large).build();
-        apply_texture_path(icon_path, &icon, true).warn("Failed to apply icon");
+        apply_texture_path(&gio::File::for_path(icon_path), &icon, true).warn("Failed to apply icon");
         hbox.append(&icon);
     }
 
