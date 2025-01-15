@@ -115,7 +115,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
             Ok(dir) => {
                 for entry in dir.flatten() {
                     let path = entry.path();
-                    if path.is_file() && path.extension().map_or(false, |e| e == "desktop") {
+                    if path.is_file() && path.extension().is_some_and(|e| e == "desktop") {
                         res.push(entry);
                     }
                 }
@@ -173,6 +173,20 @@ fn fill_desktop_file_map(
                     .lines()
                     .find(|l| l.starts_with("Exec="))
                     .map(|l| l.trim_start_matches("Exec="))
+                    .map(|l| {
+                        // is a flatpak and isn't a PWA
+                        // (PWAs work out of the box by using the class = to the icon-name)
+                        // else chromium/chrome/etc would be detected as exec
+                        if l.contains("flatpak")
+                            && l.contains("--command")
+                            && !l.contains("--app-id")
+                        {
+                            // trim all text until --command
+                            l.split("--command=").last().unwrap_or(l)
+                        } else {
+                            l
+                        }
+                    })
                     .and_then(|l| l.split(' ').next())
                     .and_then(|l| l.split('/').last())
                     .map(|n| n.replace('"', ""));
@@ -234,9 +248,7 @@ fn fill_desktop_file_map(
                         .map(|l| l.trim_start_matches("Terminal="))
                         .map(|l| l == "true")
                         .unwrap_or(false);
-                    if ttype.map_or(false, |t| t == "Application")
-                        && no_display.map_or(true, |n| !n)
-                    {
+                    if ttype == Some("Application") && no_display.map_or(true, |n| !n) {
                         if let (Some(name), Some(exec)) = (name, exec) {
                             let mut exec = String::from(exec);
                             for repl in &["%f", "%F", "%u", "%U"] {

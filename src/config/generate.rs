@@ -3,7 +3,6 @@ use crate::config::config_structs::{
     SimpleBindConfig, ToKey,
 };
 use rand::Rng;
-use std::borrow::Cow;
 use std::env;
 use std::path::PathBuf;
 use tracing::trace;
@@ -75,7 +74,7 @@ fn generate_other(params: &mut Vec<String>, other: &Other) {
 }
 fn generate_simple(
     keyword_list: &mut Vec<(&str, String)>,
-    current_exe: &Cow<str>,
+    current_exe: &str,
     simple: SimpleBindConfig,
 ) {
     let mut params = Vec::<String>::new();
@@ -99,7 +98,7 @@ fn generate_simple(
 
 fn generate_press(
     keyword_list: &mut Vec<(&str, String)>,
-    current_exe: &Cow<str>,
+    current_exe: &str,
     press: PressBindConfig,
     submap_name: String,
 ) {
@@ -194,7 +193,7 @@ fn generate_press(
 
 fn generate_hold(
     keyword_list: &mut Vec<(&str, String)>,
-    current_exe: &Cow<str>,
+    current_exe: &str,
     hold: HoldBindConfig,
     submap_name: String,
 ) {
@@ -333,7 +332,7 @@ fn generate_hold(
 fn generate_daemon_start(
     keyword_list: &mut Vec<(&str, String)>,
     general: General,
-    current_exe: &Cow<str>,
+    current_exe: &str,
 ) {
     let mut params = Vec::<String>::new();
     let mut envs = Vec::<String>::new();
