@@ -9,7 +9,6 @@ use async_channel::{Receiver, Sender};
 use hyprland::data::Version as HyprlandVersion;
 use hyprland::prelude::HyprData;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use notify_rust::{Notification, Urgency};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::env::var;
@@ -314,22 +313,24 @@ pub fn check_version() -> anyhow::Result<()> {
     );
 
     let parsed_version = Version::parse(
-        &*version
+        &version
             .version
             .unwrap_or(version.tag.trim_start_matches('v').to_string()),
     )
     .context("Unable to parse Hyprland Version")?;
 
     if parsed_version.lt(&MIN_VERSION) {
-        let _ = Notification::new()
+        #[cfg(not(debug_assertions))]
+        let _ = notify_rust::Notification::new()
             .summary(&format!(
                 "Hyprswitch ({}) Error",
                 option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")
             ))
             .body("Hyprland version too old or unknown")
             .timeout(5000)
-            .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+            .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
             .show();
+        warn!("Hyprland version too old or unknown: {parsed_version:?} < {MIN_VERSION:?}",);
     }
 
     Ok(())

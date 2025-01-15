@@ -3,7 +3,6 @@ use crate::daemon::handle_fns::{close, init, switch};
 use crate::envs::ASYNC_SOCKET;
 use crate::{get_socket_path_buff, Share, Transfer, TransferType, ACTIVE};
 use anyhow::Context;
-use notify_rust::{Notification, Urgency};
 use rand::Rng;
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
@@ -53,11 +52,12 @@ pub(super) fn start_handler_blocking(share: &Share) {
                     thread::spawn(move || {
                         handle_client(stream, arc_share).context("Failed to handle client")
                             .unwrap_or_else(|e| {
-                                let _ = Notification::new()
+                                #[cfg(not(debug_assertions))]
+                                let _ = notify_rust::Notification::new()
                                     .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
                                     .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
                                     .timeout(10000)
-                                    .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+                                    .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
                                     .show();
 
                                 warn!("{:?}", e)
@@ -66,11 +66,12 @@ pub(super) fn start_handler_blocking(share: &Share) {
                 } else {
                     handle_client(stream, arc_share).context("Failed to handle client")
                         .unwrap_or_else(|e| {
-                            let _ = Notification::new()
+                            #[cfg(not(debug_assertions))]
+                            let _ = notify_rust::Notification::new()
                                 .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
                                 .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
                                 .timeout(10000)
-                                .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+                                .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
                                 .show();
 
                             warn!("{:?}", e)
@@ -128,7 +129,8 @@ pub(super) fn handle_client_transfer(
             transfer.version,
             env!("CARGO_PKG_VERSION")
         );
-        let _ = Notification::new()
+        #[cfg(not(debug_assertions))]
+        let _ = notify_rust::Notification::new()
             .summary(&format!(
                 "Hyprswitch daemon ({}) and client ({}) dont match, please restart the daemon or your Hyprland session",
                 env!("CARGO_PKG_VERSION"),
@@ -136,7 +138,7 @@ pub(super) fn handle_client_transfer(
             ))
             .body(VERSION_OUT_OF_SYNC)
             .timeout(20000)
-            .hint(notify_rust::Hint::Urgency(Urgency::Critical))
+            .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
             .show();
         return_success(false, &mut stream)?;
 
@@ -247,6 +249,7 @@ fn return_success(success: bool, stream: &mut UnixStream) -> anyhow::Result<()> 
     Ok(())
 }
 
+#[cfg(not(debug_assertions))]
 const VERSION_OUT_OF_SYNC: &str = r"
 This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
 You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)

@@ -32,7 +32,7 @@ pub fn load() -> anyhow::Result<Config> {
 
 fn get_path() -> Option<PathBuf> {
     env::var_os("HYPRSWITCH_CONFIG")
-        .map(|val| PathBuf::from(val))
+        .map(PathBuf::from)
         .or_else(|| {
             get_config_dir().map(|mut path| {
                 path.push("hyprswitch/config.ron");
@@ -43,7 +43,7 @@ fn get_path() -> Option<PathBuf> {
 
 fn get_config_dir() -> Option<PathBuf> {
     env::var_os("XDG_CONFIG_HOME")
-        .map(|val| PathBuf::from(val))
+        .map(PathBuf::from)
         .or_else(|| {
             env::var_os("HOME")
                 .map(|home| PathBuf::from(format!("{}/.config", home.to_string_lossy())))

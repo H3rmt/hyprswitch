@@ -32,6 +32,7 @@ pub fn init_windows(
         workspaces
     };
 
+    let regex = Regex::new(r"<span[^>]*>(.*?)</span>").expect("Failed to create regex");
     for (wid, workspace) in workspaces {
         let workspace_fixed = Fixed::builder()
             .width_request(scale(workspace.width as i16, size_factor))
@@ -41,9 +42,7 @@ pub fn init_windows(
         let id_string = wid.to_string();
         let title = if show_title && !workspace.name.trim().is_empty() {
             if *REMOVE_HTML_FROM_WORKSPACE_NAME {
-                Regex::new(r"<span[^>]*>(.*?)</span>")
-                    .unwrap()
-                    .replace_all(&workspace.name, "$1")
+                regex.replace_all(&workspace.name, "$1")
             } else {
                 Cow::from(&workspace.name)
             }
@@ -112,12 +111,20 @@ pub fn init_windows(
                 let client_overlay = Overlay::builder()
                     .css_classes(vec!["client", "background"])
                     .child(&client_frame)
+                    .width_request(scale(client.width, size_factor))
+                    .height_request(scale(client.height, size_factor))
                     .build();
-                client_overlay.set_size_request(
-                    scale(client.width, size_factor),
-                    scale(client.height, size_factor),
-                );
                 client_overlay.add_controller(click_client(&share, address));
+                // client_frame.connect_show(|a| {
+                //    warn!("a showing client, {a:?}, {}", a.allocated_height());
+                //     glib::spawn_future_local(clone!(
+                //         #[strong]
+                //         a,
+                //         async move {
+                //             warn!("showing client, {a:?}, {}", a.height());
+                //         }
+                //     ));
+                // });
                 client_overlay
             };
             workspace_fixed.put(
