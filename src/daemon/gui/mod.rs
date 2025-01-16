@@ -157,23 +157,25 @@ async fn handle_updates(
                         }
                         trace!("Rebuilding window {:?}", window);
 
-                        let workspaces = data
-                            .hypr_data
-                            .workspaces
-                            .iter()
-                            .filter(|(_, w)| {
-                                data.gui_config.show_workspaces_on_all_monitors
-                                    || w.monitor == monitor_data.id
-                            })
-                            .collect::<Vec<_>>()
-                            .len() as i32;
-                        let rows = (workspaces as f32 / init_config.workspaces_per_row as f32)
-                            .ceil() as i32;
-                        let height = monitor.geometry().height();
-                        window.set_margin(
-                            gtk4_layer_shell::Edge::Bottom,
-                            max(30, (height / 2) - ((height / 5) * rows)),
-                        );
+                        if data.gui_config.show_launcher {
+                            let workspaces = data
+                                .hypr_data
+                                .workspaces
+                                .iter()
+                                .filter(|(_, w)| {
+                                    data.gui_config.show_workspaces_on_all_monitors
+                                        || w.monitor == monitor_data.id
+                                })
+                                .collect::<Vec<_>>()
+                                .len() as i32;
+                            let rows = (workspaces as f32 / init_config.workspaces_per_row as f32)
+                                .ceil() as i32;
+                            let height = monitor.geometry().height();
+                            window.set_margin(
+                                gtk4_layer_shell::Edge::Bottom,
+                                max(30, (height / 2) - ((height / 5) * rows)),
+                            );
+                        }
 
                         window.show();
                         windows::init_windows(
@@ -202,13 +204,16 @@ async fn handle_updates(
                             if data.launcher.selected.is_some() && e.text().is_empty() {
                                 data.launcher.selected = None;
                             }
-                            let selected = data.launcher.selected;
                             let reverse_key = match &data.submap_info {
                                 Submap::Name((_, r)) => r,
                                 Submap::Config(c) => &c.reverse_key,
                             };
-                            let execs =
-                                launcher::update_launcher(&e.text(), l, selected, reverse_key);
+                            let execs = launcher::update_launcher(
+                                &e.text(),
+                                l,
+                                data.launcher.selected,
+                                reverse_key,
+                            );
                             data.launcher.execs = execs;
                         });
                     }
