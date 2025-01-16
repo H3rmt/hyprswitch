@@ -7,6 +7,7 @@ use gtk4::{pango, prelude::*, Fixed, Frame, Image, Label, Overflow, Overlay};
 use hyprland::shared::{Address, WorkspaceId};
 use regex::Regex;
 use std::borrow::Cow;
+use std::cmp::min;
 
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
@@ -106,8 +107,27 @@ pub fn init_windows(
                 let client_frame = Frame::builder()
                     .label_xalign(0.5)
                     .label_widget(&client_label)
-                    .child(&picture)
                     .build();
+
+                // hide picture if client so small
+                // 2 => > infinity
+                // 2.1  > 800
+                // 3 => > 800
+                // 3.9  > 800
+                // 4 => > 538
+                // 5 => > 473
+                // 6 => > 408
+                // 7 => > 343
+                // 8 => > 278
+                // 9 => > 250
+                if match size_factor {
+                    ..2.0 => false,
+                    2.0..3.9 => client.height > 800,
+                    _ => client.height > 700 - min(((size_factor - 1.5) * 65.0) as i16, 450),
+                } {
+                    client_frame.set_child(Some(&picture));
+                }
+
                 let client_overlay = Overlay::builder()
                     .css_classes(vec!["client", "background"])
                     .child(&client_frame)
@@ -115,16 +135,6 @@ pub fn init_windows(
                     .height_request(scale(client.height, size_factor))
                     .build();
                 client_overlay.add_controller(click_client(&share, address));
-                // client_frame.connect_show(|a| {
-                //    warn!("a showing client, {a:?}, {}", a.allocated_height());
-                //     glib::spawn_future_local(clone!(
-                //         #[strong]
-                //         a,
-                //         async move {
-                //             warn!("showing client, {a:?}, {}", a.height());
-                //         }
-                //     ));
-                // });
                 client_overlay
             };
             workspace_fixed.put(
