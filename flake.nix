@@ -51,7 +51,6 @@
             import nixpkgs {
               inherit system;
               overlays = [
-                self.overlays.default
                 (final: prev: {
                   rustToolchain = rust-bin.stable.latest.minimal;
                   rustPlatform = prev.makeRustPlatform {
@@ -59,12 +58,13 @@
                     rustc = final.rustToolchain;
                   };
                 })
+                self.overlays.default
               ];
             };
 
           packages = {
             default = self.packages.${system}.hyprswitch;
-              inherit (pkgs) hyprswitch;
+            inherit (pkgs) hyprswitch;
           };
 
           devShells.default = pkgs.callPackage ./nix/shell.nix { inherit self; };
