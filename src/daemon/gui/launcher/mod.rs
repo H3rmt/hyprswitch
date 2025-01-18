@@ -1,7 +1,7 @@
 use crate::daemon::gui::icon::apply_texture_path;
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
-use crate::envs::LAUNCHER_MAX_ITEMS;
+use crate::envs::{LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
 use crate::{Exec, GUISend, ReverseKey, Share, UpdateCause, Warn};
 use anyhow::Context;
 use gtk4::gdk::Key;
@@ -202,19 +202,23 @@ fn create_launch_widget(
         .build();
     hbox.append(&title);
 
-    let exec = Label::builder()
-        .halign(Align::Start)
-        .valign(Align::Center)
-        .hexpand(true)
-        .css_classes(vec!["launcher-exec"])
-        .ellipsize(EllipsizeMode::End)
-        .label(if exec.contains("flatpak run") {
-            "(flatpak)".to_string()
-        } else {
-            format!("({})", exec)
-        })
-        .build();
-    hbox.append(&exec);
+    if *SHOW_LAUNCHER_EXECS {
+        let exec = Label::builder()
+            .halign(Align::Start)
+            .valign(Align::Center)
+            .hexpand(true)
+            .css_classes(vec!["launcher-exec"])
+            .ellipsize(EllipsizeMode::End)
+            .label(if exec.contains("flatpak run") {
+                "(flatpak)".to_string()
+            } else {
+                format!("({})", exec)
+            })
+            .build();
+        hbox.append(&exec);
+    } else {
+        title.set_hexpand(true);
+    }
 
     let index = Label::builder()
         .halign(Align::End)
