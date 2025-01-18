@@ -23,18 +23,25 @@ lazy_static! {
         .unwrap_or(5);
     pub static ref DEFAULT_TERMINAL: Option<String> =
         env::var("DEFAULT_TERMINAL").map_or(None, |s| Some(s.to_string()));
+
+    // not implemented in config generator
     pub static ref ASYNC_SOCKET: bool = env::var("ASYNC_SOCKET")
         .map(|s| s.parse().expect("Failed to parse ASYNC_SOCKET"))
         .unwrap_or(true);
+    // not implemented in config generator
     pub static ref LOG_MODULE_PATH: bool = env::var("LOG_MODULE_PATH")
         .map(|s| s.parse().expect("Failed to parse LOG_MODULE_PATH"))
         .unwrap_or(false);
+
     pub static ref REMOVE_HTML_FROM_WORKSPACE_NAME: bool = env::var("REMOVE_HTML_FROM_WORKSPACE_NAME")
         .map(|s| s.parse().expect("Failed to parse REMOVE_HTML_FROM_WORKSPACE_NAME"))
         .unwrap_or(true);
     pub static ref DISABLE_TOASTS: bool = env::var("DISABLE_TOASTS")
         .map(|s| s.parse().expect("Failed to parse DISABLE_TOASTS"))
         .unwrap_or(false);
+    pub static ref SHOW_LAUNCHER_EXECS: bool = env::var("SHOW_LAUNCHER_EXECS")
+        .map(|s| s.parse().expect("Failed to parse SHOW_LAUNCHER_EXECS"))
+        .unwrap_or(true);
 }
 
 pub fn envvar_dump() {

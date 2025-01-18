@@ -343,6 +343,7 @@ fn generate_daemon_start(
 
     envs.push(format!("SHOW_LAUNCHER={}", general.launcher.enable));
     envs.push(format!("LAUNCHER_MAX_ITEMS={}", general.launcher.items));
+    envs.push(format!("SHOW_LAUNCHER_EXECS={}", general.launcher.show_execs));
     if let Some(default_terminal) = general.launcher.default_terminal {
         envs.push(format!("DEFAULT_TERMINAL={}", default_terminal));
     }

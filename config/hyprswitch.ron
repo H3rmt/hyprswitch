@@ -7,6 +7,7 @@ Config(
             enable: true,
             items: 8,
             default_terminal: "alacritty",
+            show_execs: true,
         ),
         gui: (
             show_title: true,

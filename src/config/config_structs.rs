@@ -30,6 +30,8 @@ pub struct Launcher {
     pub items: u8,
     #[default(None)]
     pub default_terminal: Option<String>,
+    #[default = true]
+    pub show_execs: bool,
 }
 
 #[derive(SmartDefault, Debug, Deserialize, Serialize)]
