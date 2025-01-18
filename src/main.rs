@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
 
     envvar_dump();
 
-    let _ = check_version().warn("Unable to check Hyprland version, continuing anyway");
+    check_version().warn("Unable to check Hyprland version, continuing anyway");
 
     global::DRY
         .set(cli.global_opts.dry_run)
@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         #[cfg(feature = "config")]
-        cli::Command::Generate { exe } => {
+        cli::Command::Generate { exe, .. } => {
             info!("Loading config");
             let config = hyprswitch::config::load().context("Failed to load config")?;
             hyprswitch::config::validate(&config).context("Failed to validate config")?;
