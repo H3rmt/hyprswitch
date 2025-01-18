@@ -10,6 +10,10 @@
     padding-left: 12px;
 }
 
+.launcher-exec {
+    font-size: 12px;
+}
+
 .launcher-list {
     margin-left: 2px;
     margin-right: 2px;
