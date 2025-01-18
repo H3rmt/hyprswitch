@@ -47,6 +47,10 @@ pub enum Command {
         /// Specify a path to custom hyprswitch executable, uses current executable if not set
         #[arg(long)]
         exe: Option<PathBuf>,
+
+        /// Use systemd for starting the daemon
+        #[arg(long, default_value_t = true)]
+        systemd: bool,
     },
     /// Initialize and start the Daemon
     Init {

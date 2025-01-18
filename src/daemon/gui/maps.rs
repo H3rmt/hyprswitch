@@ -284,6 +284,7 @@ pub(in crate::daemon::gui) fn get_icon_name_debug(
     find_icon_path_by_name(map, icon)
 }
 
+#[allow(clippy::type_complexity)]
 pub(in crate::daemon::gui) fn get_desktop_files_debug(
 ) -> anyhow::Result<HashMap<(Box<str>, Source), (Box<Path>, Box<Path>)>> {
     let mut map = HashMap::new();
