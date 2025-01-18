@@ -15,6 +15,9 @@
       rust-overlay,
       ...
     }:
+    let
+      inherit (nixpkgs) lib;
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ ];
       systems = [
@@ -24,6 +27,9 @@
         "riscv64-linux"
         "x86_64-linux"
       ];
+
+      flake.overlays = import ./nix/overlays.nix { inherit self lib inputs; };
+
       perSystem =
         {
           config,
@@ -45,6 +51,7 @@
             import nixpkgs {
               inherit system;
               overlays = [
+                self.overlays.default
                 (final: prev: {
                   rustToolchain = rust-bin.stable.latest.minimal;
                   rustPlatform = prev.makeRustPlatform {
@@ -57,7 +64,7 @@
 
           packages = {
             default = self.packages.${system}.hyprswitch;
-            hyprswitch = pkgs.callPackage ./nix/default.nix { };
+              inherit (pkgs) hyprswitch;
           };
 
           devShells.default = pkgs.callPackage ./nix/shell.nix { inherit self; };

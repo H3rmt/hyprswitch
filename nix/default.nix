@@ -4,12 +4,10 @@
   pkg-config,
   rustPlatform,
   makeWrapper,
+  version ? "git",
 }:
-let
-  inherit ((lib.importTOML ../Cargo.toml).package) version;
-in
 rustPlatform.buildRustPackage {
-  name = "hyprswitch";
+  pname = "hyprswitch";
   inherit version;
 
   src = lib.cleanSource ./..;
