@@ -68,7 +68,7 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
         }
         drop(lock);
     }
-    deactivate_submap()?;
+    deactivate_submap();
     *(global::OPEN
         .get()
         .expect("ACTIVE not set")

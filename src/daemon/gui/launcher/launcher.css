@@ -27,6 +27,10 @@
     padding-right: 6px;
 }
 
+.launcher-item:hover {
+    background-color: var(--bg-color-hover);
+}
+
 .launcher-item-selected {
     background-color: var(--bg-color-hover);
 }
