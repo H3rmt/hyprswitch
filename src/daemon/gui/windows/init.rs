@@ -130,6 +130,7 @@ pub fn init_windows(
 
                 let client_overlay = Overlay::builder()
                     .css_classes(vec!["client", "background"])
+                    .overflow(Overflow::Hidden)
                     .child(&client_frame)
                     .width_request(scale(client.width, size_factor))
                     .height_request(scale(client.height, size_factor))
