@@ -1,16 +1,14 @@
-use crate::cli::ReverseKey;
-use crate::daemon::gui::MonitorData;
-use crate::{Active, SharedData, Submap};
-use gtk4::prelude::WidgetExt;
-use gtk4::Align;
-use gtk4::Label;
 use std::cmp::min;
+use gtk4::Align;
+use crate::{Active, SharedData};
+use crate::daemon::gui::MonitorData;
 
 macro_rules! update_type {
     (
         $htypr_data:expr, $identifier_name:ident, $css_active_name:expr, $id:expr,
         $overlay:expr, $label:expr, $active:expr, $gui_config:expr, $submap_info:expr, $valign: expr
     ) => {
+        use gtk4::prelude::WidgetExt;
         let find = $htypr_data.iter().find(|(i, _)| *i == $id);
         if let Some((_, data)) = find {
             if data.enabled {
@@ -23,7 +21,7 @@ macro_rules! update_type {
                 if $gui_config.max_switch_offset != 0 {
                     // create label if not exists
                     if $label.is_none() {
-                        let new_label = Label::builder()
+                        let new_label = gtk4::Label::builder()
                             .css_classes(vec!["index"])
                             .halign(Align::End)
                             .valign($valign)
@@ -49,10 +47,14 @@ macro_rules! update_type {
                             selected_client_position,
                             position,
                             $gui_config.max_switch_offset,
-                            if let ReverseKey::Mod(_) = (match $submap_info {
-                                Submap::Name((_, r)) => r,
-                                Submap::Config(c) => &c.reverse_key,
-                            }) { true } else { false },
+                            if let crate::ReverseKey::Mod(_) = (match $submap_info {
+                                crate::SubmapConfig::Name { reverse_key, .. } => reverse_key,
+                                crate::SubmapConfig::Config { reverse_key, .. } => reverse_key,
+                            }) {
+                                true
+                            } else {
+                                false
+                            },
                             true,
                         );
                         if let Some(offset) = offset {
@@ -76,7 +78,7 @@ macro_rules! update_type {
 
 pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> anyhow::Result<()> {
     match &data.active {
-        Active::Client(addr) => {
+        Some(Active::Client(addr)) => {
             for (id, (overlay, label)) in gui_monitor_data.client_refs.iter_mut() {
                 update_type!(
                     data.hypr_data.clients,
@@ -87,12 +89,12 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
                     label,
                     *addr,
                     &data.gui_config,
-                    &data.submap_info,
+                    &data.submap_config,
                     Align::End
                 );
             }
         }
-        Active::Workspace(active_id) => {
+        Some(Active::Workspace(active_id)) => {
             for (wid, (overlay, label)) in gui_monitor_data.workspace_refs.iter_mut() {
                 update_type!(
                     data.hypr_data.workspaces,
@@ -103,12 +105,12 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
                     label,
                     *active_id,
                     &data.gui_config,
-                    &data.submap_info,
+                    &data.submap_config,
                     Align::Start
                 );
             }
         }
-        Active::Monitor(active_id) => {
+        Some(Active::Monitor(active_id)) => {
             let (overlay, label) = &mut gui_monitor_data.workspaces_flow_overlay;
             update_type!(
                 data.hypr_data.monitors,
@@ -119,7 +121,7 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
                 label,
                 *active_id,
                 &data.gui_config,
-                &data.submap_info,
+                &data.submap_config,
                 Align::Start
             );
         }

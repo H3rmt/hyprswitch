@@ -10,7 +10,7 @@ pub use generate::create_binds_and_submaps;
 pub use generate::export;
 pub use validate::validate;
 
-pub mod config_structs;
+mod config_structs;
 mod generate;
 mod validate;
 

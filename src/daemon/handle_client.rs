@@ -1,7 +1,7 @@
 use crate::client::daemon_running;
 use crate::daemon::handle_fns::{close, init, switch};
 use crate::envs::ASYNC_SOCKET;
-use crate::{get_socket_path_buff, Share, Transfer, TransferType, ACTIVE};
+use crate::{get_socket_path_buff, global, toast, Share, Transfer, TransferType};
 use anyhow::Context;
 use rand::Rng;
 use std::fs::remove_file;
@@ -52,28 +52,14 @@ pub(super) fn start_handler_blocking(share: &Share) {
                     thread::spawn(move || {
                         handle_client(stream, arc_share).context("Failed to handle client")
                             .unwrap_or_else(|e| {
-                                #[cfg(not(debug_assertions))]
-                                let _ = notify_rust::Notification::new()
-                                    .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                                    .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
-                                    .timeout(10000)
-                                    .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
-                                    .show();
-
+                                toast(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e));
                                 warn!("{:?}", e)
                             });
                     });
                 } else {
                     handle_client(stream, arc_share).context("Failed to handle client")
                         .unwrap_or_else(|e| {
-                            #[cfg(not(debug_assertions))]
-                            let _ = notify_rust::Notification::new()
-                                .summary(&format!("Hyprswitch ({}) Error", option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")))
-                                .body(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e))
-                                .timeout(10000)
-                                .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
-                                .show();
-
+                            toast(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e));
                             warn!("{:?}", e)
                         });
                 }
@@ -129,17 +115,7 @@ pub(super) fn handle_client_transfer(
             transfer.version,
             env!("CARGO_PKG_VERSION")
         );
-        #[cfg(not(debug_assertions))]
-        let _ = notify_rust::Notification::new()
-            .summary(&format!(
-                "Hyprswitch daemon ({}) and client ({}) dont match, please restart the daemon or your Hyprland session",
-                env!("CARGO_PKG_VERSION"),
-                transfer.version
-            ))
-            .body(VERSION_OUT_OF_SYNC)
-            .timeout(20000)
-            .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
-            .show();
+        toast(VERSION_OUT_OF_SYNC);
         return_success(false, &mut stream)?;
 
         // automatically restart if in systemd mode
@@ -148,7 +124,7 @@ pub(super) fn handle_client_transfer(
         return Ok(());
     }
 
-    let active = *ACTIVE
+    let open = *global::OPEN
         .get()
         .expect("ACTIVE not set")
         .lock()
@@ -159,12 +135,12 @@ pub(super) fn handle_client_transfer(
             info!("Received version check command");
             return_success(true, &mut stream)?;
         }
-        TransferType::Active => {
-            info!("Received active command");
-            return_success(active, &mut stream)?;
+        TransferType::Open => {
+            info!("Received open command");
+            return_success(open, &mut stream)?;
         }
         TransferType::Init(config, gui_config, submap_config) => {
-            if !active {
+            if !open {
                 let _span = span!(Level::TRACE, "init").entered();
                 info!("Received init command {config:?} and {gui_config:?} and {submap_config:?}");
                 match init(
@@ -189,12 +165,11 @@ pub(super) fn handle_client_transfer(
                     }
                 };
             } else {
-                // don't cause notification on client
                 return_success(false, &mut stream)?;
             }
         }
         TransferType::Close(kill) => {
-            if active {
+            if open {
                 let _span = span!(Level::TRACE, "close").entered();
                 info!("Received close command with kill: {kill}");
                 match close(&share, kill, client_id)
@@ -212,12 +187,12 @@ pub(super) fn handle_client_transfer(
                 return_success(false, &mut stream)?;
             }
         }
-        TransferType::Switch(command) => {
-            if active {
+        TransferType::Dispatch(dispatch_config) => {
+            if open {
                 let _span = span!(Level::TRACE, "switch").entered();
-                info!("Received switch command {command:?}");
-                match switch(&share, command, client_id)
-                    .with_context(|| format!("Failed to execute with command {command:?}"))
+                info!("Received switch command {dispatch_config:?}");
+                match switch(&share, &dispatch_config, client_id)
+                    .with_context(|| format!("Failed to execute with command {dispatch_config:?}"))
                 {
                     Ok(_) => {
                         return_success(true, &mut stream)?;
@@ -249,7 +224,6 @@ fn return_success(success: bool, stream: &mut UnixStream) -> anyhow::Result<()> 
     Ok(())
 }
 
-#[cfg(not(debug_assertions))]
 const VERSION_OUT_OF_SYNC: &str = r"
 This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
 You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)

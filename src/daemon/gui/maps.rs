@@ -140,11 +140,11 @@ fn fill_desktop_file_map(
     gtk4::init().context("Failed to init gtk")?;
     let theme = gtk4::IconTheme::new();
     for entry in collect_desktop_files() {
-        let file = std::fs::read_to_string(entry.path());
-        match file {
-            Ok(file) => {
-                let icon = file
-                    .lines()
+        std::fs::read_to_string(entry.path())
+            .map(|content| {
+                let lines: Vec<&str> = content.lines().collect();
+                let icon = lines
+                    .iter()
                     .find(|l| l.starts_with("Icon="))
                     .map(|l| l.trim_start_matches("Icon="))
                     .and_then(|i| {
@@ -165,12 +165,12 @@ fn fill_desktop_file_map(
                     })
                     .and_then(|i| i.path().map(|p| p.into_boxed_path()));
 
-                let name = file
-                    .lines()
+                let name = lines
+                    .iter()
                     .find(|l| l.starts_with("Name="))
                     .map(|l| l.trim_start_matches("Name="));
-                let exec_name = file
-                    .lines()
+                let exec_name = lines
+                    .iter()
                     .find(|l| l.starts_with("Exec="))
                     .map(|l| l.trim_start_matches("Exec="))
                     .map(|l| {
@@ -190,8 +190,8 @@ fn fill_desktop_file_map(
                     .and_then(|l| l.split(' ').next())
                     .and_then(|l| l.split('/').last())
                     .map(|n| n.replace('"', ""));
-                let startup_wm_class = file
-                    .lines()
+                let startup_wm_class = lines
+                    .iter()
                     .find(|l| l.starts_with("StartupWMClass="))
                     .map(|l| l.trim_start_matches("StartupWMClass="));
 
@@ -221,29 +221,29 @@ fn fill_desktop_file_map(
                 }
 
                 if let Some(ref mut map2) = map2 {
-                    let ttype = file
-                        .lines()
+                    let ttype = lines
+                        .iter()
                         .find(|l| l.starts_with("Type="))
                         .map(|l| l.trim_start_matches("Type="));
-                    let exec = file
-                        .lines()
+                    let exec = lines
+                        .iter()
                         .find(|l| l.starts_with("Exec="))
                         .map(|l| l.trim_start_matches("Exec="));
-                    let keywords = file
-                        .lines()
+                    let keywords = lines
+                        .iter()
                         .find(|l| l.starts_with("Keywords="))
                         .map(|l| l.trim_start_matches("Keywords="));
-                    let no_display = file
-                        .lines()
+                    let no_display = lines
+                        .iter()
                         .find(|l| l.starts_with("NoDisplay="))
                         .map(|l| l.trim_start_matches("NoDisplay="))
                         .map(|l| l == "true");
-                    let exec_path = file
-                        .lines()
+                    let exec_path = lines
+                        .iter()
                         .find(|l| l.starts_with("Path="))
                         .and_then(|l| l.split('=').nth(1));
-                    let terminal = file
-                        .lines()
+                    let terminal = lines
+                        .iter()
                         .find(|l| l.starts_with("Terminal="))
                         .map(|l| l.trim_start_matches("Terminal="))
                         .map(|l| l == "true")
@@ -269,24 +269,22 @@ fn fill_desktop_file_map(
                         }
                     }
                 }
-            }
-            Err(e) => {
-                warn!("Failed to read file {}: {e}", entry.path().display());
-            }
-        }
+            })
+            .warn(&format!("Failed to read file: {:?}", entry.path()));
     }
     debug!("filled icon map in {}ms", now.elapsed().as_millis());
     Ok(())
 }
 
-pub fn get_icon_name_debug(icon: &str) -> Option<(Box<Path>, Box<Path>, Source)> {
+pub(in crate::daemon::gui) fn get_icon_name_debug(
+    icon: &str,
+) -> Option<(Box<Path>, Box<Path>, Source)> {
     let mut map = HashMap::new();
     fill_desktop_file_map(&mut map, None).ok()?;
     find_icon_path_by_name(map, icon)
 }
 
-#[allow(clippy::type_complexity)]
-pub fn get_desktop_files_debug(
+pub(in crate::daemon::gui) fn get_desktop_files_debug(
 ) -> anyhow::Result<HashMap<(Box<str>, Source), (Box<Path>, Box<Path>)>> {
     let mut map = HashMap::new();
     fill_desktop_file_map(&mut map, None)?;

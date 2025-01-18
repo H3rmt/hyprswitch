@@ -10,9 +10,8 @@ use tracing::info;
 pub use data::collect_data;
 pub use exec::switch_to_active;
 
-use crate::cli::SwitchType;
 use crate::handle::next::{find_next_client, find_next_monitor, find_next_workspace};
-use crate::{Active, Command, HyprlandData};
+use crate::{Active, DispatchConfig, HyprlandData, SwitchType};
 
 mod data;
 mod exec;
@@ -24,50 +23,50 @@ pub use run::run_program;
 
 pub fn find_next(
     switch_type: &SwitchType,
-    command: Command,
+    dispatch_config: &DispatchConfig,
     clients_data: &HyprlandData,
-    active: &Active,
+    active: Option<&Active>,
 ) -> anyhow::Result<Active> {
     match switch_type {
         SwitchType::Client => {
             let (addr, _) = find_next_client(
-                command,
+                dispatch_config,
                 &clients_data.clients,
-                if let Active::Client(addr) = &active {
+                if let Some(Active::Client(addr)) = &active {
                     Some(addr)
                 } else {
                     None
                 },
             )
-            .with_context(|| format!("Failed to find next client with command {command:?}"))?;
+            .with_context(|| format!("Failed to find next client with dispatch_config {dispatch_config:?}"))?;
             info!("Next client: {:?}", addr);
             Ok(Active::Client(addr.clone()))
         }
         SwitchType::Workspace => {
             let (workspace_id, _) = find_next_workspace(
-                command,
+                dispatch_config,
                 &clients_data.workspaces,
-                if let Active::Workspace(ws) = &active {
+                if let Some(Active::Workspace(ws)) = &active {
                     Some(ws)
                 } else {
                     None
                 },
             )
-            .with_context(|| format!("Failed to find next workspace with command {command:?}"))?;
+            .with_context(|| format!("Failed to find next workspace with dispatch_config {dispatch_config:?}"))?;
             info!("Next workspace: {:?}", workspace_id);
             Ok(Active::Workspace(*workspace_id))
         }
         SwitchType::Monitor => {
             let (monitor_id, _) = find_next_monitor(
-                command,
+                dispatch_config,
                 &clients_data.monitors,
-                if let Active::Monitor(monitor) = &active {
+                if let Some(Active::Monitor(monitor)) = &active {
                     Some(monitor)
                 } else {
                     None
                 },
             )
-            .with_context(|| format!("Failed to find next monitor with command {command:?}"))?;
+            .with_context(|| format!("Failed to find next monitor with dispatch_config {dispatch_config:?}"))?;
             info!("Next monitor: {:?}", monitor_id);
             Ok(Active::Monitor(*monitor_id))
         }

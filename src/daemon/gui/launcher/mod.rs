@@ -1,9 +1,8 @@
-use crate::cli::ReverseKey;
 use crate::daemon::gui::icon::apply_texture_path;
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
 use crate::envs::LAUNCHER_MAX_ITEMS;
-use crate::{Execs, GUISend, Share, UpdateCause, Warn};
+use crate::{Exec, GUISend, ReverseKey, Share, UpdateCause, Warn};
 use anyhow::Context;
 use gtk4::gdk::Key;
 use gtk4::glib::{clone, Propagation};
@@ -103,7 +102,7 @@ pub(super) fn update_launcher(
     list: &ListBox,
     selected: Option<u16>,
     reverse_key: &ReverseKey,
-) -> Execs {
+) -> Vec<Exec> {
     while let Some(child) = list.first_child() {
         list.remove(&child);
     }
@@ -163,7 +162,11 @@ pub(super) fn update_launcher(
             selected == Some(index as u16),
         );
         list.append(&widget);
-        execs.push((exec.clone(), path.clone(), *terminal));
+        execs.push(Exec {
+            exec: exec.clone(),
+            path: path.clone(),
+            terminal: *terminal,
+        });
     }
 
     execs
@@ -221,8 +224,8 @@ pub(crate) fn switch(share: &Share, reverse: bool) -> anyhow::Result<()> {
     let (latest, send, _) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
-        let exec_len = lock.launcher.execs.len();
-        if let Some(ref mut selected) = lock.launcher.selected {
+        let exec_len = lock.launcher_config.execs.len();
+        if let Some(ref mut selected) = lock.launcher_config.selected {
             if exec_len == 0 {
                 return Ok(());
             }

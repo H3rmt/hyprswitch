@@ -1,15 +1,15 @@
 use crate::handle::get_recent_clients_map;
 use crate::handle::sort::{sort_clients, update_clients};
-use crate::FindByFirst;
-use crate::{ClientData, Config, HyprlandData, MonitorData, WorkspaceData};
+use crate::{Active, ClientData, HyprlandData, MonitorData, SwitchType, WorkspaceData};
+use crate::{FindByFirst, SimpleConfig};
 use hyprland::data::{Client, Clients, Monitors, Workspaces};
 use hyprland::prelude::{HyprData, HyprDataActiveOptional};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use tracing::{span, trace, warn, Level};
 
-type Active = (Option<Address>, Option<WorkspaceId>, Option<MonitorId>);
+// type Active = (Option<Address>, Option<WorkspaceId>, Option<MonitorId>);
 
-pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
+pub fn collect_data(config: SimpleConfig) -> anyhow::Result<(HyprlandData, Option<Active>)> {
     let _span = span!(Level::TRACE, "collect_data").entered();
     let clients = Clients::get()?
         .into_iter()
@@ -112,7 +112,6 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
         cd
     };
 
-
     if config.ignore_monitors {
         client_data = update_clients(client_data, Some(&workspace_data), None);
     } else {
@@ -207,16 +206,18 @@ pub fn collect_data(config: Config) -> anyhow::Result<(HyprlandData, Active)> {
     trace!("workspace_data: {:?}", workspace_data);
     trace!("monitor_data: {:?}", monitor_data);
 
+    let active = match config.switch_type {
+        SwitchType::Client => active.as_ref().map(|a| a.3.clone()).map(Active::Client),
+        SwitchType::Workspace => active.as_ref().map(|a| a.1).map(Active::Workspace),
+        SwitchType::Monitor => active.as_ref().map(|a| a.2).map(Active::Monitor),
+    };
+
     Ok((
         HyprlandData {
             clients: client_data,
             workspaces: workspace_data,
             monitors: monitor_data,
         },
-        (
-            active.as_ref().map(|a| a.3.clone()),
-            active.as_ref().map(|a| a.1),
-            active.map(|a| a.2),
-        ),
+        active,
     ))
 }

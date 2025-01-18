@@ -4,16 +4,13 @@ use std::os::unix::net::UnixStream;
 use anyhow::Context;
 use tracing::{debug, trace};
 
-use crate::{
-    get_socket_path_buff, Command, Config, GuiConfig, Submap, Transfer, TransferType, DRY,
-};
+use crate::configs::DispatchConfig;
+use crate::{get_socket_path_buff, global, GuiConfig, SimpleConfig, SubmapConfig, Transfer, TransferType};
 
 pub fn send_version_check_command() -> anyhow::Result<bool> {
     let send_struct = Transfer {
         transfer: TransferType::VersionCheck,
-        version: option_env!("CARGO_PKG_VERSION")
-            .unwrap_or("?.?.?")
-            .to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending version_check command");
     let serialized = serde_json::to_string(&send_struct)
@@ -21,28 +18,24 @@ pub fn send_version_check_command() -> anyhow::Result<bool> {
     send(&serialized).with_context(|| format!("Failed to send version_check command {serialized}"))
 }
 
-pub fn send_active_command() -> anyhow::Result<bool> {
+pub fn send_open_command() -> anyhow::Result<bool> {
     let send_struct = Transfer {
-        transfer: TransferType::Active,
-        version: option_env!("CARGO_PKG_VERSION")
-            .unwrap_or("?.?.?")
-            .to_string(),
+        transfer: TransferType::Open,
+        version: env!("CARGO_PKG_VERSION").to_string(),
     };
-    debug!("Sending active command");
+    debug!("Sending open command");
     let serialized = serde_json::to_string(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send active command {serialized}"))
+    send(&serialized).with_context(|| format!("Failed to send open command {serialized}"))
 }
 
 ///
 /// calls [`crate::daemon::handle_fns::switch`]
 ///
-pub fn send_switch_command(command: Command) -> anyhow::Result<bool> {
+pub fn send_dispatch_command(dispatch_config: DispatchConfig) -> anyhow::Result<bool> {
     let send_struct = Transfer {
-        transfer: TransferType::Switch(command),
-        version: option_env!("CARGO_PKG_VERSION")
-            .unwrap_or("?.?.?")
-            .to_string(),
+        transfer: TransferType::Dispatch(dispatch_config),
+        version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending switch command {send_struct:?}");
     let serialized = serde_json::to_string(&send_struct)
@@ -54,15 +47,13 @@ pub fn send_switch_command(command: Command) -> anyhow::Result<bool> {
 /// calls [`crate::daemon::handle_fns::init`]
 ///
 pub fn send_init_command(
-    config: Config,
+    simple_config: SimpleConfig,
     gui_config: GuiConfig,
-    submap: Submap,
+    submap_config: SubmapConfig,
 ) -> anyhow::Result<bool> {
     let send_struct = Transfer {
-        transfer: TransferType::Init(config, gui_config, submap),
-        version: option_env!("CARGO_PKG_VERSION")
-            .unwrap_or("?.?.?")
-            .to_string(),
+        transfer: TransferType::Init(simple_config, gui_config, submap_config),
+        version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending init command {send_struct:?}");
     let serialized = serde_json::to_string(&send_struct)
@@ -76,9 +67,7 @@ pub fn send_init_command(
 pub fn send_close_daemon(kill: bool) -> anyhow::Result<bool> {
     let send_struct = Transfer {
         transfer: TransferType::Close(kill),
-        version: option_env!("CARGO_PKG_VERSION")
-            .unwrap_or("?.?.?")
-            .to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending close command {send_struct:?}");
     let serialized = serde_json::to_string(&send_struct)
@@ -104,7 +93,7 @@ pub fn daemon_running() -> bool {
 }
 
 fn send(buffer: &str) -> anyhow::Result<bool> {
-    if *DRY.get().expect("DRY not set") {
+    if *global::DRY.get().expect("DRY not set") {
         debug!("DRY RUN: Would have sent {buffer:?}");
         return Ok(true);
     }
