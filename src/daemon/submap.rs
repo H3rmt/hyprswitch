@@ -188,11 +188,10 @@ pub(super) fn generate_submap(
     Ok(())
 }
 
-pub fn deactivate_submap() -> anyhow::Result<()> {
+pub fn deactivate_submap() {
     let _span = span!(Level::TRACE, "submap").entered();
     Dispatch::call(DispatchType::Custom("submap", "reset")).warn("unable to deactivate submap");
     debug!("Deactivated submap");
-    Ok(())
 }
 
 fn get_mod_from_mod_key(mod_key: ModKey) -> &'static str {

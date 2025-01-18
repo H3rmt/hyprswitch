@@ -209,6 +209,7 @@ async fn handle_updates(
                                 SubmapConfig::Config { reverse_key, .. } => reverse_key,
                             };
                             let execs = launcher::update_launcher(
+                                share.clone(),
                                 &e.text(),
                                 l,
                                 data.launcher_config.selected,

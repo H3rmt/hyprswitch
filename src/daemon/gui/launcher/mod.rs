@@ -1,5 +1,6 @@
 use crate::daemon::gui::icon::apply_texture_path;
 use crate::daemon::gui::maps::get_all_desktop_files;
+use crate::daemon::gui::switch_fns::exec_gui;
 use crate::daemon::gui::LauncherRefs;
 use crate::envs::{LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
 use crate::{Exec, GUISend, ReverseKey, Share, UpdateCause, Warn};
@@ -7,14 +8,16 @@ use anyhow::Context;
 use gtk4::gdk::Key;
 use gtk4::glib::{clone, Propagation};
 use gtk4::pango::EllipsizeMode;
-use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
+use gtk4::prelude::{BoxExt, EditableExt, GestureExt, GtkWindowExt, WidgetExt};
 use gtk4::{
-    gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image,
-    Label, ListBox, ListBoxRow, Orientation, SelectionMode,
+    gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey,
+    EventSequenceState, GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation,
+    SelectionMode,
 };
 use gtk4_layer_shell::{Layer, LayerShell};
 use std::ops::Deref;
 use std::path::Path;
+use tracing::info;
 
 pub(super) fn create_launcher(
     share: &Share,
@@ -99,6 +102,7 @@ pub(super) fn create_launcher(
 }
 
 pub(super) fn update_launcher(
+    share: Share,
     text: &str,
     list: &ListBox,
     selected: Option<u16>,
@@ -139,9 +143,11 @@ pub(super) fn update_launcher(
     {
         let i = index as i32 - selected.unwrap_or(0) as i32;
         let widget = create_launch_widget(
+            share.clone(),
             name,
             icon,
             exec,
+            index,
             &match reverse_key {
                 ReverseKey::Mod(m) => match i {
                     0 => "Return".to_string(),
@@ -175,9 +181,11 @@ pub(super) fn update_launcher(
 }
 
 fn create_launch_widget(
+    share: Share,
     name: &str,
     icon_path: &Option<Box<Path>>,
     exec: &str,
+    raw_index: usize,
     index: &str,
     selected: bool,
 ) -> ListBoxRow {
@@ -227,7 +235,7 @@ fn create_launch_widget(
         .build();
     hbox.append(&index);
 
-    ListBoxRow::builder()
+    let list = ListBoxRow::builder()
         .css_classes(if selected {
             vec!["launcher-item", "launcher-item-selected"]
         } else {
@@ -237,7 +245,23 @@ fn create_launch_widget(
         .hexpand(true)
         .vexpand(true)
         .child(&hbox)
-        .build()
+        .build();
+    list.add_controller(click_client(&share, raw_index));
+    list
+}
+
+pub(crate) fn click_client(share: &Share, selected: usize) -> GestureClick {
+    let gesture = GestureClick::new();
+    gesture.connect_pressed(clone!(
+        #[strong]
+        share,
+        move |gesture, _, _, _| {
+            gesture.set_state(EventSequenceState::Claimed);
+            info!("Exiting on click of launcher entry");
+            exec_gui(&share, selected).warn("Failed to close gui");
+        }
+    ));
+    gesture
 }
 
 pub(crate) fn switch(share: &Share, reverse: bool) -> anyhow::Result<()> {
