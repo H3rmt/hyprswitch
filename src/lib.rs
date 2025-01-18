@@ -1,9 +1,5 @@
 #![deny(clippy::print_stdout)]
 
-use crate::cli::{
-    CloseType, GuiConf, InitOpts, ModKey, Monitors, ReverseKey, SimpleConf, SimpleOpts, SubmapConf,
-    SwitchType,
-};
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
 use hyprland::data::Version as HyprlandVersion;
@@ -15,125 +11,63 @@ use std::env::var;
 use std::fmt;
 use std::fmt::Display;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 use tracing::{info, trace, warn};
+
+pub mod client;
+#[cfg(feature = "config")]
+pub mod config;
+mod configs;
+pub mod daemon;
+mod data;
+pub mod envs;
+pub mod handle;
+
+pub use configs::*;
+pub use data::*;
 
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
 
-pub mod cli;
-pub mod client;
-#[cfg(feature = "config")]
-pub mod config;
-pub mod daemon;
-pub mod envs;
-pub mod handle;
+pub mod global {
+    /// global variable to store if we are in dry mode
+    pub static DRY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
 
-#[derive(Debug, Clone)]
-pub struct MonitorData {
-    pub x: i32,
-    pub y: i32,
-    pub width: u16,
-    pub height: u16,
-    pub connector: String,
-    pub enabled: bool,
-}
-
-/// we need both id and name for the workspace (special workspaces need the name)
-#[derive(Debug, Clone)]
-pub struct WorkspaceData {
-    pub name: String,
-    pub x: i32,
-    pub y: i32,
-    pub width: u16,
-    pub height: u16,
-    pub monitor: MonitorId,
-    pub enabled: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct ClientData {
-    pub x: i16,
-    pub y: i16,
-    pub width: i16,
-    pub height: i16,
-    pub class: String,
-    pub title: String,
-    pub workspace: WorkspaceId,
-    pub monitor: MonitorId,
-    pub focus_history_id: i8,
-    pub floating: bool,
-    pub enabled: bool,
-    pub pid: i32,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct Command {
-    pub reverse: bool,
-    pub offset: u8,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Config {
-    pub ignore_monitors: bool,
-    pub ignore_workspaces: bool,
-    pub sort_recent: bool,
-    pub filter_current_workspace: bool,
-    pub filter_current_monitor: bool,
-    pub filter_same_class: bool,
-    pub include_special_workspaces: bool,
-    pub switch_type: SwitchType,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct InitConfig {
-    custom_css: Option<PathBuf>,
-    show_title: bool,
-    workspaces_per_row: u8,
-    size_factor: f64,
+    /// global variable to store if gui is open
+    pub static OPEN: std::sync::OnceLock<std::sync::Mutex<bool>> = std::sync::OnceLock::new();
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Submap {
-    Name((String, ReverseKey)),
-    Config(SubmapConfig),
+pub enum SwitchType {
+    Client,
+    Workspace,
+    Monitor,
 }
 
-impl Default for Submap {
-    fn default() -> Self {
-        Self::Name(("".to_string(), ReverseKey::default()))
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CloseType {
+    Default,
+    ModKeyRelease,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SubmapConfig {
-    pub mod_key: ModKey,
-    pub key: String,
-    pub close: CloseType,
-    pub reverse_key: ReverseKey,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct GuiConfig {
-    pub max_switch_offset: u8,
-    pub hide_active_window_border: bool,
-    pub monitors: Option<Monitors>,
-    pub show_workspaces_on_all_monitors: bool,
-    pub show_launcher: bool,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ReverseKey {
+    Mod(ModKey),
+    Key(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TransferType {
     // switch to next/prev workspace/monitor/client or next selection in launcher
-    Switch(Command),
+    Dispatch(DispatchConfig),
     // init with config, gui_config and submap
-    Init(Config, GuiConfig, Submap),
+    Init(SimpleConfig, GuiConfig, SubmapConfig),
     // close command with kill
     Close(bool),
     // check if versions match (always succeeds)
     VersionCheck,
-    // check if daemon is active (gui is open)
-    Active,
+    // check if the daemon is active (gui is open)
+    Open,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,132 +76,40 @@ pub struct Transfer {
     pub version: String,
 }
 
-#[derive(Debug, Default)]
-pub struct HyprlandData {
-    pub clients: Vec<(Address, ClientData)>,
-    pub workspaces: Vec<(WorkspaceId, WorkspaceData)>,
-    pub monitors: Vec<(MonitorId, MonitorData)>,
+#[derive(Debug)]
+pub struct Exec {
+    pub exec: Box<str>,
+    pub path: Option<Box<str>>,
+    pub terminal: bool,
 }
 
-#[derive(Debug, Default)]
-pub struct SharedData {
-    pub simple_config: Config,
-    pub submap_info: Submap,
-    pub gui_config: GuiConfig,
-    pub hypr_data: HyprlandData,
-    pub active: Active,
-    pub launcher: LauncherConfig,
-}
-
-#[derive(Debug, Default)]
-pub struct LauncherConfig {
-    execs: Execs,
-    selected: Option<u16>,
-}
-
-type Execs = Vec<(Box<str>, Option<Box<str>>, bool)>;
-
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub enum Active {
     Workspace(WorkspaceId),
     Monitor(MonitorId),
     Client(Address),
-    #[default]
-    Unknown,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum GUISend {
-    Refresh,
-    New,
-    Hide,
+#[derive(Debug, Default)]
+pub struct SharedData {
+    pub simple_config: SimpleConfig,
+    pub submap_config: SubmapConfig,
+    pub gui_config: GuiConfig,
+    pub active: Option<Active>,
+    pub hypr_data: HyprlandData,
+    pub launcher_config: LauncherConfig,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum UpdateCause {
-    Client(u8),
-    LauncherUpdate,
-    GuiClick,
-}
-
-impl Display for UpdateCause {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            UpdateCause::Client(id) => write!(f, "id:{}", id),
-            UpdateCause::LauncherUpdate => write!(f, "lu"),
-            UpdateCause::GuiClick => write!(f, "gc"),
-        }
-    }
-}
-
-// shared ARC with Mutex and Notify for new_gui and update_gui
-pub type Share = Arc<(
-    Mutex<SharedData>,
-    Sender<(GUISend, UpdateCause)>,
-    Receiver<bool>,
-)>;
-
-/// global variable to store if we are in dry mode
-pub static DRY: OnceLock<bool> = OnceLock::new();
-
-/// global variable to store if daemon is active (displaying GUI)
-pub static ACTIVE: OnceLock<Mutex<bool>> = OnceLock::new();
-
-impl From<InitOpts> for InitConfig {
-    fn from(opts: InitOpts) -> Self {
-        Self {
-            custom_css: opts.custom_css,
-            show_title: opts.show_title,
-            workspaces_per_row: opts.workspaces_per_row,
-            size_factor: opts.size_factor,
-        }
-    }
-}
-impl From<SimpleConf> for Config {
-    fn from(opts: SimpleConf) -> Self {
-        Self {
-            ignore_monitors: opts.ignore_monitors,
-            ignore_workspaces: opts.ignore_workspaces,
-            sort_recent: opts.sort_recent,
-            filter_current_workspace: opts.filter_current_workspace,
-            filter_current_monitor: opts.filter_current_monitor,
-            filter_same_class: opts.filter_same_class,
-            include_special_workspaces: opts.include_special_workspaces,
-            switch_type: opts.switch_type,
-        }
-    }
-}
-
-impl From<SimpleOpts> for Command {
-    fn from(opts: SimpleOpts) -> Self {
-        Self {
-            reverse: opts.reverse,
-            offset: opts.offset,
-        }
-    }
-}
-
-impl From<GuiConf> for GuiConfig {
-    fn from(opts: GuiConf) -> Self {
-        Self {
-            max_switch_offset: opts.max_switch_offset,
-            hide_active_window_border: opts.hide_active_window_border,
-            monitors: opts.monitors,
-            show_workspaces_on_all_monitors: opts.show_workspaces_on_all_monitors,
-            show_launcher: opts.show_launcher,
-        }
-    }
-}
-
-impl SubmapConfig {
-    pub fn from(opts: SubmapConf, rev: ReverseKey) -> Self {
-        Self {
-            mod_key: ModKey::from(opts.mod_key),
-            key: opts.key,
-            close: opts.close,
-            reverse_key: rev,
-        }
-    }
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ModKey {
+    AltL,
+    AltR,
+    CtrlL,
+    CtrlR,
+    SuperL,
+    SuperR,
+    ShiftL,
+    ShiftR,
 }
 
 impl Display for ModKey {
@@ -286,6 +128,34 @@ impl Display for ModKey {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum GUISend {
+    Refresh,
+    New,
+    Hide,
+}
+
+#[derive(Debug, Clone)]
+pub enum UpdateCause {
+    Client(u8),
+    LauncherUpdate,
+    GuiClick,
+}
+
+impl Display for UpdateCause {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UpdateCause::Client(id) => write!(f, "id:{}", id),
+            UpdateCause::LauncherUpdate => write!(f, "lu"),
+            UpdateCause::GuiClick => write!(f, "gc"),
+        }
+    }
+}
+pub type Payload = (GUISend, UpdateCause);
+
+// shared ARC with Mutex and Notify for new_gui and update_gui
+pub type Share = Arc<(Mutex<SharedData>, Sender<Payload>, Receiver<bool>)>;
+
 pub fn get_socket_path_buff() -> PathBuf {
     let mut buf = if let Ok(runtime_path) = var("XDG_RUNTIME_DIR") {
         PathBuf::from(runtime_path)
@@ -299,6 +169,41 @@ pub fn get_socket_path_buff() -> PathBuf {
     #[cfg(not(debug_assertions))]
     buf.push("hyprswitch.sock");
     buf
+}
+pub trait Warn {
+    fn warn(&self, msg: &str);
+}
+
+impl Warn for Option<()> {
+    fn warn(&self, msg: &str) {
+        if self.is_none() {
+            warn!("{}", msg);
+        }
+    }
+}
+
+impl<E: Display> Warn for Result<(), E> {
+    fn warn(&self, msg: &str) {
+        if let Err(e) = self {
+            warn!("{}: {}", msg, e);
+        }
+    }
+}
+
+pub fn toast(_body: &str) {
+    if !*envs::DISABLE_TOASTS {
+        #[cfg(not(debug_assertions))]
+        let _ = notify_rust::Notification::new()
+            .summary(&format!(
+                "{} ({}) Error",
+                env!("CARGO_PKG_NAME"),
+                env!("CARGO_PKG_VERSION")
+            ))
+            .body(_body)
+            .timeout(10000)
+            .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
+            .show();
+    }
 }
 
 pub fn check_version() -> anyhow::Result<()> {
@@ -320,60 +225,11 @@ pub fn check_version() -> anyhow::Result<()> {
     .context("Unable to parse Hyprland Version")?;
 
     if parsed_version.lt(&MIN_VERSION) {
-        #[cfg(not(debug_assertions))]
-        let _ = notify_rust::Notification::new()
-            .summary(&format!(
-                "Hyprswitch ({}) Error",
-                option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")
-            ))
-            .body("Hyprland version too old or unknown")
-            .timeout(5000)
-            .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
-            .show();
-        warn!("Hyprland version too old or unknown: {parsed_version:?} < {MIN_VERSION:?}",);
+        toast(&format!(
+            "Hyprland version too old or unknown: {parsed_version:?} < {MIN_VERSION:?}"
+        ));
+        warn!("Hyprland version too old or unknown: {parsed_version:?} < {MIN_VERSION:?}");
     }
 
     Ok(())
-}
-
-pub trait FindByFirst<ID, Data> {
-    fn find_by_first(&self, id: &ID) -> Option<&Data>;
-}
-
-impl FindByFirst<Address, ClientData> for Vec<(Address, ClientData)> {
-    fn find_by_first(&self, id: &Address) -> Option<&ClientData> {
-        self.iter().find(|(addr, _)| *addr == *id).map(|(_, cd)| cd)
-    }
-}
-
-impl FindByFirst<WorkspaceId, WorkspaceData> for Vec<(WorkspaceId, WorkspaceData)> {
-    fn find_by_first(&self, id: &WorkspaceId) -> Option<&WorkspaceData> {
-        self.iter().find(|(wid, _)| *wid == *id).map(|(_, wd)| wd)
-    }
-}
-
-impl FindByFirst<MonitorId, MonitorData> for Vec<(MonitorId, MonitorData)> {
-    fn find_by_first(&self, id: &MonitorId) -> Option<&MonitorData> {
-        self.iter().find(|(mid, _)| *mid == *id).map(|(_, md)| md)
-    }
-}
-
-pub trait Warn {
-    fn warn(&self, msg: &str);
-}
-
-impl Warn for Option<()> {
-    fn warn(&self, msg: &str) {
-        if self.is_none() {
-            warn!("{}", msg);
-        }
-    }
-}
-
-impl<E: Display> Warn for Result<(), E> {
-    fn warn(&self, msg: &str) {
-        if let Err(e) = self {
-            warn!("{}: {}", msg, e);
-        }
-    }
 }

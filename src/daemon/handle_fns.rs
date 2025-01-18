@@ -1,34 +1,40 @@
-use crate::cli::SwitchType;
+use crate::configs::DispatchConfig;
 use crate::daemon::gui::reload_desktop_maps;
 use crate::daemon::submap::{activate_submap, deactivate_submap, generate_submap};
 use crate::handle::{clear_recent_clients, collect_data, find_next, run_program, switch_to_active};
-use crate::{Active, Command, Config, GUISend, GuiConfig, Share, Submap, UpdateCause, ACTIVE};
+use crate::{
+    global, GUISend, GuiConfig, Share, SimpleConfig, SubmapConfig, UpdateCause,
+};
 use anyhow::Context;
 use std::ops::Deref;
 use tracing::{info, trace, warn};
 
-pub(crate) fn switch(share: &Share, command: Command, client_id: u8) -> anyhow::Result<()> {
+pub(crate) fn switch(
+    share: &Share,
+    dispatch_config: &DispatchConfig,
+    client_id: u8,
+) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
-        let exec_len = lock.launcher.execs.len();
-        if let Some(ref mut selected) = lock.launcher.selected {
+        let exec_len = lock.launcher_config.execs.len();
+        if let Some(ref mut selected) = lock.launcher_config.selected {
             if exec_len == 0 {
                 return Ok(());
             }
-            *selected = if command.reverse {
-                selected.saturating_sub(command.offset as u16)
+            *selected = if dispatch_config.reverse {
+                selected.saturating_sub(dispatch_config.offset as u16)
             } else {
-                (*selected + command.offset as u16).min((exec_len - 1) as u16)
+                (*selected + dispatch_config.offset as u16).min((exec_len - 1) as u16)
             };
         } else {
             let active = find_next(
                 &lock.simple_config.switch_type,
-                command,
+                dispatch_config,
                 &lock.hypr_data,
-                &lock.active,
+                lock.active.as_ref(),
             )?;
-            lock.active = active;
+            lock.active = Some(active);
         }
         drop(lock);
     }
@@ -48,14 +54,14 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
     {
         let lock = latest.lock().expect("Failed to lock");
         if !kill {
-            if let Some(selected) = lock.launcher.selected {
-                if let Some((run, path, terminal)) = lock.launcher.execs.get(selected as usize) {
-                    run_program(run, path, *terminal);
+            if let Some(selected) = lock.launcher_config.selected {
+                if let Some(exec) = lock.launcher_config.execs.get(selected as usize) {
+                    run_program(&exec.exec, &exec.path, exec.terminal);
                 } else {
                     warn!("Selected program (nr. {}) not found, killing", selected);
                 }
             } else {
-                switch_to_active(&lock.active, &lock.hypr_data)?;
+                switch_to_active(lock.active.as_ref(), &lock.hypr_data)?;
             }
         } else {
             info!("Not executing switch on close, killing");
@@ -63,7 +69,7 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
         drop(lock);
     }
     deactivate_submap()?;
-    *(ACTIVE
+    *(global::OPEN
         .get()
         .expect("ACTIVE not set")
         .lock()
@@ -83,59 +89,44 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
 
 pub(crate) fn init(
     share: &Share,
-    config: Config,
+    simple_config: SimpleConfig,
     gui_config: GuiConfig,
-    submap_config: Submap,
+    submap_config: SubmapConfig,
     client_id: u8,
 ) -> anyhow::Result<()> {
-    let (clients_data, active) = collect_data(config.clone())
-        .with_context(|| format!("Failed to collect data with config {:?}", config.clone()))?;
-
-    let active = match config.switch_type {
-        SwitchType::Client => {
-            if let Some(add) = active.0 {
-                Active::Client(add)
-            } else {
-                Active::Unknown
-            }
-        }
-        SwitchType::Workspace => {
-            if let Some(ws) = active.1 {
-                Active::Workspace(ws)
-            } else {
-                Active::Unknown
-            }
-        }
-        SwitchType::Monitor => {
-            if let Some(mon) = active.2 {
-                Active::Monitor(mon)
-            } else {
-                Active::Unknown
-            }
-        }
-    };
+    let (clients_data, active) = collect_data(simple_config.clone()).with_context(|| {
+        format!(
+            "Failed to collect data with config {:?}",
+            simple_config.clone()
+        )
+    })?;
 
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
 
         lock.active = active;
-        lock.simple_config = config.clone();
+        lock.simple_config = simple_config.clone();
         lock.gui_config = gui_config.clone();
         lock.hypr_data = clients_data;
         drop(lock);
     }
 
     match submap_config {
-        Submap::Config(submap_config) => {
-            generate_submap(submap_config)?;
+        SubmapConfig::Config {
+            mod_key,
+            key,
+            reverse_key,
+            close,
+        } => {
+            generate_submap(mod_key, key, reverse_key, close)?;
         }
-        Submap::Name((submap_name, _)) => {
-            activate_submap(&submap_name)?;
+        SubmapConfig::Name { name, .. } => {
+            activate_submap(&name)?;
         }
     }
 
-    *(ACTIVE
+    *(global::OPEN
         .get()
         .expect("ACTIVE not set")
         .lock()

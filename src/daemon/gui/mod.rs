@@ -1,5 +1,5 @@
 use crate::envs::SHOW_LAUNCHER;
-use crate::{GUISend, InitConfig, Share, Submap, UpdateCause};
+use crate::{GUISend, InitConfig, Share, SubmapConfig, UpdateCause, Warn};
 use anyhow::Context;
 use async_channel::{Receiver, Sender};
 use gtk4::gdk::{Display, Monitor};
@@ -12,7 +12,6 @@ use gtk4::{
 };
 use gtk4_layer_shell::LayerShell;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
-pub use maps::{get_desktop_files_debug, get_icon_name_debug, reload_desktop_maps};
 use std::cmp::max;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -21,6 +20,10 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use tracing::{error, info, span, trace, warn, Level};
 
+pub use debug::debug_gui;
+pub use maps::reload_desktop_maps;
+
+mod debug;
 mod icon;
 mod launcher;
 mod maps;
@@ -75,17 +78,14 @@ fn connect_app(
                 init_config.workspaces_per_row as u32,
                 app,
             )
-            .unwrap_or_else(|e| {
-                warn!("{:?}", e);
-            });
+            .warn("Failed to create windows");
             drop(monitor_data_list);
         }
 
         let launcher: LauncherRefs = Rc::new(Mutex::new(None));
         if *SHOW_LAUNCHER {
-            launcher::create_launcher(&share, launcher.clone(), app).unwrap_or_else(|e| {
-                warn!("{:?}", e);
-            });
+            launcher::create_launcher(&share, launcher.clone(), app)
+                .warn("Failed to create launcher");
         }
 
         glib::spawn_future_local(clone!(
@@ -151,7 +151,7 @@ async fn handle_updates(
                         &mut monitor_data_list_unlocked.iter_mut()
                     {
                         if let Some(monitors) = &data.gui_config.monitors {
-                            if !monitors.0.iter().any(|m| *m == monitor_data.connector) {
+                            if !monitors.iter().any(|m| *m == monitor_data.connector) {
                                 continue;
                             }
                         }
@@ -189,7 +189,7 @@ async fn handle_updates(
                         );
                         trace!("Refresh window {:?}", window);
                         windows::update_windows(monitor_data, &data)
-                            .unwrap_or_else(|e| warn!("{:?}", e));
+                            .warn("Failed to update windows");
                     }
                 }
                 Ok((GUISend::Refresh, update_cause)) => {
@@ -198,34 +198,34 @@ async fn handle_updates(
                     // only update launcher wen using default close mode
                     if data.gui_config.show_launcher {
                         launcher_unlocked.as_ref().inspect(|(_, e, l)| {
-                            if data.launcher.selected.is_none() && !e.text().is_empty() {
-                                data.launcher.selected = Some(0);
+                            if data.launcher_config.selected.is_none() && !e.text().is_empty() {
+                                data.launcher_config.selected = Some(0);
                             }
-                            if data.launcher.selected.is_some() && e.text().is_empty() {
-                                data.launcher.selected = None;
+                            if data.launcher_config.selected.is_some() && e.text().is_empty() {
+                                data.launcher_config.selected = None;
                             }
-                            let reverse_key = match &data.submap_info {
-                                Submap::Name((_, r)) => r,
-                                Submap::Config(c) => &c.reverse_key,
+                            let reverse_key = match &data.submap_config {
+                                SubmapConfig::Name { reverse_key, .. } => reverse_key,
+                                SubmapConfig::Config { reverse_key, .. } => reverse_key,
                             };
                             let execs = launcher::update_launcher(
                                 &e.text(),
                                 l,
-                                data.launcher.selected,
+                                data.launcher_config.selected,
                                 reverse_key,
                             );
-                            data.launcher.execs = execs;
+                            data.launcher_config.execs = execs;
                         });
                     }
                     for (window, (monitor_data, _)) in &mut monitor_data_list_unlocked.iter_mut() {
                         if let Some(monitors) = &data.gui_config.monitors {
-                            if !monitors.0.iter().any(|m| *m == monitor_data.connector) {
+                            if !monitors.iter().any(|m| *m == monitor_data.connector) {
                                 continue;
                             }
                         }
                         trace!("Refresh window {:?}", window);
                         windows::update_windows(monitor_data, &data)
-                            .unwrap_or_else(|e| warn!("{:?}", e));
+                            .warn("Failed to update windows");
                     }
                 }
                 Ok((GUISend::Hide, update_cause)) => {
