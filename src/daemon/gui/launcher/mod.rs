@@ -6,6 +6,7 @@ use crate::{Exec, GUISend, ReverseKey, Share, UpdateCause, Warn};
 use anyhow::Context;
 use gtk4::gdk::Key;
 use gtk4::glib::{clone, Propagation};
+use gtk4::pango::EllipsizeMode;
 use gtk4::prelude::{BoxExt, EditableExt, GtkWindowExt, WidgetExt};
 use gtk4::{
     gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, IconSize, Image,
@@ -140,6 +141,7 @@ pub(super) fn update_launcher(
         let widget = create_launch_widget(
             name,
             icon,
+            exec,
             &match reverse_key {
                 ReverseKey::Mod(m) => match i {
                     0 => "Return".to_string(),
@@ -175,6 +177,7 @@ pub(super) fn update_launcher(
 fn create_launch_widget(
     name: &str,
     icon_path: &Option<Box<Path>>,
+    exec: &str,
     index: &str,
     selected: bool,
 ) -> ListBoxRow {
@@ -195,10 +198,23 @@ fn create_launch_widget(
     let title = Label::builder()
         .halign(Align::Start)
         .valign(Align::Center)
-        .hexpand(true)
         .label(name)
         .build();
     hbox.append(&title);
+
+    let exec = Label::builder()
+        .halign(Align::Start)
+        .valign(Align::Center)
+        .hexpand(true)
+        .css_classes(vec!["launcher-exec"])
+        .ellipsize(EllipsizeMode::End)
+        .label(if exec.contains("flatpak run") {
+            "(flatpak)".to_string()
+        } else {
+            format!("({})", exec)
+        })
+        .build();
+    hbox.append(&exec);
 
     let index = Label::builder()
         .halign(Align::End)
