@@ -1,10 +1,12 @@
+use crate::daemon::gui::gui_handle::{
+    gui_change_entry_input, gui_change_selected_program, gui_exec,
+};
 use crate::daemon::gui::icon::apply_texture_path;
 use crate::daemon::gui::maps::get_all_desktop_files;
-use crate::daemon::gui::switch_fns::exec_gui;
 use crate::daemon::gui::LauncherRefs;
 use crate::envs::{LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
-use crate::{Exec, GUISend, ReverseKey, Share, UpdateCause, Warn};
-use anyhow::Context;
+use crate::{Exec, ReverseKey, Share, Warn};
+use async_channel::Sender;
 use gtk4::gdk::Key;
 use gtk4::glib::{clone, Propagation};
 use gtk4::pango::EllipsizeMode;
@@ -14,7 +16,7 @@ use gtk4::{
     EventSequenceState, GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation,
     SelectionMode,
 };
-use gtk4_layer_shell::{Layer, LayerShell};
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::ops::Deref;
 use std::path::Path;
 use tracing::info;
@@ -23,6 +25,7 @@ pub(super) fn create_launcher(
     share: &Share,
     launcher: LauncherRefs,
     app: &Application,
+    sender: Sender<bool>,
 ) -> anyhow::Result<()> {
     let main_vbox = ListBox::builder()
         .css_classes(vec!["launcher"])
@@ -34,10 +37,7 @@ pub(super) fn create_launcher(
         #[strong]
         share,
         move |_| {
-            let (_, sender, _) = share.deref();
-            sender
-                .send_blocking((GUISend::Refresh, UpdateCause::LauncherUpdate))
-                .warn("Failed to send refresh");
+            gui_change_entry_input(&share);
         }
     ));
     let controller = EventControllerKey::new();
@@ -47,11 +47,11 @@ pub(super) fn create_launcher(
         move |_, k, _, m| {
             match (k, m) {
                 (Key::Down, _) => {
-                    switch(&share, false).warn("Failed to switch");
+                    gui_change_selected_program(&share, false);
                     Propagation::Stop
                 }
                 (Key::Up, _) => {
-                    switch(&share, true).warn("Failed to switch");
+                    gui_change_selected_program(&share, true);
                     Propagation::Stop
                 }
                 (Key::Tab, _) => Propagation::Stop,
@@ -77,12 +77,11 @@ pub(super) fn create_launcher(
         .default_width(10)
         .build();
     window.init_layer_shell();
-    window.set_namespace("hyprswitch");
+    window.set_namespace("hyprswitch_launcher");
     window.set_layer(Layer::Overlay);
-    // using Exclusive causes weird problems
-    window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::OnDemand);
-    window.set_anchor(gtk4_layer_shell::Edge::Top, true);
-    window.set_margin(gtk4_layer_shell::Edge::Top, 20);
+    window.set_keyboard_mode(KeyboardMode::Exclusive);
+    window.set_anchor(Edge::Top, true);
+    window.set_margin(Edge::Top, 20);
 
     window.present();
     glib::spawn_future_local(clone!(
@@ -90,6 +89,14 @@ pub(super) fn create_launcher(
         window,
         async move {
             window.hide();
+        }
+    ));
+
+    window.connect_visible_notify(clone!(
+        #[strong]
+        sender,
+        move |window| {
+            sender.try_send(window.is_visible()).ok();
         }
     ));
 
@@ -216,12 +223,14 @@ fn create_launch_widget(
             .valign(Align::Center)
             .hexpand(true)
             .css_classes(vec!["launcher-exec"])
-            .ellipsize(EllipsizeMode::End)
-            .label(if exec.contains("flatpak run") {
-                "(flatpak)".to_string()
-            } else {
-                format!("({})", exec)
-            })
+            .ellipsize(EllipsizeMode::End) // "flatpak 'run'" = pwa from browser inside flatpak
+            .label(
+                if exec.contains("flatpak run") || exec.contains("flatpak 'run'") {
+                    "(flatpak)".to_string()
+                } else {
+                    format!("({})", exec)
+                },
+            )
             .build();
         hbox.append(&exec);
     } else {
@@ -246,11 +255,11 @@ fn create_launch_widget(
         .vexpand(true)
         .child(&hbox)
         .build();
-    list.add_controller(click_client(&share, raw_index));
+    list.add_controller(click_entry(&share, raw_index));
     list
 }
 
-pub(crate) fn click_client(share: &Share, selected: usize) -> GestureClick {
+pub(crate) fn click_entry(share: &Share, selected: usize) -> GestureClick {
     let gesture = GestureClick::new();
     gesture.connect_pressed(clone!(
         #[strong]
@@ -258,33 +267,8 @@ pub(crate) fn click_client(share: &Share, selected: usize) -> GestureClick {
         move |gesture, _, _, _| {
             gesture.set_state(EventSequenceState::Claimed);
             info!("Exiting on click of launcher entry");
-            exec_gui(&share, selected).warn("Failed to close gui");
+            gui_exec(&share, selected);
         }
     ));
     gesture
-}
-
-pub(crate) fn switch(share: &Share, reverse: bool) -> anyhow::Result<()> {
-    let (latest, send, _) = share.deref();
-    {
-        let mut lock = latest.lock().expect("Failed to lock");
-        let exec_len = lock.launcher_config.execs.len();
-        if let Some(ref mut selected) = lock.launcher_config.selected {
-            if exec_len == 0 {
-                return Ok(());
-            }
-            *selected = if reverse {
-                selected.saturating_sub(1)
-            } else {
-                (*selected + 1).min((exec_len - 1) as u16)
-            };
-        } else {
-            return Ok(());
-        };
-        drop(lock);
-    }
-    send.send_blocking((GUISend::Refresh, UpdateCause::LauncherUpdate))
-        .context("Unable to refresh the GUI")?;
-    // don't wait on receiver as this blocks the gui(gtk event loop) from receiving the refresh
-    Ok(())
 }

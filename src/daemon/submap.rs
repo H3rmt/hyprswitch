@@ -165,6 +165,13 @@ pub(super) fn generate_submap(
             }
         }
 
+        // bind = alt, o, exec, kill $(pidof hyprswitch)
+        #[cfg(debug_assertions)]
+        keyword_list.push((
+            "bind",
+            "alt, o, exec, kill $(pidof hyprswitch) && hyprctl dispatch submap reset".to_string(),
+        ));
+
         keyword_list.push(("submap", "reset".to_string()));
 
         let name = generate_submap_name(&keyword_list);
