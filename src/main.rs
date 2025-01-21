@@ -121,13 +121,12 @@ fn main() -> anyhow::Result<()> {
             submap_info,
             reverse_key,
         } => {
-            client::send_version_check_command()
-                .context("Failed to send check command to daemon")?;
-
             if !client::daemon_running() {
                 toast("Daemon not running (add ``exec-once = hyprswitch init &`` to your Hyprland config or run ``hyprswitch init &`` it in a terminal)\nvisit https://github.com/H3rmt/hyprswitch/wiki/Examples to see Example configs");
                 return Err(anyhow::anyhow!("Daemon not running"));
             }
+            client::send_version_check_command()
+                .context("Failed to send check command to daemon")?;
 
             let config = SimpleConfig::from(simple_config);
             let gui_config = GuiConfig::from(gui_conf);

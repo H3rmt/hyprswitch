@@ -154,7 +154,11 @@ impl Display for UpdateCause {
 pub type Payload = (GUISend, UpdateCause);
 
 // shared ARC with Mutex and Notify for new_gui and update_gui
-pub type Share = Arc<(Mutex<SharedData>, Sender<Payload>, Receiver<bool>)>;
+pub type Share = Arc<(
+    Mutex<SharedData>,
+    Sender<Payload>,
+    Receiver<Option<Payload>>,
+)>;
 
 pub fn get_socket_path_buff() -> PathBuf {
     let mut buf = if let Ok(runtime_path) = var("XDG_RUNTIME_DIR") {
@@ -170,22 +174,30 @@ pub fn get_socket_path_buff() -> PathBuf {
     buf.push("hyprswitch.sock");
     buf
 }
-pub trait Warn {
-    fn warn(&self, msg: &str);
+pub trait Warn<A> {
+    fn warn(self, msg: &str) -> Option<A>;
 }
 
-impl Warn for Option<()> {
-    fn warn(&self, msg: &str) {
-        if self.is_none() {
-            warn!("{}", msg);
+impl<A> Warn<A> for Option<A> {
+    fn warn(self, msg: &str) -> Option<A> {
+        match self {
+            Some(o) => Some(o),
+            None => {
+                warn!("{}", msg);
+                None
+            }
         }
     }
 }
 
-impl<E: Display> Warn for Result<(), E> {
-    fn warn(&self, msg: &str) {
-        if let Err(e) = self {
-            warn!("{}: {}", msg, e);
+impl<A, E: Display> Warn<A> for Result<A, E> {
+    fn warn(self, msg: &str) -> Option<A> {
+        match self {
+            Ok(o) => Some(o),
+            Err(e) => {
+                warn!("{}: {}", msg, e);
+                None
+            }
         }
     }
 }

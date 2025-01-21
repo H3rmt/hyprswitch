@@ -11,7 +11,7 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
 use std::time::Instant;
 use std::{env, thread};
-use tracing::{error, info, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 use tracing::{span, Level};
 
 pub(super) fn start_handler_blocking(share: &Share) {
@@ -132,7 +132,7 @@ pub(super) fn handle_client_transfer(
 
     match transfer.transfer {
         TransferType::VersionCheck => {
-            info!("Received version check command");
+            debug!("Received version check command"); // use debug here to not spam the logs
             return_success(true, &mut stream)?;
         }
         TransferType::Open => {

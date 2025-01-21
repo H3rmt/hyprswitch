@@ -18,7 +18,7 @@ pub struct InitOpts {
     pub workspaces_per_row: u8,
 
     /// The size factor (float) for the GUI (original_size / 30 * size_factor)
-    #[arg(long, default_value = "5.5")]
+    #[arg(long, default_value = "6")]
     pub size_factor: f64,
 }
 

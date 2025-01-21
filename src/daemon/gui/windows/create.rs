@@ -1,21 +1,23 @@
-use std::collections::HashMap;
+use crate::daemon::gui::windows::click::click_monitor;
+use crate::daemon::gui::MonitorData;
+use crate::handle::get_monitors;
+use crate::Share;
 use anyhow::Context;
-use gtk4::{glib, Application, ApplicationWindow, FlowBox, Orientation, Overlay, SelectionMode};
+use async_channel::Sender;
 use gtk4::gdk::{Display, Monitor};
 use gtk4::glib::clone;
 use gtk4::prelude::{DisplayExt, GtkWindowExt, ListModelExtManual, MonitorExt, WidgetExt};
-use gtk4_layer_shell::{Layer, LayerShell};
+use gtk4::{glib, Application, ApplicationWindow, FlowBox, Orientation, Overlay, SelectionMode};
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use std::collections::HashMap;
 use tracing::trace;
-use crate::daemon::gui::MonitorData;
-use crate::daemon::gui::windows::click::click_monitor;
-use crate::handle::get_monitors;
-use crate::Share;
 
 pub fn create_windows(
     share: &Share,
     monitor_data_list: &mut HashMap<ApplicationWindow, (MonitorData, Monitor)>,
     workspaces_per_row: u32,
     app: &Application,
+    sender: Sender<bool>,
 ) -> anyhow::Result<()> {
     let monitors = get_monitors();
     let gtk_monitors = Display::default()
@@ -52,8 +54,8 @@ pub fn create_windows(
         window.init_layer_shell();
         window.set_namespace("hyprswitch");
         window.set_layer(Layer::Overlay);
-        window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::None);
-        window.set_anchor(gtk4_layer_shell::Edge::Bottom, true);
+        window.set_keyboard_mode(KeyboardMode::None);
+        window.set_anchor(Edge::Bottom, true);
         window.set_monitor(monitor);
         window.present();
         glib::spawn_future_local(clone!(
@@ -63,17 +65,27 @@ pub fn create_windows(
                 window.hide();
             }
         ));
+        window.connect_visible_notify(clone!(
+            #[strong]
+            sender,
+            move |window| {
+                sender.try_send(window.is_visible()).ok();
+            }
+        ));
 
         monitor_data_list.insert(
             window,
-            (MonitorData {
-                connector: monitor.connector().unwrap_or_default(),
-                id: monitor_id,
-                workspaces_flow,
-                workspaces_flow_overlay: (workspaces_flow_overlay, None),
-                workspace_refs: HashMap::new(),
-                client_refs: HashMap::new(),
-            }, monitor.clone()),
+            (
+                MonitorData {
+                    connector: monitor.connector().unwrap_or_default(),
+                    id: monitor_id,
+                    workspaces_flow,
+                    workspaces_flow_overlay: (workspaces_flow_overlay, None),
+                    workspace_refs: HashMap::new(),
+                    client_refs: HashMap::new(),
+                },
+                monitor.clone(),
+            ),
         );
         trace!("[GUI] Created window for monitor {:?}", monitor.connector());
     }
