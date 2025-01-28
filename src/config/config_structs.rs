@@ -32,6 +32,8 @@ pub struct Launcher {
     pub default_terminal: Option<String>,
     #[default = true]
     pub show_execs: bool,
+    #[default = 300]
+    pub animate_launch_time_ms: u64,
 }
 
 #[derive(SmartDefault, Debug, Deserialize, Serialize)]
