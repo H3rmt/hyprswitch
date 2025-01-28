@@ -1,16 +1,15 @@
 use crate::client::daemon_running;
 use crate::daemon::handle_fns::{close, init, switch};
-use crate::envs::ASYNC_SOCKET;
 use crate::{get_socket_path_buff, global, toast, Share, Transfer, TransferType};
 use anyhow::Context;
 use rand::Rng;
+use std::env;
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
 use std::os::fd::{FromRawFd, RawFd};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
 use std::time::Instant;
-use std::{env, thread};
 use tracing::{debug, error, info, trace, warn};
 use tracing::{span, Level};
 
@@ -48,21 +47,11 @@ pub(super) fn start_handler_blocking(share: &Share) {
         match stream {
             Ok(stream) => {
                 let arc_share = share.clone();
-                if *ASYNC_SOCKET {
-                    thread::spawn(move || {
-                        handle_client(stream, arc_share).context("Failed to handle client")
-                            .unwrap_or_else(|e| {
-                                toast(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e));
-                                warn!("{:?}", e)
-                            });
-                    });
-                } else {
-                    handle_client(stream, arc_share).context("Failed to handle client")
+                handle_client(stream, arc_share).context("Failed to handle client")
                         .unwrap_or_else(|e| {
                             toast(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e));
                             warn!("{:?}", e)
                         });
-                }
             }
             Err(e) => {
                 error!("Failed to accept client: {}", e);
