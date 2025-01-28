@@ -2,10 +2,6 @@
     border: unset;
 }
 
-.monochrome {
-    filter: grayscale(100%);
-}
-
 :root {
     --border-color: rgba(90, 90, 120, 0.4);
     --border-color-active: rgba(239, 9, 9, 0.9);
@@ -14,6 +10,23 @@
     --index-border-color: rgba(20, 170, 170, 0.7);
     --border-radius: 12px;
     --border-size: 3px;
+}
+
+.monochrome {
+    filter: grayscale(100%);
+}
+
+.rotating {
+    animation: rotating 1s linear infinite;
+}
+
+@keyframes rotating {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .window {

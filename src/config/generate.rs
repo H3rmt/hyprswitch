@@ -21,7 +21,7 @@ pub fn create_binds_and_submaps<'a>(
     let current_exe = current_exe.to_string_lossy();
     trace!("current_exe: {}", current_exe);
 
-    let rand_id = rand::thread_rng().gen_range(10..=99);
+    let rand_id = rand::rng().random_range(10..=99);
 
     generate_daemon_start(&mut keyword_list, config.general, &current_exe);
     for (i, bind) in config.binds.into_iter().enumerate() {

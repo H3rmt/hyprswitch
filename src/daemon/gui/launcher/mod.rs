@@ -4,11 +4,11 @@ use crate::daemon::gui::gui_handle::{
 use crate::daemon::gui::icon::apply_texture_path;
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
-use crate::envs::{LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
-use crate::{Exec, ReverseKey, Share, Warn};
+use crate::envs::{LAUNCHER_ANIMATE_LAUNCH_TIME, LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
+use crate::{Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause, Warn};
 use async_channel::Sender;
-use gtk4::gdk::Key;
-use gtk4::glib::{clone, Propagation};
+use gtk4::gdk::{Key, Texture};
+use gtk4::glib::{clone, ControlFlow, Propagation};
 use gtk4::pango::EllipsizeMode;
 use gtk4::prelude::{BoxExt, EditableExt, GestureExt, GtkWindowExt, WidgetExt};
 use gtk4::{
@@ -19,7 +19,9 @@ use gtk4::{
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::ops::Deref;
 use std::path::Path;
-use tracing::info;
+use std::thread;
+use std::time::Duration;
+use tracing::{info, trace};
 
 pub(super) fn create_launcher(
     share: &Share,
@@ -77,6 +79,7 @@ pub(super) fn create_launcher(
         .default_width(10)
         .build();
     window.init_layer_shell();
+    // new namespace needed for dimaround
     window.set_namespace("hyprswitch_launcher");
     window.set_layer(Layer::Overlay);
     window.set_keyboard_mode(KeyboardMode::Exclusive);
@@ -112,7 +115,8 @@ pub(super) fn update_launcher(
     share: Share,
     text: &str,
     list: &ListBox,
-    selected: Option<u16>,
+    selected: Option<usize>,
+    launch_state: LaunchState,
     reverse_key: &ReverseKey,
 ) -> Vec<Exec> {
     while let Some(child) = list.first_child() {
@@ -174,7 +178,11 @@ pub(super) fn update_launcher(
                     }
                 }
             },
-            selected == Some(index as u16),
+            if selected == Some(index) {
+                Some(launch_state)
+            } else {
+                None
+            },
         );
         list.append(&widget);
         execs.push(Exec {
@@ -194,21 +202,34 @@ fn create_launch_widget(
     exec: &str,
     raw_index: usize,
     index: &str,
-    selected: bool,
+    selected: Option<LaunchState>,
 ) -> ListBoxRow {
     let hbox = gtk4::Box::builder()
         .orientation(Orientation::Horizontal)
-        .spacing(5)
+        .spacing(8)
         .hexpand(true)
         .vexpand(true)
         .build();
 
-    if let Some(icon_path) = icon_path {
-        let icon = Image::builder().icon_size(IconSize::Large).build();
-        apply_texture_path(&gio::File::for_path(icon_path), &icon, true)
-            .warn("Failed to apply icon");
-        hbox.append(&icon);
-    }
+    let icon = Image::builder().icon_size(IconSize::Large).build();
+    match selected {
+        Some(LaunchState::Launching) => {
+            if let Ok(texture) =
+                Texture::from_bytes(&glib::Bytes::from_static(include_bytes!("./launch.svg")))
+            {
+                icon.set_paintable(Some(&texture));
+                icon.add_css_class("rotating");
+                icon.set_icon_size(IconSize::Large);
+            }
+        }
+        _ => {
+            if let Some(icon_path) = icon_path {
+                apply_texture_path(&gio::File::for_path(icon_path), &icon, true)
+                    .warn("Failed to apply icon");
+            }
+        }
+    };
+    hbox.append(&icon);
 
     let title = Label::builder()
         .halign(Align::Start)
@@ -245,7 +266,7 @@ fn create_launch_widget(
     hbox.append(&index);
 
     let list = ListBoxRow::builder()
-        .css_classes(if selected {
+        .css_classes(if selected.is_some() {
             vec!["launcher-item", "launcher-item-selected"]
         } else {
             vec!["launcher-item"]
@@ -271,4 +292,38 @@ pub(crate) fn click_entry(share: &Share, selected: usize) -> GestureClick {
         }
     ));
     gesture
+}
+
+pub fn show_launch_spawn(share: Share, cause: Option<u8>) {
+    thread::spawn(move || {
+        let (latest, send, receive) = share.deref();
+        {
+            let mut lat = latest.lock().expect("Failed to lock");
+            lat.launcher_config.launch_state = LaunchState::Launching;
+            drop(lat);
+        }
+
+        trace!("Sending refresh to GUI");
+        send.send_blocking((GUISend::Refresh, UpdateCause::BackgroundThread(cause)))
+            .warn("Unable to refresh the GUI");
+        let rec = receive.recv_blocking().warn("Unable to receive GUI update");
+        trace!("Received refresh finish from GUI: {rec:?}");
+
+        // wait for the GUI to update
+        thread::sleep(Duration::from_millis(*LAUNCHER_ANIMATE_LAUNCH_TIME));
+
+        {
+            let mut lat = latest.lock().expect("Failed to lock");
+            lat.launcher_config.launch_state = LaunchState::Default;
+            drop(lat);
+        }
+
+        trace!("Sending hide to GUI");
+        send.send_blocking((GUISend::Hide, UpdateCause::BackgroundThread(cause)))
+            .warn("Unable to hide the GUI");
+        let rec = receive.recv_blocking().warn("Unable to receive GUI update");
+        trace!("Received hide finish from GUI: {rec:?}");
+
+        ControlFlow::Break
+    });
 }

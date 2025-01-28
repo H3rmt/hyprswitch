@@ -20,14 +20,14 @@ tracing-subscriber = { version = "0.3.19", features = ["std", "fmt", "env-filter
 anyhow = { version = "1.0.95" }
 lazy_static = { version = "1.5.0" }
 notify-rust = { version = "4.11.3", features = ["zbus", "serde"], default-features = false }
-rand = { version = "0.8.5" }
+rand = { version = "0.9.0" }
 semver = "1.0.24"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = { version = "1.0.135" }
 smart-default = { version = "0.7.1" }
 regex = { version = "1.11.1" }
 
-gtk4 = { version = "0.9.5", default-features = false }
+gtk4 = { version = "0.9.5", default-features = false, features = ["v4_6"] }
 gtk4-layer-shell = { version = "0.4.0" }
 
 ron = { version = "0.8.1", optional = true }
@@ -42,5 +42,5 @@ lto = true
 opt-level = "s"
 
 [features]
-default = ["config"]
+default = []
 config = ["ron"]

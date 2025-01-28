@@ -54,7 +54,7 @@ pub struct GuiConf {
     pub show_workspaces_on_all_monitors: bool,
 
     /// Show the application launcher in the GUI
-    #[arg(long, default_value = "true", action = clap::ArgAction::Set, default_missing_value = "true", num_args=0..=1
+    #[arg(long, default_value = "false", action = clap::ArgAction::Set, default_missing_value = "true", num_args=0..=1
     )]
     pub show_launcher: bool,
 }

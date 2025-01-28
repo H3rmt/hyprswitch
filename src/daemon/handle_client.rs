@@ -44,9 +44,9 @@ pub(super) fn start_handler_blocking(share: &Share) {
         listener
     };
 
-    loop {
-        match listener.accept() {
-            Ok((stream, _)) => {
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
                 let arc_share = share.clone();
                 if *ASYNC_SOCKET {
                     thread::spawn(move || {
@@ -73,7 +73,7 @@ pub(super) fn start_handler_blocking(share: &Share) {
 
 pub(super) fn handle_client(stream: UnixStream, share: Share) -> anyhow::Result<()> {
     let now = Instant::now();
-    let rand_id = rand::thread_rng().gen_range(100..=255);
+    let rand_id = rand::rng().random_range(100..=255);
     let _span = span!(Level::TRACE, "handle_client", id = rand_id).entered();
 
     let reader_stream = stream.try_clone().context("Failed to clone stream")?;

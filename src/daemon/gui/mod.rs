@@ -12,14 +12,14 @@ use gtk4::{
     Entry, FlowBox, Label, ListBox, Overlay, STYLE_PROVIDER_PRIORITY_APPLICATION,
     STYLE_PROVIDER_PRIORITY_USER,
 };
-use gtk4_layer_shell::LayerShell;
+use gtk4_layer_shell::{Edge, LayerShell};
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use std::cmp::max;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use tracing::{error, info, span, trace, warn, Level};
 
 pub use debug::debug_gui;
@@ -31,6 +31,8 @@ mod icon;
 mod launcher;
 mod maps;
 mod windows;
+
+pub use launcher::show_launch_spawn;
 
 pub(super) fn start_gui_blocking(
     share: &Share,
@@ -147,6 +149,7 @@ async fn handle_updates(
                     let _span =
                         span!(Level::TRACE, "new", cause = update_cause.to_string()).entered();
 
+                    let mut windows = 0;
                     for (window, (monitor_data, monitor)) in
                         &mut monitor_data_list_unlocked.iter_mut()
                     {
@@ -155,8 +158,8 @@ async fn handle_updates(
                                 continue;
                             }
                         }
-                        trace!("Rebuilding window {:?}", window);
 
+                        // TODO only open when using --close = default
                         if data.gui_config.show_launcher {
                             let workspaces = data
                                 .hypr_data
@@ -172,12 +175,18 @@ async fn handle_updates(
                                 .ceil() as i32;
                             let height = monitor.geometry().height();
                             window.set_margin(
-                                gtk4_layer_shell::Edge::Bottom,
+                                Edge::Bottom,
                                 max(30, (height / 2) - ((height / 5) * rows)),
                             );
+                            window.set_anchor(Edge::Bottom, true);
+                        } else {
+                            window.set_anchor(Edge::Bottom, false);
                         }
 
+                        trace!("Showing window {:?}", window);
+                        windows += 1;
                         window.set_visible(true);
+
                         windows::init_windows(
                             share.clone(),
                             &data.hypr_data.workspaces,
@@ -187,18 +196,27 @@ async fn handle_updates(
                             data.gui_config.show_workspaces_on_all_monitors,
                             init_config.size_factor,
                         );
+
                         trace!("Refresh window {:?}", window);
                         windows::update_windows(monitor_data, &data)
                             .warn("Failed to update windows");
                     }
                     // only open launcher when opening with default close mode
                     if data.gui_config.show_launcher {
-                        launcher_unlocked.as_ref().inspect(|(w, e, _)| {
-                            w.set_visible(true);
-                            w.focus();
-                            e.set_text("");
-                            e.grab_focus();
+                        launcher_unlocked.as_ref().inspect(|(window, entry, _)| {
+                            trace!("Showing window {:?}", window);
+                            windows += 1;
+                            window.set_visible(true);
+                            window.focus();
+                            entry.set_text("");
+                            entry.grab_focus();
                         });
+                    }
+
+                    // waits until all windows are visible
+                    for _ in 0..windows {
+                        // receive async not to block gtk event loop
+                        visible_receiver.recv().await.expect("Failed to receive");
                     }
                 }
                 Ok((GUISend::Refresh, ref update_cause)) => {
@@ -222,6 +240,7 @@ async fn handle_updates(
                                 &e.text(),
                                 l,
                                 data.launcher_config.selected,
+                                data.launcher_config.launch_state,
                                 reverse_key,
                             );
                             data.launcher_config.execs = execs;
@@ -253,6 +272,7 @@ async fn handle_updates(
                         window.set_visible(false);
                     }
 
+                    // waits until all windows are hidden (needed for launcher with keyboard mode exclusive [commit:b34b5eb8157292e19156ca0650a10f1cb0307d8d])
                     for _ in 0..windows {
                         // receive async not to block gtk event loop
                         visible_receiver.recv().await.expect("Failed to receive");
@@ -269,10 +289,10 @@ async fn handle_updates(
         }
 
         return_sender
-            .send(mess.ok())
+            .send(mess.clone().ok())
             .await
             .expect("Failed to send return_sender");
-        trace!("GUI update finished");
+        trace!("GUI update finished: {mess:?}");
     }
 }
 
@@ -310,30 +330,6 @@ fn apply_css(custom_css: Option<&PathBuf>) {
 }
 
 type LauncherRefs = Rc<Mutex<Option<(ApplicationWindow, Entry, ListBox)>>>;
-
-#[allow(dead_code)]
-#[allow(unused_variables)]
-/// In the future, listen to monitor changes and update the GUI accordingly
-fn start_listen_monitors_thread(
-    share: &Share,
-    monitor_data_list: &Arc<Mutex<HashMap<ApplicationWindow, MonitorData>>>,
-    workspaces_per_row: u32,
-) {
-    let share = share.clone();
-    let monitor_data_list = monitor_data_list.clone();
-    // std::thread::spawn(move || {
-    //     let share_clone = share.clone();
-    //     let mut event_listener = EventListener::new();
-    //     event_listener.add_monitor_added_handler(move |_| {
-    //         create_windows_save(&share_clone.clone(), monitor_data_list.deref(), workspaces_per_row);
-    //     });
-    //     let share_clone = share.clone();
-    //     event_listener.add_monitor_removed_handler(move |_| {
-    //         create_windows_save(&share_clone.clone(), monitor_data_list.deref(), workspaces_per_row);
-    //     });
-    //     event_listener.start_listener().context("Failed to start event listener")
-    // });
-}
 
 pub struct MonitorData {
     id: MonitorId,

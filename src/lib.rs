@@ -140,6 +140,7 @@ pub enum UpdateCause {
     Client(u8),
     LauncherUpdate,
     GuiClick,
+    BackgroundThread(Option<u8>),
 }
 
 impl Display for UpdateCause {
@@ -148,6 +149,10 @@ impl Display for UpdateCause {
             UpdateCause::Client(id) => write!(f, "id:{}", id),
             UpdateCause::LauncherUpdate => write!(f, "lu"),
             UpdateCause::GuiClick => write!(f, "gc"),
+            UpdateCause::BackgroundThread(op) => match op {
+                Some(id) => write!(f, "bt:{}", id),
+                None => write!(f, "bt"),
+            },
         }
     }
 }

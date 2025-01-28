@@ -8,6 +8,7 @@ pub mod gui;
 mod handle_client;
 mod handle_fns;
 mod submap;
+mod cache;
 
 pub use submap::deactivate_submap;
 
