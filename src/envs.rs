@@ -25,10 +25,6 @@ lazy_static! {
         env::var("DEFAULT_TERMINAL").map_or(None, |s| Some(s.to_string()));
 
     // not implemented in config generator
-    pub static ref ASYNC_SOCKET: bool = env::var("ASYNC_SOCKET")
-        .map(|s| s.parse().expect("Failed to parse ASYNC_SOCKET"))
-        .unwrap_or(true);
-    // not implemented in config generator
     pub static ref LOG_MODULE_PATH: bool = env::var("LOG_MODULE_PATH")
         .map(|s| s.parse().expect("Failed to parse LOG_MODULE_PATH"))
         .unwrap_or(false);
@@ -48,5 +44,5 @@ lazy_static! {
 }
 
 pub fn envvar_dump() {
-    debug!("ENV dump: ICON_SIZE: {:?}, SHOW_DEFAULT_ICON: {:?}, SHOW_LAUNCHER: {:?}, LAUNCHER_MAX_ITEMS: {:?}, DEFAULT_TERMINAL: {:?}, ASYNC_SOCKET: {:?}, LOG_MODULE_PATH: {:?}, REMOVE_HTML_FROM_WORKSPACE_NAME: {:?}, DISABLE_TOASTS: {:?}, SHOW_LAUNCHER_EXECS: {:?}, LAUNCHER_ANIMATE_LAUNCH_TIME: {:?}", *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS, *DEFAULT_TERMINAL, *ASYNC_SOCKET, *LOG_MODULE_PATH, *REMOVE_HTML_FROM_WORKSPACE_NAME, *DISABLE_TOASTS, *SHOW_LAUNCHER_EXECS, *LAUNCHER_ANIMATE_LAUNCH_TIME);
+    debug!("ENV dump: ICON_SIZE: {:?}, SHOW_DEFAULT_ICON: {:?}, SHOW_LAUNCHER: {:?}, LAUNCHER_MAX_ITEMS: {:?}, DEFAULT_TERMINAL: {:?}, LOG_MODULE_PATH: {:?}, REMOVE_HTML_FROM_WORKSPACE_NAME: {:?}, DISABLE_TOASTS: {:?}, SHOW_LAUNCHER_EXECS: {:?}, LAUNCHER_ANIMATE_LAUNCH_TIME: {:?}", *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS, *DEFAULT_TERMINAL, *LOG_MODULE_PATH, *REMOVE_HTML_FROM_WORKSPACE_NAME, *DISABLE_TOASTS, *SHOW_LAUNCHER_EXECS, *LAUNCHER_ANIMATE_LAUNCH_TIME);
 }
