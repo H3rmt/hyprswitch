@@ -1,4 +1,6 @@
+use crate::daemon::cache::cache_run;
 use crate::daemon::deactivate_submap;
+use crate::daemon::gui::launcher::show_launch_spawn;
 use crate::daemon::gui::reload_desktop_maps;
 use crate::handle::{clear_recent_clients, run_program, switch_to_active};
 use crate::{global, Active, GUISend, Share, UpdateCause, Warn};
@@ -65,7 +67,7 @@ pub(crate) fn gui_change_selected_program(share: &Share, reverse: bool) {
             *selected = if reverse {
                 selected.saturating_sub(1)
             } else {
-                (*selected + 1).min((exec_len - 1) as u16)
+                (*selected + 1).min(exec_len - 1)
             };
         } else {
             return;
@@ -135,18 +137,15 @@ pub(crate) fn gui_exec(share: &Share, selected: usize) {
         #[strong]
         share,
         move || {
-            let (latest, send, receive) = share.deref();
-
-            trace!("Sending hide to GUI");
-            send.send_blocking((GUISend::Hide, UpdateCause::GuiClick))
-                .warn("Unable to hide the GUI");
-            let rec = receive.recv_blocking().warn("Unable to receive GUI update");
-            trace!("Received hide finish from GUI: {rec:?}");
+            show_launch_spawn(share.clone(), None);
+            let (latest, _, _) = share.deref();
 
             {
-                let lock = latest.lock().expect("Failed to lock");
+                let mut lock = latest.lock().expect("Failed to lock");
+                lock.launcher_config.selected = Some(selected);
                 if let Some(exec) = lock.launcher_config.execs.get(selected) {
                     run_program(&exec.exec, &exec.path, exec.terminal);
+                    cache_run(&exec.exec).warn("Failed to cache run");
                 } else {
                     warn!("Selected program (nr. {}) not found, closing", selected);
                 }

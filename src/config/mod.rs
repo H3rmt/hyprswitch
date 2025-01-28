@@ -31,7 +31,7 @@ pub fn load() -> anyhow::Result<Config> {
 }
 
 fn get_path() -> Option<PathBuf> {
-    env::var_os("HYPRSWITCH_CONFIG")
+    env::var_os("HYPRSWITCH_CONFIG_FILE")
         .map(PathBuf::from)
         .or_else(|| {
             get_config_dir().map(|mut path| {

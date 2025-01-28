@@ -58,5 +58,13 @@ pub struct GuiConfig {
 #[derive(Debug, Default)]
 pub struct LauncherConfig {
     pub execs: Vec<Exec>,
-    pub selected: Option<u16>,
+    pub selected: Option<usize>,
+    pub launch_state: LaunchState,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub enum LaunchState {
+    #[default]
+    Default,
+    Launching,
 }

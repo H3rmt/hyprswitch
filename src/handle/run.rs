@@ -1,9 +1,9 @@
 use crate::envs::DEFAULT_TERMINAL;
 use crate::Warn;
-use std::io;
 use std::ops::Deref;
-use std::process::{ Command, Stdio};
-use tracing::{info};
+use std::process::{Command, Stdio};
+use std::{io, thread};
+use tracing::{debug, info};
 
 pub fn run_program(run: &str, path: &Option<Box<str>>, terminal: bool) {
     if terminal {
@@ -35,10 +35,20 @@ fn run_command(command: &mut Command, run: &str, path: &Option<Box<str>>) -> io:
         command.current_dir(path.as_ref());
     }
     info!("Running command: {:?}", command);
-    command
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+    let out = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()?;
+
+    // spawn a thread to wait for the output
+    thread::spawn(move || {
+        let output = out.wait_with_output();
+        if let Ok(output) = output {
+            if !output.stdout.is_empty() || !output.stderr.is_empty() {
+                debug!("Output: {:?}", output);
+            }
+        }
+    });
     Ok(())
 }
 

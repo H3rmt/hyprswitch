@@ -5,7 +5,6 @@ mod shared;
 mod simple;
 
 use std::fmt::Debug;
-use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 
@@ -46,7 +45,7 @@ pub enum Command {
     Generate {
         /// Specify a path to custom hyprswitch executable, uses current executable if not set
         #[arg(long)]
-        exe: Option<PathBuf>,
+        exe: Option<std::path::PathBuf>,
 
         /// Use systemd for starting the daemon
         #[arg(long, default_value_t = true)]
