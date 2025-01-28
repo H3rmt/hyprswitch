@@ -8,6 +8,7 @@ Config(
             items: 8,
             default_terminal: "alacritty",
             show_execs: true,
+            animate_launch_time_ms: 350,
         ),
         gui: (
             show_title: true,
