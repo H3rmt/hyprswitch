@@ -1,7 +1,7 @@
 use crate::envs::SHOW_LAUNCHER;
-use crate::{GUISend, InitConfig, Payload, Share, SubmapConfig, Warn};
+use crate::{GUISend, InitConfig, Payload, Share, SharedData, SubmapConfig, Warn};
 use anyhow::Context;
-use async_channel::{Receiver, Sender};
+use async_channel::{Receiver, RecvError, Sender};
 use gtk4::gdk::{Display, Monitor};
 use gtk4::glib::{clone, GString};
 use gtk4::prelude::{
@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use tracing::{error, info, span, trace, warn, Level};
 
 pub use debug::debug_gui;
@@ -35,13 +35,11 @@ mod windows;
 pub use launcher::show_launch_spawn;
 
 pub(super) fn start_gui_blocking(
-    share: &Share,
+    share: Share,
     init_config: InitConfig,
     receiver: Receiver<Payload>,
     return_sender: Sender<Option<Payload>>,
 ) {
-    let share_clone = share.clone();
-
     #[cfg(debug_assertions)]
     let application = Application::builder()
         .application_id("com.github.h3rmt.hyprswitch.debug")
@@ -51,38 +49,21 @@ pub(super) fn start_gui_blocking(
         .application_id("com.github.h3rmt.hyprswitch")
         .build();
 
-    application.connect_activate(connect_app(
-        init_config,
-        share_clone,
-        receiver,
-        return_sender,
-    ));
-    info!("Running application");
-    application.run_with_args::<String>(&[]);
-    error!("Application exited");
-}
-
-fn connect_app(
-    init_config: InitConfig,
-    share: Share,
-    receiver: Receiver<Payload>,
-    return_sender: Sender<Option<Payload>>,
-) -> impl Fn(&Application) {
-    move |app| {
+    application.connect_activate(move |app| {
         trace!("start connect_activate");
         apply_css(init_config.custom_css.as_ref());
 
-        let (s, visible_receiver) = async_channel::unbounded();
+        let (visibility_sender, visibility_receiver) = async_channel::unbounded();
         let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>> =
             Rc::new(Mutex::new(HashMap::new()));
         {
             let mut monitor_data_list = monitor_data_list.lock().expect("Failed to lock");
             windows::create_windows(
+                app,
                 &share,
                 &mut monitor_data_list,
                 init_config.workspaces_per_row as u32,
-                app,
-                s.clone(),
+                visibility_sender.clone(),
             )
             .warn("Failed to create windows");
             drop(monitor_data_list);
@@ -90,7 +71,7 @@ fn connect_app(
 
         let launcher: LauncherRefs = Rc::new(Mutex::new(None));
         if *SHOW_LAUNCHER {
-            launcher::create_launcher(&share, launcher.clone(), app, s)
+            launcher::create_launcher(app, &share, launcher.clone(), visibility_sender)
                 .warn("Failed to create launcher");
         }
 
@@ -108,191 +89,188 @@ fn connect_app(
             #[strong]
             launcher,
             async move {
-                handle_updates(
-                    &share,
-                    init_config,
-                    receiver,
-                    return_sender,
-                    monitor_data_list.clone(),
-                    launcher,
-                    visible_receiver,
-                )
-                .await;
+                loop {
+                    trace!("Waiting for GUI update");
+                    let mess = receiver.recv().await;
+                    let (shared_data, _, _) = share.deref();
+                    let data = shared_data.lock().expect("Failed to lock, shared_data");
+                    let monitor_data_list_unlocked = monitor_data_list
+                        .lock()
+                        .expect("Failed to lock, monitor_data_list");
+                    let launcher_unlocked = launcher.lock().expect("Failed to lock, launcher");
+                    trace!("Received GUI update: {mess:?}");
+                    handle_update(
+                        &share,
+                        &init_config,
+                        &mess,
+                        data,
+                        monitor_data_list_unlocked,
+                        launcher_unlocked,
+                        visibility_receiver.clone(),
+                    )
+                    .await;
+
+                    return_sender
+                        .send(mess.clone().ok())
+                        .await
+                        .expect("Failed to send return_sender");
+                    trace!("GUI update finished: {mess:?}");
+                }
             }
         ));
-    }
+    });
+    info!("Running application");
+    application.run_with_args::<String>(&[]);
+    error!("Application exited");
 }
 
-async fn handle_updates(
+async fn handle_update(
     share: &Share,
-    init_config: InitConfig,
-    receiver: Receiver<Payload>,
-    return_sender: Sender<Option<Payload>>,
-    monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>>,
-    launcher: LauncherRefs,
-    visible_receiver: Receiver<bool>,
+    init_config: &InitConfig,
+    mess: &Result<Payload, RecvError>,
+    mut data: MutexGuard<'_, SharedData>,
+    mut monitor_data_list: MutexGuard<'_, HashMap<ApplicationWindow, (MonitorData, Monitor)>>,
+    launcher: MutexGuard<'_, Option<(ApplicationWindow, Entry, ListBox)>>,
+    visibility_receiver: Receiver<bool>,
 ) {
-    loop {
-        trace!("Waiting for GUI update");
-        let mess = receiver.recv().await;
+    match mess {
+        Ok((GUISend::New, ref update_cause)) => {
+            let _span = span!(Level::TRACE, "new", cause = update_cause.to_string()).entered();
 
-        let (data_mut, _, _) = share.deref();
-        {
-            let mut data = data_mut.lock().expect("Failed to lock, data_mut");
-            let mut monitor_data_list_unlocked = monitor_data_list
-                .lock()
-                .expect("Failed to lock, monitor_data_list");
-            let launcher_unlocked = launcher.lock().expect("Failed to lock, launcher");
-            trace!("Received GUI update: {mess:?}");
-            match mess {
-                Ok((GUISend::New, ref update_cause)) => {
-                    let _span =
-                        span!(Level::TRACE, "new", cause = update_cause.to_string()).entered();
-
-                    let mut windows = 0;
-                    for (window, (monitor_data, monitor)) in
-                        &mut monitor_data_list_unlocked.iter_mut()
-                    {
-                        if let Some(monitors) = &data.gui_config.monitors {
-                            if !monitors.iter().any(|m| *m == monitor_data.connector) {
-                                continue;
-                            }
-                        }
-
-                        // TODO only open when using --close = default
-                        if data.gui_config.show_launcher {
-                            let workspaces = data
-                                .hypr_data
-                                .workspaces
-                                .iter()
-                                .filter(|(_, w)| {
-                                    data.gui_config.show_workspaces_on_all_monitors
-                                        || w.monitor == monitor_data.id
-                                })
-                                .collect::<Vec<_>>()
-                                .len() as i32;
-                            let rows = (workspaces as f32 / init_config.workspaces_per_row as f32)
-                                .ceil() as i32;
-                            let height = monitor.geometry().height();
-                            window.set_margin(
-                                Edge::Bottom,
-                                max(30, (height / 2) - ((height / 5) * rows)),
-                            );
-                            window.set_anchor(Edge::Bottom, true);
-                        } else {
-                            window.set_anchor(Edge::Bottom, false);
-                        }
-
-                        trace!("Showing window {:?}", window);
-                        windows += 1;
-                        window.set_visible(true);
-
-                        windows::init_windows(
-                            share.clone(),
-                            &data.hypr_data.workspaces,
-                            &data.hypr_data.clients,
-                            monitor_data,
-                            init_config.show_title,
-                            data.gui_config.show_workspaces_on_all_monitors,
-                            init_config.size_factor,
-                        );
-
-                        trace!("Refresh window {:?}", window);
-                        windows::update_windows(monitor_data, &data)
-                            .warn("Failed to update windows");
-                    }
-                    // only open launcher when opening with default close mode
-                    if data.gui_config.show_launcher {
-                        launcher_unlocked.as_ref().inspect(|(window, entry, _)| {
-                            trace!("Showing window {:?}", window);
-                            windows += 1;
-                            window.set_visible(true);
-                            window.focus();
-                            entry.set_text("");
-                            entry.grab_focus();
-                        });
-                    }
-
-                    // waits until all windows are visible
-                    for _ in 0..windows {
-                        // receive async not to block gtk event loop
-                        visible_receiver.recv().await.expect("Failed to receive");
+            let mut windows = 0;
+            for (window, (monitor_data, monitor)) in monitor_data_list.iter_mut() {
+                if let Some(monitors) = &data.gui_config.monitors {
+                    if !monitors.iter().any(|m| *m == monitor_data.connector) {
+                        continue;
                     }
                 }
-                Ok((GUISend::Refresh, ref update_cause)) => {
-                    let _span =
-                        span!(Level::TRACE, "refresh", cause = update_cause.to_string()).entered();
-                    // only update launcher wen using default close mode
-                    if data.gui_config.show_launcher {
-                        launcher_unlocked.as_ref().inspect(|(_, e, l)| {
-                            if data.launcher_config.selected.is_none() && !e.text().is_empty() {
-                                data.launcher_config.selected = Some(0);
-                            }
-                            if data.launcher_config.selected.is_some() && e.text().is_empty() {
-                                data.launcher_config.selected = None;
-                            }
-                            let reverse_key = match &data.submap_config {
-                                SubmapConfig::Name { reverse_key, .. } => reverse_key,
-                                SubmapConfig::Config { reverse_key, .. } => reverse_key,
-                            };
-                            let execs = launcher::update_launcher(
-                                share.clone(),
-                                &e.text(),
-                                l,
-                                data.launcher_config.selected,
-                                data.launcher_config.launch_state,
-                                reverse_key,
-                            );
-                            data.launcher_config.execs = execs;
-                        });
-                    }
-                    for (window, (monitor_data, _)) in &mut monitor_data_list_unlocked.iter_mut() {
-                        if let Some(monitors) = &data.gui_config.monitors {
-                            if !monitors.iter().any(|m| *m == monitor_data.connector) {
-                                continue;
-                            }
-                        }
-                        trace!("Refresh window {:?}", window);
-                        windows::update_windows(monitor_data, &data)
-                            .warn("Failed to update windows");
-                    }
-                }
-                Ok((GUISend::Hide, ref update_cause)) => {
-                    let _span =
-                        span!(Level::TRACE, "hide", cause = update_cause.to_string()).entered();
-                    let mut windows = 0;
-                    launcher_unlocked.as_ref().inspect(|(window, _, _)| {
-                        trace!("Hiding window {:?}", window);
-                        windows += 1;
-                        window.set_visible(false);
-                    });
-                    for (window, _) in &mut monitor_data_list_unlocked.iter_mut() {
-                        trace!("Hiding window {:?}", window);
-                        windows += 1;
-                        window.set_visible(false);
-                    }
 
-                    // waits until all windows are hidden (needed for launcher with keyboard mode exclusive [commit:b34b5eb8157292e19156ca0650a10f1cb0307d8d])
-                    for _ in 0..windows {
-                        // receive async not to block gtk event loop
-                        visible_receiver.recv().await.expect("Failed to receive");
-                    }
+                // TODO only open when using --close = default
+                if data.gui_config.show_launcher {
+                    let workspaces = data
+                        .hypr_data
+                        .workspaces
+                        .iter()
+                        .filter(|(_, w)| {
+                            data.gui_config.show_workspaces_on_all_monitors
+                                || w.monitor == monitor_data.id
+                        })
+                        .collect::<Vec<_>>()
+                        .len() as i32;
+                    let rows =
+                        (workspaces as f32 / init_config.workspaces_per_row as f32).ceil() as i32;
+                    let height = monitor.geometry().height();
+                    window.set_margin(Edge::Bottom, max(30, (height / 2) - ((height / 5) * rows)));
+                    window.set_anchor(Edge::Bottom, true);
+                } else {
+                    window.set_anchor(Edge::Bottom, false);
                 }
-                Err(e) => {
-                    warn!("Receiver closed: {e}");
-                    break;
-                }
+
+                trace!("Showing window {:?}", window);
+                windows += 1;
+                window.set_visible(true);
+
+                windows::init_windows(
+                    share.clone(),
+                    &data.hypr_data.workspaces,
+                    &data.hypr_data.clients,
+                    monitor_data,
+                    init_config.show_title,
+                    data.gui_config.show_workspaces_on_all_monitors,
+                    init_config.size_factor,
+                );
+
+                trace!("Refresh window {:?}", window);
+                windows::update_windows(monitor_data, &data).warn("Failed to update windows");
             }
-            drop(data);
-            drop(monitor_data_list_unlocked);
-            drop(launcher_unlocked);
-        }
+            // only open launcher when opening with default close mode
+            if data.gui_config.show_launcher {
+                launcher.as_ref().inspect(|(window, entry, _)| {
+                    trace!("Showing window {:?}", window);
+                    windows += 1;
+                    window.set_visible(true);
+                    window.focus();
+                    entry.set_text("");
+                    entry.grab_focus();
+                });
+            }
 
-        return_sender
-            .send(mess.clone().ok())
-            .await
-            .expect("Failed to send return_sender");
-        trace!("GUI update finished: {mess:?}");
+            // waits until all windows are visible
+            for _ in 0..windows {
+                // receive async not to block gtk event loop
+                visibility_receiver.recv().await.expect("Failed to receive");
+            }
+        }
+        Ok((GUISend::Refresh, ref update_cause)) => {
+            let _span = span!(Level::TRACE, "refresh", cause = update_cause.to_string()).entered();
+            // only update launcher wen using default close mode
+            if data.gui_config.show_launcher {
+                launcher.as_ref().inspect(|(_, e, l)| {
+                    if data.launcher_config.selected.is_none() && !e.text().is_empty() {
+                        data.launcher_config.selected = Some(0);
+                    }
+                    if data.launcher_config.selected.is_some() && e.text().is_empty() {
+                        data.launcher_config.selected = None;
+                    }
+                    let reverse_key = match &data.submap_config {
+                        SubmapConfig::Name { reverse_key, .. } => reverse_key,
+                        SubmapConfig::Config { reverse_key, .. } => reverse_key,
+                    };
+                    let execs = launcher::update_launcher(
+                        share.clone(),
+                        &e.text(),
+                        l,
+                        data.launcher_config.selected,
+                        data.launcher_config.launch_state,
+                        reverse_key,
+                    );
+                    data.launcher_config.execs = execs;
+                });
+            }
+            for (window, (monitor_data, _)) in &mut monitor_data_list.iter_mut() {
+                if let Some(monitors) = &data.gui_config.monitors {
+                    if !monitors.iter().any(|m| *m == monitor_data.connector) {
+                        continue;
+                    }
+                }
+                trace!("Refresh window {:?}", window);
+                windows::update_windows(monitor_data, &data).warn("Failed to update windows");
+            }
+        }
+        Ok((GUISend::Hide, ref update_cause)) => {
+            let _span = span!(Level::TRACE, "hide", cause = update_cause.to_string()).entered();
+            let mut windows = 0;
+            launcher.as_ref().inspect(|(window, _, _)| {
+                trace!("Hiding window {:?}", window);
+                windows += 1;
+                window.set_visible(false);
+            });
+            for (window, _) in &*monitor_data_list {
+                trace!("Hiding window {:?}", window);
+                windows += 1;
+                window.set_visible(false);
+            }
+
+            // waits until all windows are hidden (needed for launcher with keyboard mode exclusive [commit:b34b5eb8157292e19156ca0650a10f1cb0307d8d])
+            for _ in 0..windows {
+                // receive async not to block gtk event loop
+                visibility_receiver.recv().await.expect("Failed to receive");
+            }
+        }
+        Ok((GUISend::Exit, ref update_cause)) => {
+            let _span = span!(Level::TRACE, "exit", cause = update_cause.to_string()).entered();
+            for (window, _) in &*monitor_data_list {
+                trace!("Closing window {:?}", window);
+                window.close();
+            }
+            launcher.as_ref().inspect(|(window, _, _)| {
+                trace!("Closing window {:?}", window);
+                window.close();
+            });
+        }
+        Err(e) => {
+            warn!("Receiver closed: {e}");
+        }
     }
 }
 

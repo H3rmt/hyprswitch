@@ -24,9 +24,9 @@ use std::time::Duration;
 use tracing::{info, trace};
 
 pub(super) fn create_launcher(
+    app: &Application,
     share: &Share,
     launcher: LauncherRefs,
-    app: &Application,
     sender: Sender<bool>,
 ) -> anyhow::Result<()> {
     let main_vbox = ListBox::builder()
