@@ -1,5 +1,5 @@
 use crate::envs::SHOW_LAUNCHER;
-use crate::{GUISend, InitConfig, Payload, Share, SharedData, SubmapConfig, Warn};
+use crate::{GUISend, InitConfig, Payload, Share, SubmapConfig, UpdateCause, Warn};
 use anyhow::Context;
 use async_channel::{Receiver, RecvError, Sender};
 use gtk4::gdk::{Display, Monitor};
@@ -19,8 +19,8 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::{Mutex, MutexGuard};
-use tracing::{error, info, span, trace, warn, Level};
+use std::sync::Mutex;
+use tracing::{debug, error, info, span, trace, warn, Level};
 
 pub use debug::debug_gui;
 pub use maps::reload_desktop_maps;
@@ -69,9 +69,9 @@ pub(super) fn start_gui_blocking(
             drop(monitor_data_list);
         }
 
-        let launcher: LauncherRefs = Rc::new(Mutex::new(None));
+        let launcher_refs: LauncherRefs = Rc::new(Mutex::new(None));
         if *SHOW_LAUNCHER {
-            launcher::create_launcher(app, &share, launcher.clone(), visibility_sender)
+            launcher::create_launcher(app, &share, launcher_refs.clone(), visibility_sender)
                 .warn("Failed to create launcher");
         }
 
@@ -87,25 +87,17 @@ pub(super) fn start_gui_blocking(
             #[strong]
             return_sender,
             #[strong]
-            launcher,
+            launcher_refs,
             async move {
                 loop {
                     trace!("Waiting for GUI update");
                     let mess = receiver.recv().await;
-                    let (shared_data, _, _) = share.deref();
-                    let data = shared_data.lock().expect("Failed to lock, shared_data");
-                    let monitor_data_list_unlocked = monitor_data_list
-                        .lock()
-                        .expect("Failed to lock, monitor_data_list");
-                    let launcher_unlocked = launcher.lock().expect("Failed to lock, launcher");
-                    trace!("Received GUI update: {mess:?}");
                     handle_update(
                         &share,
                         &init_config,
                         &mess,
-                        data,
-                        monitor_data_list_unlocked,
-                        launcher_unlocked,
+                        monitor_data_list.clone(),
+                        launcher_refs.clone(),
                         visibility_receiver.clone(),
                     )
                     .await;
@@ -128,73 +120,87 @@ async fn handle_update(
     share: &Share,
     init_config: &InitConfig,
     mess: &Result<Payload, RecvError>,
-    mut data: MutexGuard<'_, SharedData>,
-    mut monitor_data_list: MutexGuard<'_, HashMap<ApplicationWindow, (MonitorData, Monitor)>>,
-    launcher: MutexGuard<'_, Option<(ApplicationWindow, Entry, ListBox)>>,
+    monitor_data: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>>,
+    launcher: Rc<Mutex<Option<(ApplicationWindow, Entry, ListBox)>>>,
     visibility_receiver: Receiver<bool>,
 ) {
+    let (shared_data, _, _) = share.deref();
+
+    trace!("Received GUI update: {mess:?}");
     match mess {
         Ok((GUISend::New, ref update_cause)) => {
             let _span = span!(Level::TRACE, "new", cause = update_cause.to_string()).entered();
+            let windows = {
+                let data = shared_data.lock().expect("Failed to lock, shared_data");
+                let mut monitor_data = monitor_data.lock().expect("Failed to lock, monitor_data");
+                let launcher = launcher.lock().expect("Failed to lock, launcher");
 
-            let mut windows = 0;
-            for (window, (monitor_data, monitor)) in monitor_data_list.iter_mut() {
-                if let Some(monitors) = &data.gui_config.monitors {
-                    if !monitors.iter().any(|m| *m == monitor_data.connector) {
-                        continue;
+                let mut windows = 0;
+                for (window, (monitor_data, monitor)) in monitor_data.iter_mut() {
+                    if let Some(monitors) = &data.gui_config.monitors {
+                        if !monitors.iter().any(|m| *m == monitor_data.connector) {
+                            continue;
+                        }
                     }
-                }
 
-                // TODO only open when using --close = default
-                if data.gui_config.show_launcher {
-                    let workspaces = data
-                        .hypr_data
-                        .workspaces
-                        .iter()
-                        .filter(|(_, w)| {
-                            data.gui_config.show_workspaces_on_all_monitors
-                                || w.monitor == monitor_data.id
-                        })
-                        .collect::<Vec<_>>()
-                        .len() as i32;
-                    let rows =
-                        (workspaces as f32 / init_config.workspaces_per_row as f32).ceil() as i32;
-                    let height = monitor.geometry().height();
-                    window.set_margin(Edge::Bottom, max(30, (height / 2) - ((height / 5) * rows)));
-                    window.set_anchor(Edge::Bottom, true);
-                } else {
-                    window.set_anchor(Edge::Bottom, false);
-                }
+                    // TODO only open when using --close = default
+                    if data.gui_config.show_launcher {
+                        let workspaces = data
+                            .hypr_data
+                            .workspaces
+                            .iter()
+                            .filter(|(_, w)| {
+                                data.gui_config.show_workspaces_on_all_monitors
+                                    || w.monitor == monitor_data.id
+                            })
+                            .collect::<Vec<_>>()
+                            .len() as i32;
+                        let rows = (workspaces as f32 / init_config.workspaces_per_row as f32)
+                            .ceil() as i32;
+                        let height = monitor.geometry().height();
+                        window.set_margin(
+                            Edge::Bottom,
+                            max(30, (height / 2) - ((height / 5) * rows)),
+                        );
+                        window.set_anchor(Edge::Bottom, true);
+                    } else {
+                        window.set_anchor(Edge::Bottom, false);
+                    }
 
-                trace!("Showing window {:?}", window);
-                windows += 1;
-                window.set_visible(true);
-
-                windows::init_windows(
-                    share.clone(),
-                    &data.hypr_data.workspaces,
-                    &data.hypr_data.clients,
-                    monitor_data,
-                    init_config.show_title,
-                    data.gui_config.show_workspaces_on_all_monitors,
-                    init_config.size_factor,
-                );
-
-                trace!("Refresh window {:?}", window);
-                windows::update_windows(monitor_data, &data).warn("Failed to update windows");
-            }
-            // only open launcher when opening with default close mode
-            if data.gui_config.show_launcher {
-                launcher.as_ref().inspect(|(window, entry, _)| {
                     trace!("Showing window {:?}", window);
                     windows += 1;
                     window.set_visible(true);
-                    window.focus();
-                    entry.set_text("");
-                    entry.grab_focus();
-                });
-            }
 
+                    windows::init_windows(
+                        share.clone(),
+                        &data.hypr_data.workspaces,
+                        &data.hypr_data.clients,
+                        monitor_data,
+                        init_config.show_title,
+                        data.gui_config.show_workspaces_on_all_monitors,
+                        init_config.size_factor,
+                    );
+
+                    trace!("Refresh window {:?}", window);
+                    windows::update_windows(monitor_data, &data).warn("Failed to update windows");
+                }
+                // only open launcher when opening with default close mode
+                if data.gui_config.show_launcher {
+                    launcher.as_ref().inspect(|(window, entry, _)| {
+                        trace!("Showing window {:?}", window);
+                        windows += 1;
+                        window.set_visible(true);
+                        window.focus();
+                        entry.set_text("");
+                        entry.grab_focus();
+                    });
+                }
+
+                drop(data);
+                drop(monitor_data);
+                drop(launcher);
+                windows // use scope to drop locks and prevent hold MutexGuard across await
+            };
             // waits until all windows are visible
             for _ in 0..windows {
                 // receive async not to block gtk event loop
@@ -203,6 +209,10 @@ async fn handle_update(
         }
         Ok((GUISend::Refresh, ref update_cause)) => {
             let _span = span!(Level::TRACE, "refresh", cause = update_cause.to_string()).entered();
+            let mut data = shared_data.lock().expect("Failed to lock, shared_data");
+            let mut monitor_data = monitor_data.lock().expect("Failed to lock, monitor_data");
+            let launcher = launcher.lock().expect("Failed to lock, launcher");
+
             // only update launcher wen using default close mode
             if data.gui_config.show_launcher {
                 launcher.as_ref().inspect(|(_, e, l)| {
@@ -227,7 +237,7 @@ async fn handle_update(
                     data.launcher_config.execs = execs;
                 });
             }
-            for (window, (monitor_data, _)) in &mut monitor_data_list.iter_mut() {
+            for (window, (monitor_data, _)) in &mut monitor_data.iter_mut() {
                 if let Some(monitors) = &data.gui_config.monitors {
                     if !monitors.iter().any(|m| *m == monitor_data.connector) {
                         continue;
@@ -239,18 +249,26 @@ async fn handle_update(
         }
         Ok((GUISend::Hide, ref update_cause)) => {
             let _span = span!(Level::TRACE, "hide", cause = update_cause.to_string()).entered();
-            let mut windows = 0;
-            launcher.as_ref().inspect(|(window, _, _)| {
-                trace!("Hiding window {:?}", window);
-                windows += 1;
-                window.set_visible(false);
-            });
-            for (window, _) in &*monitor_data_list {
-                trace!("Hiding window {:?}", window);
-                windows += 1;
-                window.set_visible(false);
-            }
+            let windows = {
+                let monitor_data = monitor_data.lock().expect("Failed to lock, monitor_data");
+                let launcher = launcher.lock().expect("Failed to lock, launcher");
 
+                let mut windows = 0;
+                launcher.as_ref().inspect(|(window, _, _)| {
+                    trace!("Hiding window {:?}", window);
+                    windows += 1;
+                    window.set_visible(false);
+                });
+                for window in (*monitor_data).keys() {
+                    trace!("Hiding window {:?}", window);
+                    windows += 1;
+                    window.set_visible(false);
+                }
+
+                drop(monitor_data);
+                drop(launcher);
+                windows // use scope to drop locks and prevent hold MutexGuard across await
+            };
             // waits until all windows are hidden (needed for launcher with keyboard mode exclusive [commit:b34b5eb8157292e19156ca0650a10f1cb0307d8d])
             for _ in 0..windows {
                 // receive async not to block gtk event loop
@@ -259,7 +277,10 @@ async fn handle_update(
         }
         Ok((GUISend::Exit, ref update_cause)) => {
             let _span = span!(Level::TRACE, "exit", cause = update_cause.to_string()).entered();
-            for (window, _) in &*monitor_data_list {
+            let monitor_data = monitor_data.lock().expect("Failed to lock, monitor_data");
+            let launcher = launcher.lock().expect("Failed to lock, launcher");
+
+            for window in (*monitor_data).keys() {
                 trace!("Closing window {:?}", window);
                 window.close();
             }
@@ -321,4 +342,31 @@ pub struct MonitorData {
     workspace_refs: HashMap<WorkspaceId, (Overlay, Option<Label>)>,
     // used to store refs to the Overlays containing the clients
     client_refs: HashMap<Address, (Overlay, Option<Label>)>,
+}
+
+pub fn start_gui_restarter(share: Share) {
+    let mut event_listener = hyprland::event_listener::EventListener::new();
+    event_listener.add_monitor_added_handler(clone!(
+        #[strong]
+        share,
+        move |data| {
+            debug!("Monitor added: {:#?}, restarting GUI", data);
+            let (_, s, _) = share.deref();
+            s.send_blocking((GUISend::Exit, UpdateCause::BackgroundThread(None)))
+                .warn("Failed to send exit");
+        }
+    ));
+    event_listener.add_monitor_removed_handler(clone!(
+        #[strong]
+        share,
+        move |data| {
+            debug!("Monitor removed: {:#?}, restarting GUI", data);
+            let (_, s, _) = share.deref();
+            s.send_blocking((GUISend::Exit, UpdateCause::BackgroundThread(None)))
+                .warn("Failed to send exit");
+        }
+    ));
+    event_listener
+        .start_listener()
+        .warn("Failed to start monitor added/removed listener");
 }

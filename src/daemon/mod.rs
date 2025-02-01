@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::{InitConfig, Payload, Share, SharedData};
 use gtk4::glib::clone;
-use tracing::{span, Level};
+use tracing::{debug, span, Level};
 
 mod cache;
 pub mod gui;
@@ -10,6 +10,7 @@ mod handle_client;
 mod handle_fns;
 mod submap;
 
+use crate::envs::SYSTEMD_SERVICE;
 pub use submap::deactivate_submap;
 
 pub fn start_daemon(init_config: InitConfig) -> anyhow::Result<()> {
@@ -28,6 +29,20 @@ pub fn start_daemon(init_config: InitConfig) -> anyhow::Result<()> {
                 handle_client::start_handler_blocking(&share);
             }
         ));
+
+        if *SYSTEMD_SERVICE {
+            scope.spawn(clone!(
+                #[strong]
+                share,
+                move || {
+                    let _span = span!(Level::TRACE, "gui_restart").entered();
+                    gui::start_gui_restarter(share);
+                }
+            ));
+        } else {
+            debug!("Not running as systemd service, exiting on monitor changes not supported");
+        }
+
         scope.spawn(move || {
             loop {
                 // restart gui if this loop exits

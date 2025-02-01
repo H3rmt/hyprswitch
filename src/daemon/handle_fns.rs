@@ -113,37 +113,19 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
         .lock()
         .expect("Failed to lock")) = false;
 
-    {
-        if !kill {
-            let lock = latest.lock().expect("Failed to lock");
-            if let Some(selected) = lock.launcher_config.selected {
-                if let Some(exec) = lock.launcher_config.execs.get(selected) {
-                    show_launch_spawn(share.clone(), Some(client_id));
-                    run_program(&exec.exec, &exec.path, exec.terminal);
-                    cache_run(&exec.exec).warn("Failed to cache run");
-                } else {
-                    warn!("Selected program (nr. {}) not found, killing", selected);
-                }
-                drop(lock); // drop lock after both ifs
+    if !kill {
+        let lock = latest.lock().expect("Failed to lock");
+        if let Some(selected) = lock.launcher_config.selected {
+            if let Some(exec) = lock.launcher_config.execs.get(selected) {
+                show_launch_spawn(share.clone(), Some(client_id));
+                run_program(&exec.exec, &exec.path, exec.terminal);
+                cache_run(&exec.exec).warn("Failed to cache run");
             } else {
-                drop(lock); // drop lock before sending hide
-
-                trace!("Sending hide to GUI");
-                send.send_blocking((GUISend::Hide, UpdateCause::Client(client_id)))
-                    .context("Unable to hide the GUI")?;
-                let rec = receive
-                    .recv_blocking()
-                    .context("Unable to receive GUI update")?;
-                trace!("Received hide finish from GUI: {rec:?}");
-
-                // switch after closing gui
-                // (KeyboardMode::Exclusive on launcher doesn't allow switching windows if it is still active)
-                let lock = latest.lock().expect("Failed to lock");
-                switch_to_active(lock.active.as_ref(), &lock.hypr_data)?;
-                drop(lock);
+                warn!("Selected program (nr. {}) not found, killing", selected);
             }
+            drop(lock); // drop lock after both ifs
         } else {
-            info!("Not executing switch on close, killing");
+            drop(lock); // drop lock before sending hide
 
             trace!("Sending hide to GUI");
             send.send_blocking((GUISend::Hide, UpdateCause::Client(client_id)))
@@ -152,8 +134,24 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
                 .recv_blocking()
                 .context("Unable to receive GUI update")?;
             trace!("Received hide finish from GUI: {rec:?}");
+
+            // switch after closing gui
+            // (KeyboardMode::Exclusive on launcher doesn't allow switching windows if it is still active)
+            let lock = latest.lock().expect("Failed to lock");
+            switch_to_active(lock.active.as_ref(), &lock.hypr_data)?;
+            drop(lock);
         }
-    };
+    } else {
+        info!("Not executing switch on close, killing");
+
+        trace!("Sending hide to GUI");
+        send.send_blocking((GUISend::Hide, UpdateCause::Client(client_id)))
+            .context("Unable to hide the GUI")?;
+        let rec = receive
+            .recv_blocking()
+            .context("Unable to receive GUI update")?;
+        trace!("Received hide finish from GUI: {rec:?}");
+    }
 
     clear_recent_clients();
     reload_desktop_maps();
