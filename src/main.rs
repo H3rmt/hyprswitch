@@ -71,7 +71,7 @@ fn main() -> anyhow::Result<()> {
             hyprswitch::daemon::start_daemon(init_config)
                 .context("Failed to run daemon")
                 .inspect_err(|_| {
-                    let _ = hyprswitch::daemon::deactivate_submap();
+                    hyprswitch::daemon::deactivate_submap();
                 })?;
             return Ok(());
         }

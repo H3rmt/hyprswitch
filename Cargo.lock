@@ -1066,7 +1066,6 @@ dependencies = [
  "gtk4-layer-shell",
  "hyprland",
  "lazy_static",
- "log",
  "notify-rust",
  "rand 0.9.0",
  "random_color",
