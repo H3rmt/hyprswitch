@@ -4,11 +4,11 @@ use crate::{InitConfig, Payload, Share, SharedData};
 use gtk4::glib::clone;
 use tracing::{span, Level};
 
+mod cache;
 pub mod gui;
 mod handle_client;
 mod handle_fns;
 mod submap;
-mod cache;
 
 pub use submap::deactivate_submap;
 
@@ -29,9 +29,17 @@ pub fn start_daemon(init_config: InitConfig) -> anyhow::Result<()> {
             }
         ));
         scope.spawn(move || {
-            let _span = span!(Level::TRACE, "gui").entered();
-            gui::reload_desktop_maps();
-            gui::start_gui_blocking(&share, init_config, receiver, return_sender);
+            loop {
+                // restart gui if this loop exits
+                let _span = span!(Level::TRACE, "gui").entered();
+                gui::reload_desktop_maps();
+                gui::start_gui_blocking(
+                    share.clone(),
+                    init_config.clone(),
+                    receiver.clone(),
+                    return_sender.clone(),
+                );
+            }
         });
     });
 

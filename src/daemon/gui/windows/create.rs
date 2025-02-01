@@ -13,10 +13,10 @@ use std::collections::HashMap;
 use tracing::trace;
 
 pub fn create_windows(
+    app: &Application,
     share: &Share,
     monitor_data_list: &mut HashMap<ApplicationWindow, (MonitorData, Monitor)>,
     workspaces_per_row: u32,
-    app: &Application,
     sender: Sender<bool>,
 ) -> anyhow::Result<()> {
     let monitors = get_monitors();

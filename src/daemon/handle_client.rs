@@ -1,12 +1,13 @@
 use crate::client::daemon_running;
 use crate::daemon::handle_fns::{close, init, switch};
+use crate::envs::SYSTEMD_SERVICE;
 use crate::{get_socket_path_buff, global, toast, Share, Transfer, TransferType};
 use anyhow::Context;
+use log::debug;
 use rand::Rng;
 use std::env;
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
-use std::os::fd::{FromRawFd, RawFd};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
 use std::time::Instant;
@@ -14,34 +15,21 @@ use tracing::{debug, error, info, trace, warn};
 use tracing::{span, Level};
 
 pub(super) fn start_handler_blocking(share: &Share) {
-    let listener = if env::var("LISTEN_FDS").is_ok() {
-        // Get the file descriptor from the environment variable set by systemd
-        let fd = RawFd::from(3);
-        let listener = unsafe { UnixListener::from_raw_fd(fd) };
-        info!(
-            "Starting {:?} listener on fd {:?}",
-            env::var("LISTEN_FDNAMES"),
-            env::var("LISTEN_FDS")
-        );
-        listener
-    } else {
-        if daemon_running() {
-            warn!("Daemon already running");
-            exit(0);
+    if daemon_running() {
+        warn!("Daemon already running");
+        exit(0);
+    }
+    let buf = get_socket_path_buff();
+    let path = buf.as_path();
+    // remove old PATH
+    let listener = {
+        if path.exists() {
+            remove_file(path).expect("Unable to remove old socket file");
         }
-        let buf = get_socket_path_buff();
-        let path = buf.as_path();
-        // remove old PATH
-        let listener = {
-            if path.exists() {
-                remove_file(path).expect("Unable to remove old socket file");
-            }
-            UnixListener::bind(path).with_context(|| format!("Failed to bind to socket {path:?}"))
-        }
-        .expect("Unable to start Listener");
-        info!("Starting listener on {path:?}");
-        listener
-    };
+        UnixListener::bind(path).with_context(|| format!("Failed to bind to socket {path:?}"))
+    }
+    .expect("Unable to start Listener");
+    info!("Starting listener on {path:?}");
 
     for stream in listener.incoming() {
         match stream {
@@ -104,13 +92,19 @@ pub(super) fn handle_client_transfer(
             transfer.version,
             env!("CARGO_PKG_VERSION")
         );
-        toast(VERSION_OUT_OF_SYNC);
-        return_success(false, &mut stream)?;
+        if *SYSTEMD_SERVICE {
+            // automatically restart if in systemd mode
+            debug!("Restarting daemon");
+            exit(1);
+        } else {
+            toast(VERSION_OUT_OF_SYNC);
+            return_success(false, &mut stream)?;
 
-        // automatically restart if in systemd mode
+            // automatically restart if in systemd mode
 
-        // don't return Error (would trigger new toast)
-        return Ok(());
+            // don't return Error (would trigger new toast)
+            return Ok(());
+        }
     }
 
     let open = *global::OPEN

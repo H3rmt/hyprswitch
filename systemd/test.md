@@ -2,17 +2,14 @@ Files:
 ``
 /etc/systemd/user: 
  hyprswitch.service -> /home/user/RustroverProjects/hyprswitch/systemd/hyprswitch.service
- hyprswitch.socket -> /home/user/RustroverProjects/hyprswitch/systemd/hyprswitch.socket
 ``
 
 Enable socket;
 ``
-systemctl --user enable --now hyprswitch.socket
+systemctl --user enable --now hyprswitch
 ``
 
 Edit:
 ``
-systemctl --user edit hyprswitch.service
+systemctl --user edit hyprswitch
 ``
-
-TODO allow changing cli args via env vars, or create config file

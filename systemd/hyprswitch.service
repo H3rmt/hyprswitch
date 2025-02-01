@@ -1,16 +1,18 @@
 [Unit]
 Description=Starts hyprswitch Daemon
-Requires=hyprswitch.socket
-After=hyprswitch.socket
+PartOf=graphical-session.target
+After=graphical-session.target
 StartLimitIntervalSec=600
 StartLimitBurst=20
+# TODO decrease the StartLimitBurst to 5
 
 [Service]
 Type=simple
-ExecStart=/home/user/RustroverProjects/hyprswitch/target/release/hyprswitch -vv init --show-title --size-factor 5.5 --workspaces-per-row 4
+ExecStart=/home/user/RustroverProjects/hyprswitch/target/debug/hyprswitch -vv init --show-title --size-factor 5.5 --workspaces-per-row 4
 Restart=always
-RestartSec=10
-TimeoutSec=5
 
 Environment="LAUNCHER_MAX_ITEMS=5"
-Environment="SHOW_LAUNCHER=false"
+Environment="SHOW_LAUNCHER=true"
+
+[Install]
+WantedBy=graphical-session.target

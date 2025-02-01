@@ -133,6 +133,7 @@ pub enum GUISend {
     Refresh,
     New,
     Hide,
+    Exit,
 }
 
 #[derive(Debug, Clone)]
