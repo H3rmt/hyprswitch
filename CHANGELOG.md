@@ -1,5 +1,36 @@
 # Changelog
 
+## [3.3.0](https://github.com/H3rmt/hyprswitch/compare/v3.2.5...v3.3.0) (2025-02-02)
+
+
+### Features
+
+* add command to generate bind params ([3c7992b](https://github.com/H3rmt/hyprswitch/commit/3c7992b8f406675469091e5c86c2cab6f118f31b))
+* add gui restart on monitor connected / disconnected ([ca8ddec](https://github.com/H3rmt/hyprswitch/commit/ca8ddec353714cc5dede71fcc40d430bf5838ccf))
+* add systemd restart if out of sync versions ([b51bdd1](https://github.com/H3rmt/hyprswitch/commit/b51bdd1b07aa9e140bc2cefea5695359768a9c62))
+* added launching animation to launcher ([27c88e6](https://github.com/H3rmt/hyprswitch/commit/27c88e671c034b22d5e13a36de4ca23dd1025944))
+* added more generation to generate command ([c22cc1e](https://github.com/H3rmt/hyprswitch/commit/c22cc1e14392b8ffcbd0450745539b3c026e9f0c))
+* added new --submap argument, switched to json serialise ([0179d39](https://github.com/H3rmt/hyprswitch/commit/0179d39ecd2b2a86fcfc8628d617126d9386ec26))
+* check for version in hyprland version command ([cf64356](https://github.com/H3rmt/hyprswitch/commit/cf6435657ee3a217012e98f21cbbfbb6d6df3936))
+* hide picture if client to small ([4410bb8](https://github.com/H3rmt/hyprswitch/commit/4410bb80941304be0067b2cf0bcdac8be6ce7f6f))
+* improve icon detection for flatpak apps ([f6ce8f7](https://github.com/H3rmt/hyprswitch/commit/f6ce8f7575640fcfe6593645da07e8450714cd3a))
+* launch items in launcher when clicking ([4c56402](https://github.com/H3rmt/hyprswitch/commit/4c56402059e20b57604fd186a9d8d6ca0bf40391))
+* show exec in launcher ([c7900f5](https://github.com/H3rmt/hyprswitch/commit/c7900f50bf258a81dd14d1800e8cb2f383491150))
+
+
+### Bug Fixes
+
+* add env var to control show exec in launcher ([12b561d](https://github.com/H3rmt/hyprswitch/commit/12b561d3820c55fe3dd80b6e961901819a68ff5f))
+* added LAUNCHER_ANIMATE_LAUNCH_TIME to config ([8f4c46a](https://github.com/H3rmt/hyprswitch/commit/8f4c46a549583c4cfbdcc6551e9264ac685da0a4))
+* added new version check command ([32f5d6f](https://github.com/H3rmt/hyprswitch/commit/32f5d6fec4db5616f9765ab170b89f1277682ef4))
+* detach children ([397d6cc](https://github.com/H3rmt/hyprswitch/commit/397d6cc0a7cab3093bfa5e03fe79cc7ab049d167))
+* https://github.com/H3rmt/hyprswitch/issues/115 (added Overflow::Hidden to overlay) ([3a02f88](https://github.com/H3rmt/hyprswitch/commit/3a02f887b6e6114f5d353c434134dea4cdb2307b))
+* launcher layer is now KeyboardMode::Exclusive ([8dd04b9](https://github.com/H3rmt/hyprswitch/commit/8dd04b9d403c42c3f947348845e1d91911c5997e))
+* only move windows down of launcher is active ([66f6e5b](https://github.com/H3rmt/hyprswitch/commit/66f6e5bc4303189237cf7403ca64f16e0cc46ced))
+* only show Notification when not in debug(dev) mode ([f6ce8f7](https://github.com/H3rmt/hyprswitch/commit/f6ce8f7575640fcfe6593645da07e8450714cd3a))
+* re-added bincode as transport ([57b40b7](https://github.com/H3rmt/hyprswitch/commit/57b40b7b887a8367b424ceee987c9b13cbc697ea))
+* remove entries from desktop file cache map if no icon was found ([3db8292](https://github.com/H3rmt/hyprswitch/commit/3db8292ac7c587a14ae5fb8a853d956b6332fb2c))
+
 ## [3.2.5](https://github.com/H3rmt/hyprswitch/compare/v3.2.4...v3.2.5) (2025-01-08)
 
 
