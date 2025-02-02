@@ -5,7 +5,9 @@ use anyhow::Context;
 use tracing::{debug, trace};
 
 use crate::configs::DispatchConfig;
-use crate::{get_socket_path_buff, global, GuiConfig, SimpleConfig, SubmapConfig, Transfer, TransferType};
+use crate::{
+    get_socket_path_buff, global, GuiConfig, SimpleConfig, SubmapConfig, Transfer, TransferType,
+};
 
 pub fn send_version_check_command() -> anyhow::Result<bool> {
     let send_struct = Transfer {
@@ -13,9 +15,10 @@ pub fn send_version_check_command() -> anyhow::Result<bool> {
         version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending version_check command");
-    let serialized = serde_json::to_string(&send_struct)
+    let serialized = bincode::serialize(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send version_check command {serialized}"))
+    send(&serialized)
+        .with_context(|| format!("Failed to send version_check command {serialized:?}"))
 }
 
 pub fn send_open_command() -> anyhow::Result<bool> {
@@ -24,9 +27,9 @@ pub fn send_open_command() -> anyhow::Result<bool> {
         version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending open command");
-    let serialized = serde_json::to_string(&send_struct)
+    let serialized = bincode::serialize(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send open command {serialized}"))
+    send(&serialized).with_context(|| format!("Failed to send open command {serialized:?}"))
 }
 
 ///
@@ -38,9 +41,9 @@ pub fn send_dispatch_command(dispatch_config: DispatchConfig) -> anyhow::Result<
         version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending switch command {send_struct:?}");
-    let serialized = serde_json::to_string(&send_struct)
+    let serialized = bincode::serialize(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send switch command {serialized}"))
+    send(&serialized).with_context(|| format!("Failed to send switch command {serialized:?}"))
 }
 
 ///
@@ -56,9 +59,9 @@ pub fn send_init_command(
         version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending init command {send_struct:?}");
-    let serialized = serde_json::to_string(&send_struct)
+    let serialized = bincode::serialize(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send init command {serialized}"))
+    send(&serialized).with_context(|| format!("Failed to send init command {serialized:?}"))
 }
 
 ///
@@ -70,9 +73,9 @@ pub fn send_close_daemon(kill: bool) -> anyhow::Result<bool> {
         version: env!("CARGO_PKG_VERSION").to_string(),
     };
     debug!("Sending close command {send_struct:?}");
-    let serialized = serde_json::to_string(&send_struct)
+    let serialized = bincode::serialize(&send_struct)
         .with_context(|| format!("Failed to serialize transfer {send_struct:?}"))?;
-    send(&serialized).with_context(|| format!("Failed to send close command {serialized}"))
+    send(&serialized).with_context(|| format!("Failed to send close command {serialized:?}"))
 }
 
 pub fn daemon_running() -> bool {
@@ -92,7 +95,7 @@ pub fn daemon_running() -> bool {
     }
 }
 
-fn send(buffer: &str) -> anyhow::Result<bool> {
+fn send(buffer: &Vec<u8>) -> anyhow::Result<bool> {
     if *global::DRY.get().expect("DRY not set") {
         debug!("DRY RUN: Would have sent {buffer:?}");
         return Ok(true);
@@ -117,12 +120,12 @@ fn send(buffer: &str) -> anyhow::Result<bool> {
     reader
         .read_until(b'\n', &mut buffer)
         .context("Failed to read data from buffer")?;
-    match buffer[0] {
-        b'1' => Ok(true),
-        b'0' => Err(anyhow::anyhow!("Command failed")),
+    match buffer.get(0) {
+        Some(b'1') => Ok(true),
+        Some(b'0') => Err(anyhow::anyhow!("Command failed")),
         _ => Err(anyhow::anyhow!(format!(
-            "Unknown response {} ??",
-            buffer[0]
+            "Unknown response {:?} ??",
+            buffer.get(0)
         ))),
     }
 }

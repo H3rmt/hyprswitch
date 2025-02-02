@@ -75,7 +75,7 @@ pub(super) fn handle_client_transfer(
     share: Share,
     client_id: u8,
 ) -> anyhow::Result<()> {
-    let transfer: Transfer = serde_json::from_slice(&buffer)
+    let transfer: Transfer = bincode::deserialize(&buffer)
         .with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
     trace!("Received command: {transfer:?}");
 
