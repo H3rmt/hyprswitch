@@ -1,6 +1,7 @@
 use crate::envs::DEFAULT_TERMINAL;
 use crate::Warn;
 use std::ops::Deref;
+use std::os::unix::prelude::CommandExt;
 use std::process::{Command, Stdio};
 use std::{io, thread};
 use tracing::{debug, info};
@@ -30,6 +31,7 @@ pub fn run_program(run: &str, path: &Option<Box<str>>, terminal: bool) {
 
 fn run_command(command: &mut Command, run: &str, path: &Option<Box<str>>) -> io::Result<()> {
     command.arg::<&str>(run.as_ref());
+    command.process_group(0);
 
     if let Some(path) = path {
         command.current_dir(path.as_ref());

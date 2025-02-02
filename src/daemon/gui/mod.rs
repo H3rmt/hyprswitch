@@ -189,7 +189,7 @@ async fn handle_update(
                 // only open launcher when opening with default close mode
                 if data.gui_config.show_launcher {
                     launcher.as_ref().inspect(|(window, entry, _)| {
-                        trace!("Showing window {:?}", window);
+                        trace!("Showing launcher {:?}", window);
                         windows += 1;
                         window.set_visible(true);
                         window.focus();
@@ -204,6 +204,7 @@ async fn handle_update(
                 windows // use scope to drop locks and prevent hold MutexGuard across await
             };
             // waits until all windows are visible
+            trace!("Waiting for {windows} windows to show");
             for _ in 0..windows {
                 // receive async not to block gtk event loop
                 visibility_receiver.recv().await.expect("Failed to receive");
@@ -251,27 +252,32 @@ async fn handle_update(
         }
         Ok((GUISend::Hide, ref update_cause)) => {
             let _span = span!(Level::TRACE, "hide", cause = update_cause.to_string()).entered();
+            let data = shared_data.lock().expect("Failed to lock, shared_data");
             let windows = {
                 let monitor_data = monitor_data.lock().expect("Failed to lock, monitor_data");
                 let launcher = launcher.lock().expect("Failed to lock, launcher");
 
                 let mut windows = 0;
-                launcher.as_ref().inspect(|(window, _, _)| {
-                    trace!("Hiding window {:?}", window);
-                    windows += 1;
-                    window.set_visible(false);
-                });
+                if data.gui_config.show_launcher {
+                    launcher.as_ref().inspect(|(window, _, _)| {
+                        trace!("Hiding launcher {:?}", window);
+                        windows += 1;
+                        window.set_visible(false);
+                    });
+                }
                 for window in (*monitor_data).keys() {
                     trace!("Hiding window {:?}", window);
                     windows += 1;
                     window.set_visible(false);
                 }
 
+                drop(data);
                 drop(monitor_data);
                 drop(launcher);
                 windows // use scope to drop locks and prevent hold MutexGuard across await
             };
             // waits until all windows are hidden (needed for launcher with keyboard mode exclusive [commit:b34b5eb8157292e19156ca0650a10f1cb0307d8d])
+            trace!("Waiting for {windows} windows to hide");
             for _ in 0..windows {
                 // receive async not to block gtk event loop
                 visibility_receiver.recv().await.expect("Failed to receive");

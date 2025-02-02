@@ -1,7 +1,7 @@
 use crate::daemon::gui::gui_handle::{
     gui_change_entry_input, gui_change_selected_program, gui_exec,
 };
-use crate::daemon::gui::icon::{load_icon_from_cache, set_icon};
+use crate::daemon::gui::icon::load_icon_from_cache;
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
 use crate::envs::{LAUNCHER_ANIMATE_LAUNCH_TIME, LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
@@ -10,15 +10,14 @@ use async_channel::Sender;
 use gtk4::gdk::{Key, Texture};
 use gtk4::glib::{clone, ControlFlow, Propagation};
 use gtk4::pango::EllipsizeMode;
-use gtk4::prelude::{BoxExt, EditableExt, GestureExt, GtkWindowExt, WidgetExt};
+use gtk4::prelude::{BoxExt, EditableExt, GestureExt, WidgetExt};
 use gtk4::{
-    gio, glib, Align, Application, ApplicationWindow, Entry, EventControllerKey,
+    glib, Align, Application, ApplicationWindow, Entry, EventControllerKey,
     EventSequenceState, GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation,
     SelectionMode,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::ops::Deref;
-use std::path::Path;
 use std::thread;
 use std::time::Duration;
 use tracing::{info, trace};
@@ -85,16 +84,6 @@ pub(super) fn create_launcher(
     window.set_keyboard_mode(KeyboardMode::Exclusive);
     window.set_anchor(Edge::Top, true);
     window.set_margin(Edge::Top, 20);
-
-    window.present();
-    glib::spawn_future_local(clone!(
-        #[strong]
-        window,
-        async move {
-            window.hide();
-        }
-    ));
-
     window.connect_visible_notify(clone!(
         #[strong]
         sender,
