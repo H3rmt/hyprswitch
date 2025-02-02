@@ -38,7 +38,7 @@ jobs:
             exit 1
           fi
       - name: Publish AUR package
-        uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
         with:
           pkgname: hyprswitch
           pkgbuild: ./PKGBUILD
