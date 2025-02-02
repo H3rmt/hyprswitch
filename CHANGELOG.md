@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.3.1](https://github.com/H3rmt/hyprswitch/compare/v3.3.0...v3.3.1) (2025-02-02)
+
+
+### Bug Fixes
+
+* **deps:** update rust crate notify-rust to v4.11.4 ([66ce579](https://github.com/H3rmt/hyprswitch/commit/66ce579d7eec3c116303faddbc07833d5869e2cf))
+* **deps:** update rust crate serde_json to v1.0.138 ([142c193](https://github.com/H3rmt/hyprswitch/commit/142c1934544a46bc06f8d27695515d310a80f113))
+* launcher not showing icons with absolute paths ([2b93db5](https://github.com/H3rmt/hyprswitch/commit/2b93db5281f49214defc75f7c513cf4223250545))
+
 ## [3.3.0](https://github.com/H3rmt/hyprswitch/compare/v3.2.5...v3.3.0) (2025-02-02)
 
 
