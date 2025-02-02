@@ -1,7 +1,7 @@
 use crate::daemon::gui::windows::click::click_monitor;
 use crate::daemon::gui::MonitorData;
 use crate::handle::get_monitors;
-use crate::Share;
+use crate::{Share, Warn};
 use anyhow::Context;
 use async_channel::Sender;
 use gtk4::gdk::{Display, Monitor};
@@ -69,7 +69,9 @@ pub fn create_windows(
             #[strong]
             sender,
             move |window| {
-                sender.try_send(window.is_visible()).ok();
+                sender
+                    .send_blocking(window.is_visible())
+                    .warn("Failed to send window visibility");
             }
         ));
 

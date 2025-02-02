@@ -91,8 +91,6 @@ pub fn init_windows(
         };
         for (address, client) in clients {
             let client_overlay = {
-                let picture = Image::builder().css_classes(vec!["client-image"]).build();
-                set_icon(&client.class, client.enabled, Some(client.pid), &picture);
                 let title = if show_title && !client.title.trim().is_empty() {
                     &client.title
                 } else {
@@ -121,11 +119,21 @@ pub fn init_windows(
                 // 8 => > 278
                 // 9 => > 250
                 if match size_factor {
-                    ..2.0 => false,
-                    2.0..3.9 => client.height > 800,
+                    ..2.5 => false,
+                    2.5..3.9 => client.height > 800,
                     _ => client.height > 700 - min(((size_factor - 1.5) * 65.0) as i16, 450),
                 } {
-                    client_frame.set_child(Some(&picture));
+                    let image = Image::builder()
+                        .css_classes(vec!["client-image"])
+                        .pixel_size(
+                            (scale(client.height, size_factor).clamp(50, 200) as f64 / 1.5) as i32 - 20,
+                        )
+                        .build();
+                    if !client.enabled {
+                        image.add_css_class("monochrome");
+                    }
+                    set_icon(&client.class, client.pid, &image);
+                    client_frame.set_child(Some(&image));
                 }
 
                 let client_overlay = Overlay::builder()

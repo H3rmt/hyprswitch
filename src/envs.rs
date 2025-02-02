@@ -3,12 +3,6 @@ use std::env;
 use tracing::debug;
 
 lazy_static! {
-    pub static ref ICON_SIZE: i32 = env::var("ICON_SIZE")
-        .map(|s| s.parse().expect("Failed to parse ICON_SIZE"))
-        .unwrap_or(512);
-    pub static ref SHOW_DEFAULT_ICON: bool = env::var("SHOW_DEFAULT_ICON")
-        .map(|s| s.parse().expect("Failed to parse SHOW_DEFAULT_ICON"))
-        .unwrap_or(false);
     pub static ref SHOW_LAUNCHER: bool = env::var("SHOW_LAUNCHER")
         .map(|s| s.parse().expect("Failed to parse SHOW_LAUNCHER"))
         .unwrap_or(false);
@@ -49,10 +43,10 @@ lazy_static! {
 
 pub fn envvar_dump() {
     debug!("ENV dump: \
-    ICON_SIZE: {:?}, SHOW_DEFAULT_ICON: {:?}, SHOW_LAUNCHER: {:?}, LAUNCHER_MAX_ITEMS: {:?}, \
+    SHOW_LAUNCHER: {:?}, LAUNCHER_MAX_ITEMS: {:?}, \
     DEFAULT_TERMINAL: {:?}, LOG_MODULE_PATH: {:?}, REMOVE_HTML_FROM_WORKSPACE_NAME: {:?}, DISABLE_TOASTS: {:?}, \
     SHOW_LAUNCHER_EXECS: {:?}, LAUNCHER_ANIMATE_LAUNCH_TIME: {:?}, SYSTEMD_SERVICE: {:?}",
-        *ICON_SIZE, *SHOW_DEFAULT_ICON, *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS,
+        *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS,
         *DEFAULT_TERMINAL, *LOG_MODULE_PATH, *REMOVE_HTML_FROM_WORKSPACE_NAME, *DISABLE_TOASTS,
         *SHOW_LAUNCHER_EXECS, *LAUNCHER_ANIMATE_LAUNCH_TIME, *SYSTEMD_SERVICE);
 }

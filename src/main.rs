@@ -1,6 +1,6 @@
 use anyhow::Context;
 use clap::Parser;
-use hyprswitch::daemon::gui::debug_gui;
+use hyprswitch::daemon::gui::{debug_desktop_files, debug_list, debug_search_class};
 use hyprswitch::envs::{envvar_dump, LOG_MODULE_PATH};
 use hyprswitch::{
     check_version, client, global, handle, toast, DispatchConfig, GuiConfig, InitConfig,
@@ -73,7 +73,6 @@ fn main() -> anyhow::Result<()> {
                 .inspect_err(|_| {
                     hyprswitch::daemon::deactivate_submap();
                 })?;
-            return Ok(());
         }
         cli::Command::Close { kill } => {
             client::send_version_check_command()
@@ -118,7 +117,6 @@ fn main() -> anyhow::Result<()> {
             gui_conf,
             submap_conf,
             simple_config,
-            submap_info,
             reverse_key,
         } => {
             if !client::daemon_running() {
@@ -130,23 +128,24 @@ fn main() -> anyhow::Result<()> {
 
             let config = SimpleConfig::from(simple_config);
             let gui_config = GuiConfig::from(gui_conf);
-            let submap_config = submap_conf
-                .map(|c| c.into_submap_conf(reverse_key.clone()))
-                .or_else(|| submap_info.map(|a| a.into_submap_info(reverse_key)))
-                .context("Failed to create submap config, no config or name provided")?;
+            let submap_config = submap_conf.into_submap_conf(reverse_key.clone());
             client::send_init_command(config.clone(), gui_config.clone(), submap_config.clone())
                 .with_context(|| format!("Failed to send init command with config {config:?} and gui_config {gui_config:?} and submap_config {submap_config:?} to daemon"))?;
-
-            return Ok(());
         }
-        cli::Command::Icon {
-            class,
-            desktop_files,
-            list,
-        } => {
-            println!("use with -vvv icon ... to see full logs!");
-            debug_gui(class, list, desktop_files).warn("Failed to run debug_gui");
+        cli::Command::Debug { command } => {
+            println!("use with -vv ... to see full logs!");
+            match command {
+                cli::DebugCommand::Search { class } => {
+                    debug_search_class(class).warn("Failed to run debug_search_class");
+                }
+                cli::DebugCommand::List => {
+                    debug_list().warn("Failed to run debug_list");
+                }
+                cli::DebugCommand::DesktopFiles => {
+                    debug_desktop_files().warn("Failed to run debug_desktop_files");
+                }
+            };
         }
-    };
+    }
     Ok(())
 }

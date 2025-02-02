@@ -16,16 +16,16 @@ pub struct SubmapInfo {
 
 #[derive(Args, Debug, Clone)]
 pub struct SubmapConf {
-    /// The modifier key to used to open the GUI (e.g. shift, alt, ...) [conflicts with --submap]
-    #[clap(long, value_enum, conflicts_with_all = ["submap"])]
+    /// The modifier key to used to open the GUI (e.g. shift, alt, ...)
+    #[clap(long, value_enum)]
     pub mod_key: shared::InputModKey,
 
-    /// The key to used to open the GUI (e.g., tab, grave, ...) [conflicts with --submap]
-    #[arg(long, conflicts_with_all = ["submap"])]
+    /// The key to used to open the GUI (e.g., tab, grave, ...)
+    #[arg(long)]
     pub key: String,
 
-    /// How to close hyprswitch [conflicts with --submap]
-    #[clap(long, default_value_t, value_enum, conflicts_with_all = ["submap"])]
+    /// How to close hyprswitch
+    #[clap(long, default_value_t, value_enum)]
     pub close: InputCloseType,
 }
 

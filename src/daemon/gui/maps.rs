@@ -1,4 +1,3 @@
-use crate::envs::ICON_SIZE;
 use crate::Warn;
 use anyhow::Context;
 use gtk4::prelude::FileExt;
@@ -15,18 +14,18 @@ pub enum Source {
     DesktopFileName,
     DesktopFileStartupWmClass,
     DesktopFileExecName,
-    ByPid,
-    ByClass,
+    ByPidExec,
 }
 
-type IconPathMap = HashMap<(Box<str>, Source), (Box<Path>, Box<Path>)>;
+type IconPathMap = HashMap<(Box<str>, Source), (Box<str>, Box<Path>)>;
 type DesktopFileMap = Vec<(
     Box<str>,
-    Option<Box<Path>>,
+    Option<Box<str>>,
     Vec<Box<str>>,
     Box<str>,
     Option<Box<str>>,
     bool,
+    Box<Path>,
 )>;
 
 fn get_icon_path_map() -> &'static Mutex<IconPathMap> {
@@ -39,19 +38,17 @@ fn get_desktop_file_map() -> &'static Mutex<DesktopFileMap> {
     MAP_LOCK.get_or_init(|| Mutex::new(Vec::new()))
 }
 
-pub fn get_icon_path_by_name(name: &str) -> Option<Box<Path>> {
+pub fn get_icon_path_by_name(name: &str) -> Option<(Box<str>, Source)> {
     let map = get_icon_path_map().lock().expect("Failed to lock icon map");
-    find_icon_path_by_name(map.clone(), name).map(|s| s.0)
+    find_icon_path_by_name(map.clone(), name).map(|s| (s.0, s.2))
 }
 
-pub fn add_path_for_icon(icon: &str, path: gio::File, source: Source) {
-    if let Some(path) = path.path() {
-        let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
-        map.insert(
-            (Box::from(icon.to_ascii_lowercase()), source),
-            (Box::from(path), Box::from(Path::new(""))),
-        );
-    }
+pub fn add_path_for_icon(class: &str, name: &str, source: Source) {
+    let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
+    map.insert(
+        (Box::from(class.to_ascii_lowercase()), source),
+        (Box::from(name), Box::from(Path::new(""))),
+    );
 }
 
 pub fn get_all_desktop_files<'a>() -> MutexGuard<'a, DesktopFileMap> {
@@ -62,15 +59,12 @@ pub fn get_all_desktop_files<'a>() -> MutexGuard<'a, DesktopFileMap> {
 }
 
 pub fn reload_desktop_maps() {
-    // needed to init gtk to search for correct file paths
-    glib::spawn_future(async {
-        let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
-        let mut map2 = get_desktop_file_map()
-            .lock()
-            .expect("Failed to lock desktop file map");
-        map2.clear();
-        fill_desktop_file_map(&mut map, Some(&mut map2)).warn("Failed to fill desktop file map");
-    });
+    let mut map = get_icon_path_map().lock().expect("Failed to lock icon map");
+    let mut map2 = get_desktop_file_map()
+        .lock()
+        .expect("Failed to lock desktop file map");
+    map2.clear();
+    fill_desktop_file_map(&mut map, Some(&mut map2)).warn("Failed to fill desktop file map");
 }
 
 fn find_application_dirs() -> Vec<PathBuf> {
@@ -137,8 +131,6 @@ fn fill_desktop_file_map(
     let _span = span!(Level::TRACE, "fill_desktop_file_map").entered();
 
     let now = Instant::now();
-    gtk4::init().context("Failed to init gtk")?;
-    let theme = gtk4::IconTheme::new();
     for entry in collect_desktop_files() {
         std::fs::read_to_string(entry.path())
             .map(|content| {
@@ -146,24 +138,7 @@ fn fill_desktop_file_map(
                 let icon = lines
                     .iter()
                     .find(|l| l.starts_with("Icon="))
-                    .map(|l| l.trim_start_matches("Icon="))
-                    .and_then(|i| {
-                        if i.contains('/') {
-                            Some(gio::File::for_path(i))
-                        } else {
-                            theme
-                                .lookup_icon(
-                                    i,
-                                    &[],
-                                    *ICON_SIZE,
-                                    1,
-                                    TextDirection::None,
-                                    IconLookupFlags::PRELOAD,
-                                )
-                                .file()
-                        }
-                    })
-                    .and_then(|i| i.path().map(|p| p.into_boxed_path()));
+                    .map(|l| l.trim_start_matches("Icon="));
 
                 let name = lines
                     .iter()
@@ -195,28 +170,28 @@ fn fill_desktop_file_map(
                     .find(|l| l.starts_with("StartupWMClass="))
                     .map(|l| l.trim_start_matches("StartupWMClass="));
 
-                if let (Some(name), Some(icon)) = (name, &icon) {
+                if let (Some(name), Some(icon)) = (name, icon) {
                     map.insert(
                         (Box::from(name.to_lowercase()), Source::DesktopFileName),
-                        (icon.clone(), entry.path().into_boxed_path()),
+                        (Box::from(icon), entry.path().into_boxed_path()),
                     );
                 }
-                if let (Some(startup_wm_class), Some(icon)) = (startup_wm_class, &icon) {
+                if let (Some(startup_wm_class), Some(icon)) = (startup_wm_class, icon) {
                     map.insert(
                         (
                             Box::from(startup_wm_class.to_lowercase()),
                             Source::DesktopFileStartupWmClass,
                         ),
-                        (icon.clone(), entry.path().into_boxed_path()),
+                        (Box::from(icon), entry.path().into_boxed_path()),
                     );
                 }
-                if let (Some(exec_name), Some(icon)) = (exec_name, &icon) {
+                if let (Some(exec_name), Some(icon)) = (exec_name, icon) {
                     map.insert(
                         (
                             Box::from(exec_name.to_lowercase()),
                             Source::DesktopFileExecName,
                         ),
-                        (icon.clone(), entry.path().into_boxed_path()),
+                        (Box::from(icon), entry.path().into_boxed_path()),
                     );
                 }
 
@@ -258,13 +233,14 @@ fn fill_desktop_file_map(
                             }
                             map2.push((
                                 name.trim().into(),
-                                icon,
+                                icon.map(Box::from),
                                 keywords
                                     .map(|k| k.split(';').map(|k| k.trim().into()).collect())
                                     .unwrap_or_else(Vec::new),
                                 exec.trim().into(),
                                 exec_path.map(Box::from),
                                 terminal,
+                                entry.path().into_boxed_path(),
                             ));
                         }
                     }
@@ -278,27 +254,24 @@ fn fill_desktop_file_map(
 
 pub(in crate::daemon::gui) fn get_icon_name_debug(
     icon: &str,
-) -> Option<(Box<Path>, Box<Path>, Source)> {
+) -> Option<(Box<str>, Box<Path>, Source)> {
     let mut map = HashMap::new();
     fill_desktop_file_map(&mut map, None).ok()?;
     find_icon_path_by_name(map, icon)
 }
 
 #[allow(clippy::type_complexity)]
-pub(in crate::daemon::gui) fn get_desktop_files_debug(
-) -> anyhow::Result<HashMap<(Box<str>, Source), (Box<Path>, Box<Path>)>> {
+pub(in crate::daemon::gui) fn get_desktop_files_debug() -> anyhow::Result<DesktopFileMap> {
     let mut map = HashMap::new();
-    fill_desktop_file_map(&mut map, None)?;
-    Ok(map)
+    let mut map2 = Vec::new();
+    fill_desktop_file_map(&mut map, Some(&mut map2))?;
+    Ok(map2)
 }
 
-fn find_icon_path_by_name(map: IconPathMap, name: &str) -> Option<(Box<Path>, Box<Path>, Source)> {
-    map.get(&(Box::from(name.to_ascii_lowercase()), Source::ByClass))
-        .map(|s| (s.0.clone(), s.1.clone(), Source::ByClass))
-        .or_else(|| {
-            map.get(&(Box::from(name.to_ascii_lowercase()), Source::ByPid))
-                .map(|s| (s.0.clone(), s.1.clone(), Source::ByPid))
-        })
+/// prio: name by pid-exec, desktop file name, startup wm class, exec name
+fn find_icon_path_by_name(map: IconPathMap, name: &str) -> Option<(Box<str>, Box<Path>, Source)> {
+    map.get(&(Box::from(name.to_ascii_lowercase()), Source::ByPidExec))
+        .map(|s| (s.0.clone(), s.1.clone(), Source::ByPidExec))
         .or_else(|| {
             map.get(&(
                 Box::from(name.to_ascii_lowercase()),

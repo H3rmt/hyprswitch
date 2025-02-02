@@ -1,7 +1,7 @@
 use crate::daemon::gui::gui_handle::{
     gui_change_entry_input, gui_change_selected_program, gui_exec,
 };
-use crate::daemon::gui::icon::apply_texture_path;
+use crate::daemon::gui::icon::{load_icon_from_cache, set_icon};
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
 use crate::envs::{LAUNCHER_ANIMATE_LAUNCH_TIME, LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
@@ -131,7 +131,7 @@ pub(super) fn update_launcher(
 
     let entries = get_all_desktop_files();
     let mut matches = Vec::new();
-    for (name, icon, _, exec, path, terminal) in entries.deref() {
+    for (name, icon, _, exec, path, terminal, _) in entries.deref() {
         if name
             .to_ascii_lowercase()
             .contains(&text.to_ascii_lowercase())
@@ -139,7 +139,7 @@ pub(super) fn update_launcher(
             matches.push((name, icon, exec, path, terminal));
         }
     }
-    for (name, icon, keywords, exec, path, terminal) in entries.deref() {
+    for (name, icon, keywords, exec, path, terminal, _) in entries.deref() {
         if keywords
             .iter()
             .any(|k| k.to_ascii_lowercase().contains(&text.to_ascii_lowercase()))
@@ -198,7 +198,7 @@ pub(super) fn update_launcher(
 fn create_launch_widget(
     share: Share,
     name: &str,
-    icon_path: &Option<Box<Path>>,
+    icon_path: &Option<Box<str>>,
     exec: &str,
     raw_index: usize,
     index: &str,
@@ -219,13 +219,11 @@ fn create_launch_widget(
             {
                 icon.set_paintable(Some(&texture));
                 icon.add_css_class("rotating");
-                icon.set_icon_size(IconSize::Large);
             }
         }
         _ => {
             if let Some(icon_path) = icon_path {
-                apply_texture_path(&gio::File::for_path(icon_path), &icon, true)
-                    .warn("Failed to apply icon");
+                load_icon_from_cache(icon_path, &icon);
             }
         }
     };

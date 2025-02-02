@@ -1,3 +1,4 @@
+mod debug;
 mod dispatch;
 mod gui;
 mod init;
@@ -7,6 +8,8 @@ mod simple;
 use std::fmt::Debug;
 
 use clap::{Args, Parser, Subcommand};
+
+pub use debug::DebugCommand;
 
 #[derive(Parser, Debug, Clone)]
 #[command(
@@ -66,10 +69,7 @@ pub enum Command {
     #[clap(hide = true)]
     Gui {
         #[clap(flatten)]
-        submap_info: Option<gui::SubmapInfo>,
-
-        #[clap(flatten)]
-        submap_conf: Option<gui::SubmapConf>,
+        submap_conf: gui::SubmapConf,
 
         /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
         ///
@@ -98,19 +98,10 @@ pub enum Command {
         #[arg(long)]
         kill: bool,
     },
-    /// Test command to debug finding icons for the GUI, doesn't interact with the Daemon
-    Icon {
-        /// The class of the window to find an icon for
-        #[arg(long, default_value = "")]
-        class: String,
-
-        /// List all icons in the theme
-        #[arg(long)]
-        list: bool,
-
-        /// List all desktop files
-        #[arg(long)]
-        desktop_files: bool,
+    /// Debug command to debug finding icons for the GUI, doesn't interact with the Daemon
+    Debug {
+        #[clap(subcommand)]
+        command: DebugCommand,
     },
 }
 
@@ -122,11 +113,6 @@ pub fn check_invalid_inputs(e: &clap::Error) -> bool {
         || e.to_string()
             .starts_with("Switch without using the GUI / Daemon (switches directly)")
         || e.to_string().starts_with(
-            "Test command to debug finding icons for the GUI, doesn't interact with the Daemon",
+            "Debug command to debug finding icons for the GUI, doesn't interact with the Daemon",
         )
-        || e.to_string()
-            == format!(
-                "hyprswitch {}\n",
-                option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?")
-            )
 }
