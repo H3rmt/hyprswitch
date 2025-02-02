@@ -1,125 +1,68 @@
 use crate::daemon::gui::maps::{add_path_for_icon, get_icon_path_by_name, Source};
-use crate::envs::{ICON_SIZE, SHOW_DEFAULT_ICON};
 use anyhow::bail;
 use gtk4::gdk::Texture;
 use gtk4::prelude::*;
-use gtk4::IconTheme;
 use gtk4::{gio, IconLookupFlags, IconSize, Image, TextDirection};
+use gtk4::{IconPaintable, IconTheme, Picture};
 use std::fs;
+use std::path::Path;
 use std::time::Instant;
 use tracing::{span, trace, warn, Level};
 
-macro_rules! load_icon {
-    ($theme:expr, $icon_name:expr, $pic:expr, $enabled:expr, $now:expr, $name:expr, $source:expr) => {
-        let icon = $theme.lookup_icon(
-            $icon_name,
-            &[],
-            *ICON_SIZE,
-            1,
-            TextDirection::None,
-            IconLookupFlags::PRELOAD,
-        );
-        'block: {
-            if let Some(icon_file) = icon.file() {
-                if apply_texture_path(&icon_file, $pic, $enabled)
-                    .ok()
-                    .is_some()
-                {
-                    add_path_for_icon(&$name, icon_file, $source);
-                    break 'block; // successfully loaded Texture
-                }
-            }
-            warn!("Failed to convert icon to Texture, using paintable");
-            $pic.set_paintable(Some(&icon));
-        }
-        trace!("|{:.2?}| Applied Icon for {}", $now.elapsed(), $name);
-    };
-    ($theme:expr, $icon_name:expr, $pic:expr, $now:expr) => {
-        let icon = $theme.lookup_icon(
-            $icon_name,
-            &[],
-            *ICON_SIZE,
-            1,
-            TextDirection::None,
-            IconLookupFlags::PRELOAD,
-        );
-        $pic.set_paintable(Some(&icon));
-        trace!("|{:.2?}| Applied Icon for {}", $now.elapsed(), $icon_name);
-    };
-}
-
-pub fn set_icon(class: &str, enabled: bool, pid: Option<i32>, pic: &Image) {
-    let _span = span!(Level::TRACE, "icon", class = class).entered();
-    let pic = pic.clone();
-    let class = class.to_string();
-
-    if let Some(a) = get_icon_path_by_name(&class) {
-        trace!("Found icon for {} in cache", class);
-        if apply_texture_path(&gio::File::for_path(&a), &pic, enabled).is_ok() {
-            return;
-        }
-    } else {
-        trace!("Icon for {} not found in cache", class);
-    }
-
-    let now = Instant::now();
+pub fn load_icon_from_cache(name: &str, pic: &Image) -> Option<Box<str>> {
     let theme = IconTheme::new();
-    if theme.has_icon(&class) {
-        trace!("|{:.2?}| Icon found for {}", now.elapsed(), class);
-        load_icon!(theme, &class, &pic, enabled, now, class, Source::ByClass);
+    // check if the icon is in theme and apply it
+    if theme.has_icon(&name) {
+        pic.set_icon_name(Some(&name));
+        Some(Box::from(name))
     } else {
-        if let Some(pid) = pid {
-            if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
-                // convert x00 to space
-                trace!(
-                    "|{:.2?}| No Icon found for {}, using Icon by cmdline {} by PID ({})",
-                    now.elapsed(),
-                    class,
-                    cmdline,
-                    pid
-                );
-                let cmd = cmdline
-                    .split('\x00')
-                    .next()
-                    .unwrap_or_default()
-                    .split('/')
-                    .last()
-                    .unwrap_or_default();
-                if cmd.is_empty() {
-                    warn!("Failed to read cmdline for PID {}", pid);
-                } else {
-                    trace!(
-                        "|{:.2?}| Searching for icon for {} with CMD {}",
-                        now.elapsed(),
-                        class,
-                        cmd
-                    );
-                    load_icon!(theme, cmd, &pic, enabled, now, class, Source::ByPid);
-                }
+        // check if icon is in desktop file cache and apply it
+        if let Some((path, source)) = get_icon_path_by_name(name) {
+            trace!("Found icon for {name} in cache from source: {source:?} at {path:?}");
+            if path.contains('/') {
+                pic.set_from_file(Some(Path::new(&*path)));
             } else {
-                warn!("Failed to read cmdline for PID {}", pid);
+                pic.set_icon_name(Some(&*path));
             }
-        };
-
-        // application-x-executable doesn't scale, idk why (it even is an svg)
-        if *SHOW_DEFAULT_ICON {
-            load_icon!(theme, "application-x-executable", &pic, now);
+            Some(path)
+        } else {
+            trace!("Icon for {name} not found in theme or cache");
+            None
         }
     }
 }
 
-pub fn apply_texture_path(
-    file: &impl IsA<gio::File>,
-    pic: &Image,
-    enabled: bool,
-) -> anyhow::Result<()> {
-    if let Ok(texture) = Texture::from_file(file) {
-        if !enabled {
-            pic.add_css_class("monochrome");
+pub fn set_icon(class: &str, pid: i32, pic: &Image) {
+    let _span = span!(Level::TRACE, "icon", class = class).entered();
+
+    if load_icon_from_cache(class, pic).is_some() {
+        return;
+    }
+
+    if let Ok(cmdline) = fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
+        // convert x00 to space
+        trace!("No Icon found for {class}, using Icon by cmdline {cmdline} by PID ({pid})");
+        let cmd = cmdline
+            .split('\x00')
+            .next()
+            .unwrap_or_default()
+            .split('/')
+            .last()
+            .unwrap_or_default();
+        if cmd.is_empty() {
+            warn!("Failed to read cmdline for PID {}", pid);
+        } else {
+            trace!("Icon by cmdline {cmd} for {class} by PID ({pid})");
+            if let Some(icon_path) = load_icon_from_cache(cmd, pic) {
+                // add the icon path back into cache
+                // to directly link class name to icon without checking pid again
+                add_path_for_icon(class, &*icon_path, Source::ByPidExec);
+                return;
+            }
         }
-        pic.set_paintable(Some(&texture));
-        pic.set_icon_size(IconSize::Large);
-        return Ok(());
+    } else {
+        warn!("Failed to read cmdline for PID {}", pid);
     };
-    bail!("Failed to apply icon")
+
+    pic.set_icon_name(Some("application-x-executable"));
 }

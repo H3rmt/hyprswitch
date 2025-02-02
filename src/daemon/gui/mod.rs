@@ -22,7 +22,7 @@ use std::rc::Rc;
 use std::sync::Mutex;
 use tracing::{debug, error, info, span, trace, warn, Level};
 
-pub use debug::debug_gui;
+pub use debug::{debug_desktop_files, debug_list, debug_search_class};
 pub use maps::reload_desktop_maps;
 
 mod debug;
@@ -51,6 +51,8 @@ pub(super) fn start_gui_blocking(
 
     application.connect_activate(move |app| {
         trace!("start connect_activate");
+        check_themes();
+
         apply_css(init_config.custom_css.as_ref());
 
         let (visibility_sender, visibility_receiver) = async_channel::unbounded();
@@ -369,4 +371,17 @@ pub fn start_gui_restarter(share: Share) {
     event_listener
         .start_listener()
         .warn("Failed to start monitor added/removed listener");
+}
+
+pub fn check_themes() {
+    if let Some(settings) = gtk4::Settings::default() {
+        let theme_name = settings.gtk_theme_name();
+        let icon_theme_name = settings.gtk_icon_theme_name();
+        let icon_theme = gtk4::IconTheme::new();
+        let search_path = icon_theme.search_path();
+        info!("Using theme: {theme_name:?} and icon theme: {icon_theme_name:?}, please make sure both exist, else weird icon or graphical issues may occur");
+        debug!("Icon theme search path: {search_path:?}");
+    } else {
+        warn!("Unable to check default settings for icon theme");
+    }
 }
