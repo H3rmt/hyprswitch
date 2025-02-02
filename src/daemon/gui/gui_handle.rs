@@ -43,7 +43,6 @@ pub(crate) fn gui_change_entry_input(share: &Share) {
         #[strong]
         share,
         move || {
-            // don't wait on receiver as this blocks the gui(gtk event loop) from receiving the refresh
             let (_, send, receive) = share.deref();
 
             send.send_blocking((GUISend::Refresh, UpdateCause::LauncherUpdate))
@@ -56,30 +55,29 @@ pub(crate) fn gui_change_entry_input(share: &Share) {
 }
 
 pub(crate) fn gui_change_selected_program(share: &Share, reverse: bool) {
-    let (latest, _, _) = share.deref();
-    {
-        let mut lock = latest.lock().expect("Failed to lock");
-        let exec_len = lock.launcher_config.execs.len();
-        if let Some(ref mut selected) = lock.launcher_config.selected {
-            if exec_len == 0 {
-                return;
-            }
-            *selected = if reverse {
-                selected.saturating_sub(1)
-            } else {
-                (*selected + 1).min(exec_len - 1)
-            };
-        } else {
-            return;
-        };
-        drop(lock);
-    }
-
     thread::spawn(clone!(
         #[strong]
         share,
         move || {
-            // don't wait on receiver as this blocks the gui(gtk event loop) from receiving the refresh
+            let (latest, _, _) = share.deref();
+            {
+                let mut lock = latest.lock().expect("Failed to lock");
+                let exec_len = lock.launcher_config.execs.len();
+                if let Some(ref mut selected) = lock.launcher_config.selected {
+                    if exec_len == 0 {
+                        return;
+                    }
+                    *selected = if reverse {
+                        selected.saturating_sub(1)
+                    } else {
+                        (*selected + 1).min(exec_len - 1)
+                    };
+                } else {
+                    return;
+                };
+                drop(lock);
+            }
+
             let (_, send, receive) = share.deref();
 
             send.send_blocking((GUISend::Refresh, UpdateCause::LauncherUpdate))
@@ -92,18 +90,17 @@ pub(crate) fn gui_change_selected_program(share: &Share, reverse: bool) {
 }
 
 pub(crate) fn gui_close(share: &Share) {
-    deactivate_submap();
-    *(global::OPEN
-        .get()
-        .expect("ACTIVE not set")
-        .lock()
-        .expect("Failed to lock")) = false;
-
-    // dont block the gui thread, else the send_blocking will deadlock
     thread::spawn(clone!(
         #[strong]
         share,
         move || {
+            deactivate_submap();
+            *(global::OPEN
+                .get()
+                .expect("ACTIVE not set")
+                .lock()
+                .expect("Failed to lock")) = false;
+
             let (latest, send, receive) = share.deref();
 
             trace!("Sending hide to GUI");
@@ -125,21 +122,19 @@ pub(crate) fn gui_close(share: &Share) {
 }
 
 pub(crate) fn gui_exec(share: &Share, selected: usize) {
-    deactivate_submap();
-    *(global::OPEN
-        .get()
-        .expect("ACTIVE not set")
-        .lock()
-        .expect("Failed to lock")) = false;
-
-    // dont block the gui thread, else the send_blocking will deadlock
     thread::spawn(clone!(
         #[strong]
         share,
         move || {
+            deactivate_submap();
+            *(global::OPEN
+                .get()
+                .expect("ACTIVE not set")
+                .lock()
+                .expect("Failed to lock")) = false;
+
             show_launch_spawn(share.clone(), None);
             let (latest, _, _) = share.deref();
-
             {
                 let mut lock = latest.lock().expect("Failed to lock");
                 lock.launcher_config.selected = Some(selected);

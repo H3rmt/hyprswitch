@@ -1,7 +1,4 @@
 use crate::Warn;
-use anyhow::Context;
-use gtk4::prelude::FileExt;
-use gtk4::{gio, glib, IconLookupFlags, TextDirection};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};

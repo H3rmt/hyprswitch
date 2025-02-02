@@ -6,8 +6,8 @@ use anyhow::Context;
 use async_channel::Sender;
 use gtk4::gdk::{Display, Monitor};
 use gtk4::glib::clone;
-use gtk4::prelude::{DisplayExt, GtkWindowExt, ListModelExtManual, MonitorExt, WidgetExt};
-use gtk4::{glib, Application, ApplicationWindow, FlowBox, Orientation, Overlay, SelectionMode};
+use gtk4::prelude::{DisplayExt, ListModelExtManual, MonitorExt, WidgetExt};
+use gtk4::{Application, ApplicationWindow, FlowBox, Orientation, Overlay, SelectionMode};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::collections::HashMap;
 use tracing::trace;
@@ -57,14 +57,6 @@ pub fn create_windows(
         window.set_keyboard_mode(KeyboardMode::None);
         window.set_anchor(Edge::Bottom, true);
         window.set_monitor(monitor);
-        window.present();
-        glib::spawn_future_local(clone!(
-            #[strong]
-            window,
-            async move {
-                window.hide();
-            }
-        ));
         window.connect_visible_notify(clone!(
             #[strong]
             sender,
@@ -89,7 +81,7 @@ pub fn create_windows(
                 monitor.clone(),
             ),
         );
-        trace!("[GUI] Created window for monitor {:?}", monitor.connector());
+        trace!("Created window for monitor {:?}", monitor.connector());
     }
 
     Ok(())

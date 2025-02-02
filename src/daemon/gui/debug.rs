@@ -36,7 +36,7 @@ pub fn debug_search_class(class: String) -> anyhow::Result<()> {
             name, source, path
         );
     }
-    if theme.has_icon(&*name) {
+    if theme.has_icon(&name) {
         #[allow(clippy::print_stdout)]
         {
             println!("Theme contains icon for name {name}");
