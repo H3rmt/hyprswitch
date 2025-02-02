@@ -174,10 +174,17 @@ bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --clo
 
 # Features
 
-TODO
+- Switch between windows using keyboard shortcuts or/and a GUI
+- Customizable Keybindings
+- TODO add features to this list
 
+## Experimental Features
+
+- Launch applications from the GUI
 - Support for plugging in new monitors while running [Only when run as systemd service]
 - Automatically restart when version changes [Only when run as systemd service]
+- Create all binds and configs from a single config file
+- TODO add experimental features to this list
 
 # Theming (`--custom-css`)
 
@@ -276,11 +283,11 @@ TODO
 
 ### Experimental Environment Variables
 
-- `ICON_SIZE` i32 [default: 512]: Argument passed to the theme.lookup_icon function (Determines the resolution of the
-  Icon, as it gets scaled to the windowsize regardless of the resolution of the icon)
-- `SHOW_DEFAULT_ICON` bool [default: false]: Show a icon if no icon was found (`application-x-executable` doesn't scale good)
+These variables are subject to change and might be removed in the future (activate debug mode with -v and look for `ENV dump:` in the logs to see the current values or inside the [envs.rs](./src/envs.rs) file)
+
 - `REMOVE_HTML_FROM_WORKSPACE_NAME` bool [default: true]: Remove HTML tag (currently only `<span>{}</span>`) from workspace name
 - `SHOW_LAUNCHER` bool [default: true]: Show a Launcher Icon in the GUI when using default `--close` mode
 - `LAUNCHER_MAX_ITEMS` i32 [default: 5]: Maximum number of items in the Launcher
 - `DEFAULT_TERMINAL` string [default: ""]: Terminal to use for launching terminal applications, e.g., `alacritty`. (If
-  empty, a list if known terminals will be used)
+  empty, a list if known terminals is used)
+- `DISABLE_TOASTS` bool [default: false]: Disable toasts when errors in the daemon or keybinds are detected
