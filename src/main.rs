@@ -75,8 +75,8 @@ fn main() -> anyhow::Result<()> {
                 })?;
         }
         cli::Command::Close { kill } => {
-            client::send_version_check_command()
-                .context("Failed to send check command to daemon")?;
+            // client::send_version_check_command()
+            //     .context("Failed to send check command to daemon")?;
 
             if !client::daemon_running() {
                 warn!("Daemon not running");
@@ -85,8 +85,8 @@ fn main() -> anyhow::Result<()> {
             client::send_close_daemon(kill).context("Failed to send kill command to daemon")?;
         }
         cli::Command::Dispatch { dispatch_config } => {
-            client::send_version_check_command()
-                .context("Failed to send check command to daemon")?;
+            // client::send_version_check_command()
+            //     .context("Failed to send check command to daemon")?;
 
             let dispatch_config = DispatchConfig::from(dispatch_config);
             client::send_dispatch_command(dispatch_config.clone()).with_context(|| {
@@ -123,8 +123,8 @@ fn main() -> anyhow::Result<()> {
                 toast("Daemon not running (add ``exec-once = hyprswitch init &`` to your Hyprland config or run ``hyprswitch init &`` it in a terminal)\nvisit https://github.com/H3rmt/hyprswitch/wiki/Examples to see Example configs");
                 return Err(anyhow::anyhow!("Daemon not running"));
             }
-            client::send_version_check_command()
-                .context("Failed to send check command to daemon")?;
+            // client::send_version_check_command()
+            //     .context("Failed to send check command to daemon")?;
 
             let config = SimpleConfig::from(simple_config);
             let gui_config = GuiConfig::from(gui_conf);
