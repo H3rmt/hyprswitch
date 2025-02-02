@@ -1,7 +1,6 @@
 use crate::daemon::gui::gui_handle::{
     gui_change_entry_input, gui_change_selected_program, gui_exec,
 };
-use crate::daemon::gui::icon::load_icon_from_cache;
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
 use crate::envs::{LAUNCHER_ANIMATE_LAUNCH_TIME, LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
@@ -18,6 +17,7 @@ use gtk4::{
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::ops::Deref;
+use std::path::Path;
 use std::thread;
 use std::time::Duration;
 use tracing::{info, trace};
@@ -212,7 +212,11 @@ fn create_launch_widget(
         }
         _ => {
             if let Some(icon_path) = icon_path {
-                load_icon_from_cache(icon_path, &icon);
+                if icon_path.contains('/') {
+                    icon.set_from_file(Some(Path::new(&**icon_path)));
+                } else {
+                    icon.set_icon_name(Some(&*icon_path));
+                }
             }
         }
     };

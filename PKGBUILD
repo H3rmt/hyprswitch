@@ -21,7 +21,7 @@ build() {
     export RUSTUP_TOOLCHAIN=stable
     export CARGO_TARGET_DIR=target
     cd "$pkgname-$pkgver"
-    cargo build --frozen --release --all-features
+    cargo build --frozen --release
 }
 
 package() {
