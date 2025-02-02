@@ -120,12 +120,12 @@ fn send(buffer: &Vec<u8>) -> anyhow::Result<bool> {
     reader
         .read_until(b'\n', &mut buffer)
         .context("Failed to read data from buffer")?;
-    match buffer.get(0) {
+    match buffer.first() {
         Some(b'1') => Ok(true),
         Some(b'0') => Err(anyhow::anyhow!("Command failed")),
         _ => Err(anyhow::anyhow!(format!(
             "Unknown response {:?} ??",
-            buffer.get(0)
+            buffer.first()
         ))),
     }
 }
