@@ -72,6 +72,7 @@ impl From<GuiConf> for GuiConfig {
 }
 
 impl SubmapInfo {
+    #[allow(dead_code)]
     pub fn into_submap_info(self, reverse_key: InputReverseKey) -> SubmapConfig {
         SubmapConfig::Name {
             name: self.submap,

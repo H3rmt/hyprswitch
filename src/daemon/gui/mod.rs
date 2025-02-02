@@ -252,8 +252,8 @@ async fn handle_update(
         }
         Ok((GUISend::Hide, ref update_cause)) => {
             let _span = span!(Level::TRACE, "hide", cause = update_cause.to_string()).entered();
-            let data = shared_data.lock().expect("Failed to lock, shared_data");
             let windows = {
+                let data = shared_data.lock().expect("Failed to lock, shared_data");
                 let monitor_data = monitor_data.lock().expect("Failed to lock, monitor_data");
                 let launcher = launcher.lock().expect("Failed to lock, launcher");
 
