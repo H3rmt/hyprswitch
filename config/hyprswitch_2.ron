@@ -4,7 +4,7 @@ Config(
         launcher: (
             default_terminal: "alacritty",
         ),
-        gui: (
+        windows: (
             workspaces_per_row: 4,
         )
     ),

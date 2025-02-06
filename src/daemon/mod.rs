@@ -18,6 +18,7 @@ mod handle_fns;
 pub use data::*;
 
 pub use gui::{debug_desktop_files, debug_list, debug_search_class};
+pub use cache::get_cached_runs;
 #[derive(Debug, Clone)]
 pub(crate) enum GUISend {
     Refresh,

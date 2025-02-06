@@ -73,6 +73,9 @@ pub enum DebugCommand {
 
     /// List all desktop files
     DesktopFiles,
+
+    /// List cache for launched apps
+    LaunchCache,
 }
 
 /// only show error if not caused by --help ort -V (every start of every help text needs to be added...)

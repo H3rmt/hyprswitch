@@ -24,6 +24,7 @@ pub struct Exec {
     pub exec: Box<str>,
     pub path: Option<Box<str>>,
     pub terminal: bool,
+    // TODO maybe add path to .desktop file for caching
 }
 
 #[derive(Debug, Default, Copy, Clone)]

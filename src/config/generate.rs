@@ -5,7 +5,6 @@ use crate::get_daemon_socket_path_buff;
 use crate::transfer::{DispatchConfig, OpenConfig, TransferType};
 use anyhow::Context;
 use rand::Rng;
-use std::env;
 use std::path::PathBuf;
 use tracing::{span, trace, Level};
 

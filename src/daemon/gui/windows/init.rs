@@ -2,7 +2,6 @@ use crate::daemon::gui::icon::set_icon;
 use crate::daemon::gui::windows::click::{click_client, click_workspace};
 use crate::daemon::gui::MonitorData;
 use crate::daemon::Share;
-use crate::envs::REMOVE_HTML_FROM_WORKSPACE_NAME;
 use crate::{ClientData, ClientId, WorkspaceData, WorkspaceId};
 use gtk4::{pango, prelude::*, Fixed, Frame, Image, Label, Overflow, Overlay};
 use regex::Regex;

@@ -1,4 +1,3 @@
-use crate::envs::DEFAULT_TERMINAL;
 use crate::Warn;
 use std::ops::Deref;
 use std::os::unix::prelude::CommandExt;

@@ -18,7 +18,7 @@ pub struct General {
     #[default(None)]
     pub custom_css_path: Option<String>,
     pub launcher: Launcher,
-    pub gui: Gui,
+    pub windows: Windows,
 }
 
 #[derive(SmartDefault, Debug, Deserialize, Serialize)]
@@ -36,7 +36,7 @@ pub struct Launcher {
 
 #[derive(SmartDefault, Debug, Deserialize, Serialize)]
 #[serde(default)]
-pub struct Gui {
+pub struct Windows {
     #[default = true]
     pub show_title: bool,
     #[default = 5]

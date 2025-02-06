@@ -4,6 +4,28 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 
+pub fn get_cached_runs() -> anyhow::Result<Vec<(String, i64)>> {
+    let cache_path = get_path().context("Failed to get cache path")?;
+    let cache_data = if cache_path.exists() {
+        let file = OpenOptions::new()
+            .read(true)
+            .open(&cache_path)
+            .context("Failed to open cache file")?;
+        serde_json::from_reader(file).unwrap_or_else(|_| serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    let mut runs = cache_data
+        .as_object()
+        .unwrap_or(&serde_json::Map::new())
+        .iter()
+        .map(|(run, count)| (run.clone(), count.as_i64().unwrap_or(0)))
+        .collect::<Vec<_>>();
+    runs.sort_by(|a, b| b.1.cmp(&a.1));
+    Ok(runs)
+}
+
 pub fn cache_run(run: &str) -> anyhow::Result<()> {
     let cache_path = get_path().context("Failed to get cache path")?;
     let mut cache_data = if cache_path.exists() {

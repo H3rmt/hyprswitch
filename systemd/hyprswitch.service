@@ -10,7 +10,6 @@ StartLimitBurst=20
 Type=simple
 ExecStart=/home/user/RustroverProjects/hyprswitch/target/debug/hyprswitch -vv run
 Restart=always
-Environment="SYSTEMD_SERVICE=true"
 
 [Install]
 WantedBy=graphical-session.target

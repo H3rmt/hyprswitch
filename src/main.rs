@@ -1,7 +1,9 @@
 use anyhow::Context;
 use clap::Parser;
-use hyprswitch::daemon::{debug_desktop_files, debug_list, debug_search_class, InitGuiConfig};
-use hyprswitch::envs::{envvar_dump, LOG_MODULE_PATH};
+use hyprswitch::daemon::{
+    debug_desktop_files, debug_list, debug_search_class, get_cached_runs, InitGuiConfig,
+};
+use hyprswitch::envs::LOG_MODULE_PATH;
 use hyprswitch::handle::check_version;
 use hyprswitch::{global, handle, toast, SortConfig, Warn};
 use std::path::PathBuf;
@@ -42,8 +44,6 @@ fn main() -> anyhow::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).warn("Unable to initialize logging");
 
-    envvar_dump();
-
     check_version().warn("Unable to check Hyprland version, continuing anyway");
 
     global::DRY
@@ -54,9 +54,7 @@ fn main() -> anyhow::Result<()> {
         .expect("unable to set ACTIVE (already filled???)");
 
     match cli.command {
-        cli::Command::Run {
-            config_file, ..
-        } => {
+        cli::Command::Run { config_file, .. } => {
             info!("Loading config");
             let config = hyprswitch::config::load(config_file).context("Failed to load config")?;
             trace!(
@@ -66,8 +64,8 @@ fn main() -> anyhow::Result<()> {
             hyprswitch::config::validate(&config).context("Failed to validate config")?;
             let init_config = InitGuiConfig {
                 custom_css: config.general.custom_css_path.clone().map(PathBuf::from),
-                show_title: config.general.gui.show_title,
-                workspaces_per_row: config.general.gui.workspaces_per_row,
+                show_title: config.general.windows.show_title,
+                workspaces_per_row: config.general.windows.workspaces_per_row,
                 size_factor: config.general.size_factor,
             };
             let list = hyprswitch::config::create_binds_and_submaps(config)
@@ -80,22 +78,14 @@ fn main() -> anyhow::Result<()> {
                     hyprswitch::daemon::deactivate_submap();
                 })?;
         }
-        // cli::Command::Init { init_opts } => {
-        //     info!("Starting daemon");
-        //     let init_config = InitConfig::from(init_opts);
-        //     hyprswitch::daemon::start_daemon(init_config)
-        //         .context("Failed to run daemon")
-        //         .inspect_err(|_| {
-        //             hyprswitch::daemon::deactivate_submap();
-        //         })?;
-        // }
         cli::Command::Simple {
             dispatch_config,
             simple_conf,
         } => {
             let sort_config = SortConfig::from(simple_conf);
-            let (hypr_data, active) = handle::collect_data(&sort_config)
-                .with_context(|| format!("Failed to collect data with sort_config {sort_config:?}"))?;
+            let (hypr_data, active) = handle::collect_data(&sort_config).with_context(|| {
+                format!("Failed to collect data with sort_config {sort_config:?}")
+            })?;
             info!("Active: {:?}", active);
             let next_active = handle::find_next(
                 dispatch_config.reverse,
@@ -119,6 +109,12 @@ fn main() -> anyhow::Result<()> {
                 }
                 cli::DebugCommand::DesktopFiles => {
                     debug_desktop_files().warn("Failed to run debug_desktop_files");
+                }
+                cli::DebugCommand::LaunchCache => {
+                    let runs = get_cached_runs().warn("Failed to run get_cached_runs");
+                    for (run, count) in runs.unwrap_or_default() {
+                        println!("{}: {}", run, count);
+                    }
                 }
             };
         }
