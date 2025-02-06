@@ -1,5 +1,6 @@
 use crate::Warn;
-use std::collections::HashMap;
+use gtk4::IconTheme;
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
@@ -24,6 +25,25 @@ type DesktopFileMap = Vec<(
     bool,
     Box<Path>,
 )>;
+
+fn get_icon_map() -> &'static Mutex<BTreeSet<Box<str>>> {
+    static MAP_LOCK: OnceLock<Mutex<BTreeSet<Box<str>>>> = OnceLock::new();
+    MAP_LOCK.get_or_init(|| Mutex::new(BTreeSet::new()))
+}
+
+pub fn init_icon_map() {
+    let theme = IconTheme::new();
+    let mut map = get_icon_map().lock().expect("Failed to lock icon map");
+    for icon in theme.icon_names() {
+        map.insert(Box::from(icon));
+    }
+}
+
+/// https://github.com/H3rmt/hyprswitch/discussions/137
+pub fn icon_has_name(name: &str) -> bool {
+    let map = get_icon_map().lock().expect("Failed to lock icon map");
+    map.contains(&Box::from(name))
+}
 
 fn get_icon_path_map() -> &'static Mutex<IconPathMap> {
     static MAP_LOCK: OnceLock<Mutex<IconPathMap>> = OnceLock::new();

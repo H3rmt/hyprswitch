@@ -33,6 +33,7 @@ mod maps;
 mod windows;
 
 pub use launcher::show_launch_spawn;
+use crate::daemon::gui::maps::init_icon_map;
 
 pub(super) fn start_gui_blocking(
     share: Share,
@@ -53,7 +54,12 @@ pub(super) fn start_gui_blocking(
         trace!("start connect_activate");
         check_themes();
 
+        // load all installed icons
+        // https://github.com/H3rmt/hyprswitch/discussions/137
+        init_icon_map();
+
         apply_css(init_config.custom_css.as_ref());
+
 
         let (visibility_sender, visibility_receiver) = async_channel::unbounded();
         let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>> =
