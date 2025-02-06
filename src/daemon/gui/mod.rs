@@ -182,6 +182,7 @@ async fn handle_update(
                         init_gui_config.show_title,
                         data.gui_config.show_workspaces_on_all_monitors,
                         init_gui_config.size_factor,
+                        init_gui_config.strip_html_workspace_title,
                     );
 
                     trace!("Refresh window {:?}", window);
@@ -233,6 +234,8 @@ async fn handle_update(
                         data.launcher_data.selected,
                         &data.launcher_data.launch_state,
                         &data.submap_config.reverse_key,
+                        init_gui_config.launcher_max_items,
+                        init_gui_config.show_execs,
                     );
                     data.launcher_data.execs = execs;
                 });

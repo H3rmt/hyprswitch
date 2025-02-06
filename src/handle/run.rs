@@ -1,5 +1,4 @@
-use crate::Warn;
-use std::ops::Deref;
+use crate::{global, Warn};
 use std::os::unix::prelude::CommandExt;
 use std::process::{Command, Stdio};
 use std::{io, thread};
@@ -7,7 +6,12 @@ use tracing::{debug, info};
 
 pub fn run_program(run: &str, path: &Option<Box<str>>, terminal: bool) {
     if terminal {
-        if let Some(term) = DEFAULT_TERMINAL.deref() {
+        if let Some(term) = global::OPTS
+            .get()
+            .map(|o| o.default_terminal.as_ref())
+            .warn("Failed to access global default terminal")
+            .unwrap_or_default()
+        {
             let mut process = Command::new(term);
             process.arg("-e");
             run_command(&mut process, run, path).warn("Failed to run command");

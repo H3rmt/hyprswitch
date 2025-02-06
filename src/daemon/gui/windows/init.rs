@@ -20,6 +20,7 @@ pub fn init_windows(
     show_title: bool,
     show_workspaces_on_all_monitors: bool,
     size_factor: f64,
+    strip_html_workspace_title: bool,
 ) {
     // clear_monitor(monitor_data);
     let workspaces = {
@@ -40,7 +41,7 @@ pub fn init_windows(
 
         let id_string = wid.to_string();
         let title = if show_title && !workspace.name.trim().is_empty() {
-            if *REMOVE_HTML_FROM_WORKSPACE_NAME {
+            if strip_html_workspace_title {
                 regex.replace_all(&workspace.name, "$1")
             } else {
                 Cow::from(&workspace.name)

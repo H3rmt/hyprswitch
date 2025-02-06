@@ -44,19 +44,22 @@ fn main() -> anyhow::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).warn("Unable to initialize logging");
 
-    check_version().warn("Unable to check Hyprland version, continuing anyway");
-
     global::DRY
         .set(cli.global_opts.dry_run)
-        .expect("unable to set DRY (already filled???)");
+        .warn("unable to set DRY (already filled???)");
     global::OPEN
         .set(Mutex::new(false))
-        .expect("unable to set ACTIVE (already filled???)");
+        .warn("unable to set ACTIVE (already filled???)");
+
+    check_version().warn("Unable to check Hyprland version, continuing anyway");
 
     match cli.command {
         cli::Command::Run { config_file, .. } => {
             info!("Loading config");
             let config = hyprswitch::config::load(config_file).context("Failed to load config")?;
+            global::TOASTS_ALLOWED
+                .set(!config.general.disable_toast)
+                .warn("unable to set TOASTS_ALLOWED (already filled???)");
             trace!(
                 "Config read: {}",
                 serde_json::to_string(&config).unwrap_or("Failed to serialize config".to_string())
@@ -67,6 +70,11 @@ fn main() -> anyhow::Result<()> {
                 show_title: config.general.windows.show_title,
                 workspaces_per_row: config.general.windows.workspaces_per_row,
                 size_factor: config.general.size_factor,
+                launcher_max_items: config.general.launcher.items,
+                default_terminal: config.general.launcher.default_terminal.clone(),
+                show_execs: config.general.launcher.show_execs,
+                animate_launch_time: config.general.launcher.animate_launch_time_ms,
+                strip_html_workspace_title: config.general.windows.strip_html_from_workspace_title,
             };
             let list = hyprswitch::config::create_binds_and_submaps(config)
                 .context("Failed to create binds and submaps")?;

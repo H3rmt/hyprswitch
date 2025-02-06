@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use crate::daemon::cache::cache_run;
 use crate::daemon::gui::launcher::show_launch_spawn;
 use crate::daemon::gui::reload_desktop_maps;
@@ -6,7 +7,6 @@ use crate::handle::{clear_recent_clients, run_program, switch_to_active};
 use crate::{global, Active, ClientId, MonitorId, Warn, WorkspaceId};
 use anyhow::Context;
 use gtk4::glib::clone;
-use std::ops::Deref;
 use std::thread;
 use tracing::{trace, warn};
 

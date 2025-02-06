@@ -17,8 +17,8 @@ mod handle_fns;
 
 pub use data::*;
 
-pub use gui::{debug_desktop_files, debug_list, debug_search_class};
 pub use cache::get_cached_runs;
+pub use gui::{debug_desktop_files, debug_list, debug_search_class};
 #[derive(Debug, Clone)]
 pub(crate) enum GUISend {
     Refresh,
@@ -63,6 +63,11 @@ pub struct InitGuiConfig {
     pub show_title: bool,
     pub workspaces_per_row: u8,
     pub size_factor: f64,
+    pub launcher_max_items: u8,
+    pub default_terminal: Option<String>,
+    pub show_execs: bool,
+    pub animate_launch_time: u64,
+    pub strip_html_workspace_title: bool,
 }
 
 pub fn start_daemon(init_gui_config: InitGuiConfig) -> anyhow::Result<()> {

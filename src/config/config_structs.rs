@@ -42,7 +42,7 @@ pub struct Windows {
     #[default = 5]
     pub workspaces_per_row: u8,
     #[default = true]
-    pub strip_html_from_title: bool,
+    pub strip_html_from_workspace_title: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

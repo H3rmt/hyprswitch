@@ -13,7 +13,7 @@ Config(
         windows: (
             show_title: true,
             workspaces_per_row: 4,
-            strip_html_from_title: true,
+            strip_html_from_workspace_title: true,
             // removed
             icon_size: 512,
             // removed
