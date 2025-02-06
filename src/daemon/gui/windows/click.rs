@@ -1,14 +1,14 @@
 use crate::daemon::gui::gui_handle::{
     gui_close, gui_set_client, gui_set_monitor, gui_set_workspace,
 };
-use crate::Share;
+use crate::daemon::Share;
+use crate::{ClientId, MonitorId, WorkspaceId};
 use gtk4::glib::clone;
 use gtk4::prelude::GestureExt;
 use gtk4::{EventSequenceState, GestureClick};
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use tracing::info;
 
-pub(crate) fn click_client(share: &Share, address: &Address) -> GestureClick {
+pub(crate) fn click_client(share: &Share, address: ClientId) -> GestureClick {
     let gesture = GestureClick::new();
     gesture.connect_pressed(clone!(
         #[strong]
@@ -18,7 +18,7 @@ pub(crate) fn click_client(share: &Share, address: &Address) -> GestureClick {
         move |gesture, _, _, _| {
             gesture.set_state(EventSequenceState::Claimed);
             info!("Switching to client {:?}", address.clone());
-            gui_set_client(&share, address.clone());
+            gui_set_client(&share, address);
             info!("Exiting on click of client window");
             gui_close(&share);
         }

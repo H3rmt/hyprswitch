@@ -7,7 +7,7 @@ use hyprland::prelude::HyprDataActive;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use tracing::{debug, span, warn, Level};
 
-use crate::{global, Active, FindByFirst, HyprlandData};
+use crate::{global, to_client_address, Active, FindByFirst, HyprlandData};
 
 pub fn switch_to_active(
     active: Option<&Active>,
@@ -35,7 +35,7 @@ pub fn switch_to_active(
             .with_context(|| {
                 format!("Failed to execute switch workspace with workspace_data {workspace_data:?}")
             })?;
-            switch_client(addr, *global::DRY.get().expect("DRY not set"))
+            switch_client(&to_client_address(*addr), *global::DRY.get().expect("DRY not set"))
                 .with_context(|| format!("Failed to execute with addr {addr:?}"))?;
         }
         Some(Active::Workspace(wid)) => {

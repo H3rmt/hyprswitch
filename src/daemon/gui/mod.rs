@@ -1,5 +1,4 @@
 use crate::envs::SHOW_LAUNCHER;
-use crate::{GUISend, InitConfig, Payload, Share, SubmapConfig, UpdateCause, Warn};
 use anyhow::Context;
 use async_channel::{Receiver, RecvError, Sender};
 use gtk4::gdk::{Display, Monitor};
@@ -13,7 +12,6 @@ use gtk4::{
     STYLE_PROVIDER_PRIORITY_USER,
 };
 use gtk4_layer_shell::{Edge, LayerShell};
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use std::cmp::max;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -32,11 +30,13 @@ mod launcher;
 mod maps;
 mod windows;
 
+use crate::daemon::{GUISend, InitGuiConfig, Payload, Share, UpdateCause};
+use crate::{ClientId, MonitorId, Warn, WorkspaceId};
 pub use launcher::show_launch_spawn;
 
 pub(super) fn start_gui_blocking(
     share: Share,
-    init_config: InitConfig,
+    init_gui_config: InitGuiConfig,
     receiver: Receiver<Payload>,
     return_sender: Sender<Option<Payload>>,
 ) {
@@ -53,7 +53,7 @@ pub(super) fn start_gui_blocking(
         trace!("start connect_activate");
         check_themes();
 
-        apply_css(init_config.custom_css.as_ref());
+        apply_css(init_gui_config.custom_css.as_ref());
 
         let (visibility_sender, visibility_receiver) = async_channel::unbounded();
         let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>> =
@@ -64,7 +64,7 @@ pub(super) fn start_gui_blocking(
                 app,
                 &share,
                 &mut monitor_data_list,
-                init_config.workspaces_per_row as u32,
+                init_gui_config.workspaces_per_row as u32,
                 visibility_sender.clone(),
             )
             .warn("Failed to create windows");
@@ -83,7 +83,7 @@ pub(super) fn start_gui_blocking(
             #[strong]
             monitor_data_list,
             #[strong]
-            init_config,
+            init_gui_config,
             #[strong]
             receiver,
             #[strong]
@@ -96,7 +96,7 @@ pub(super) fn start_gui_blocking(
                     let mess = receiver.recv().await;
                     handle_update(
                         &share,
-                        &init_config,
+                        &init_gui_config,
                         &mess,
                         monitor_data_list.clone(),
                         launcher_refs.clone(),
@@ -120,7 +120,7 @@ pub(super) fn start_gui_blocking(
 
 async fn handle_update(
     share: &Share,
-    init_config: &InitConfig,
+    init_gui_config: &InitGuiConfig,
     mess: &Result<Payload, RecvError>,
     monitor_data: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>>,
     launcher: Rc<Mutex<Option<(ApplicationWindow, Entry, ListBox)>>>,
@@ -157,7 +157,7 @@ async fn handle_update(
                             })
                             .collect::<Vec<_>>()
                             .len() as i32;
-                        let rows = (workspaces as f32 / init_config.workspaces_per_row as f32)
+                        let rows = (workspaces as f32 / init_gui_config.workspaces_per_row as f32)
                             .ceil() as i32;
                         let height = monitor.geometry().height();
                         window.set_margin(
@@ -178,9 +178,9 @@ async fn handle_update(
                         &data.hypr_data.workspaces,
                         &data.hypr_data.clients,
                         monitor_data,
-                        init_config.show_title,
+                        init_gui_config.show_title,
                         data.gui_config.show_workspaces_on_all_monitors,
-                        init_config.size_factor,
+                        init_gui_config.size_factor,
                     );
 
                     trace!("Refresh window {:?}", window);
@@ -219,25 +219,21 @@ async fn handle_update(
             // only update launcher wen using default close mode
             if data.gui_config.show_launcher {
                 launcher.as_ref().inspect(|(_, e, l)| {
-                    if data.launcher_config.selected.is_none() && !e.text().is_empty() {
-                        data.launcher_config.selected = Some(0);
+                    if data.launcher_data.selected.is_none() && !e.text().is_empty() {
+                        data.launcher_data.selected = Some(0);
                     }
-                    if data.launcher_config.selected.is_some() && e.text().is_empty() {
-                        data.launcher_config.selected = None;
+                    if data.launcher_data.selected.is_some() && e.text().is_empty() {
+                        data.launcher_data.selected = None;
                     }
-                    let reverse_key = match &data.submap_config {
-                        SubmapConfig::Name { reverse_key, .. } => reverse_key,
-                        SubmapConfig::Config { reverse_key, .. } => reverse_key,
-                    };
                     let execs = launcher::update_launcher(
                         share.clone(),
                         &e.text(),
                         l,
-                        data.launcher_config.selected,
-                        data.launcher_config.launch_state,
-                        reverse_key,
+                        data.launcher_data.selected,
+                        &data.launcher_data.launch_state,
+                        &data.submap_config.reverse_key,
                     );
-                    data.launcher_config.execs = execs;
+                    data.launcher_data.execs = execs;
                 });
             }
             for (window, (monitor_data, _)) in &mut monitor_data.iter_mut() {
@@ -276,7 +272,8 @@ async fn handle_update(
                 drop(launcher);
                 windows // use scope to drop locks and prevent hold MutexGuard across await
             };
-            // waits until all windows are hidden (needed for launcher with keyboard mode exclusive [commit:b34b5eb8157292e19156ca0650a10f1cb0307d8d])
+            // waits until all windows are hidden (needed for launcher with keyboard mode exclusive
+            // [commit: b34b5eb8157292e19156ca0650a10f1cb0307d8d])
             trace!("Waiting for {windows} windows to hide");
             for _ in 0..windows {
                 // receive async not to block gtk event loop
@@ -349,7 +346,7 @@ pub struct MonitorData {
     // used to store refs to the Overlays over the workspace Frames
     workspace_refs: HashMap<WorkspaceId, (Overlay, Option<Label>)>,
     // used to store refs to the Overlays containing the clients
-    client_refs: HashMap<Address, (Overlay, Option<Label>)>,
+    client_refs: HashMap<ClientId, (Overlay, Option<Label>)>,
 }
 
 pub fn start_gui_restarter(share: Share) {

@@ -2,12 +2,12 @@ use crate::daemon::gui::icon::set_icon;
 use crate::daemon::gui::windows::click::{click_client, click_workspace};
 use crate::daemon::gui::MonitorData;
 use crate::envs::REMOVE_HTML_FROM_WORKSPACE_NAME;
-use crate::{ClientData, Share, WorkspaceData};
+use crate::{ClientData, ClientId, WorkspaceData, WorkspaceId};
 use gtk4::{pango, prelude::*, Fixed, Frame, Image, Label, Overflow, Overlay};
-use hyprland::shared::{Address, WorkspaceId};
 use regex::Regex;
 use std::borrow::Cow;
 use std::cmp::min;
+use crate::daemon::Share;
 
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
@@ -16,7 +16,7 @@ fn scale(value: i16, size_factor: f64) -> i32 {
 pub fn init_windows(
     share: Share,
     workspaces_p: &[(WorkspaceId, WorkspaceData)],
-    clients_p: &[(Address, ClientData)],
+    clients_p: &[(ClientId, ClientData)],
     monitor_data: &mut MonitorData,
     show_title: bool,
     show_workspaces_on_all_monitors: bool,
@@ -143,7 +143,7 @@ pub fn init_windows(
                     .width_request(scale(client.width, size_factor))
                     .height_request(scale(client.height, size_factor))
                     .build();
-                client_overlay.add_controller(click_client(&share, address));
+                client_overlay.add_controller(click_client(&share, *address));
                 client_overlay
             };
             workspace_fixed.put(
@@ -153,7 +153,7 @@ pub fn init_windows(
             );
             monitor_data
                 .client_refs
-                .insert(address.clone(), (client_overlay, None));
+                .insert(*address, (client_overlay, None));
         }
     }
 }

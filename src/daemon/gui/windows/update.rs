@@ -1,11 +1,12 @@
-use std::cmp::min;
-use gtk4::Align;
-use crate::{Active, SharedData};
+use crate::daemon::data::SharedData;
 use crate::daemon::gui::MonitorData;
+use crate::Active;
+use gtk4::Align;
+use std::cmp::min;
 
 macro_rules! update_type {
     (
-        $htypr_data:expr, $identifier_name:ident, $css_active_name:expr, $id:expr,
+        $htypr_data:expr, $css_active_name:expr, $id:expr,
         $overlay:expr, $label:expr, $active:expr, $gui_config:expr, $submap_info:expr, $valign: expr
     ) => {
         use gtk4::prelude::WidgetExt;
@@ -47,10 +48,7 @@ macro_rules! update_type {
                             selected_client_position,
                             position,
                             $gui_config.max_switch_offset,
-                            if let crate::ReverseKey::Mod(_) = (match $submap_info {
-                                crate::SubmapConfig::Name { reverse_key, .. } => reverse_key,
-                                crate::SubmapConfig::Config { reverse_key, .. } => reverse_key,
-                            }) {
+                            if let crate::daemon::ReverseKey::Mod(_) = ($submap_info.reverse_key) {
                                 true
                             } else {
                                 false
@@ -82,7 +80,6 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
             for (id, (overlay, label)) in gui_monitor_data.client_refs.iter_mut() {
                 update_type!(
                     data.hypr_data.clients,
-                    address,
                     "client_active",
                     *id,
                     overlay,
@@ -98,7 +95,6 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
             for (wid, (overlay, label)) in gui_monitor_data.workspace_refs.iter_mut() {
                 update_type!(
                     data.hypr_data.workspaces,
-                    id,
                     "workspace_active",
                     *wid,
                     overlay,
@@ -114,7 +110,6 @@ pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> 
             let (overlay, label) = &mut gui_monitor_data.workspaces_flow_overlay;
             update_type!(
                 data.hypr_data.monitors,
-                id,
                 "monitor_active",
                 gui_monitor_data.id,
                 overlay,

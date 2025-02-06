@@ -3,17 +3,17 @@ use crate::daemon::gui::gui_handle::{
 };
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
+use crate::daemon::{Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause};
 use crate::envs::{LAUNCHER_ANIMATE_LAUNCH_TIME, LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
-use crate::{Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause, Warn};
+use crate::Warn;
 use async_channel::Sender;
 use gtk4::gdk::{Key, Texture};
 use gtk4::glib::{clone, ControlFlow, Propagation};
 use gtk4::pango::EllipsizeMode;
 use gtk4::prelude::{BoxExt, EditableExt, GestureExt, WidgetExt};
 use gtk4::{
-    glib, Align, Application, ApplicationWindow, Entry, EventControllerKey,
-    EventSequenceState, GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation,
-    SelectionMode,
+    glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, EventSequenceState,
+    GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation, SelectionMode,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::ops::Deref;
@@ -105,7 +105,7 @@ pub(super) fn update_launcher(
     text: &str,
     list: &ListBox,
     selected: Option<usize>,
-    launch_state: LaunchState,
+    launch_state: &LaunchState,
     reverse_key: &ReverseKey,
 ) -> Vec<Exec> {
     while let Some(child) = list.first_child() {
@@ -191,7 +191,7 @@ fn create_launch_widget(
     exec: &str,
     raw_index: usize,
     index: &str,
-    selected: Option<LaunchState>,
+    selected: Option<&LaunchState>,
 ) -> ListBoxRow {
     let hbox = gtk4::Box::builder()
         .orientation(Orientation::Horizontal)
@@ -215,7 +215,7 @@ fn create_launch_widget(
                 if icon_path.contains('/') {
                     icon.set_from_file(Some(Path::new(&**icon_path)));
                 } else {
-                    icon.set_icon_name(Some(&*icon_path));
+                    icon.set_icon_name(Some(icon_path));
                 }
             }
         }
@@ -290,7 +290,7 @@ pub fn show_launch_spawn(share: Share, cause: Option<u8>) {
         let (latest, send, receive) = share.deref();
         {
             let mut lat = latest.lock().expect("Failed to lock");
-            lat.launcher_config.launch_state = LaunchState::Launching;
+            lat.launcher_data.launch_state = LaunchState::Launching;
             drop(lat);
         }
 
@@ -305,7 +305,7 @@ pub fn show_launch_spawn(share: Share, cause: Option<u8>) {
 
         {
             let mut lat = latest.lock().expect("Failed to lock");
-            lat.launcher_config.launch_state = LaunchState::Default;
+            lat.launcher_data.launch_state = LaunchState::Default;
             drop(lat);
         }
 

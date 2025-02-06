@@ -55,6 +55,6 @@ jobs:
           TAG_NAME=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///')
           PR_URL=$(gh pr create --title "Release $TAG_NAME" --fill --base release --head main)
           echo "Pull Request URL: $PR_URL"
-          gh pr merge --squash --auto $PR_URL
+          gh pr merge -- --auto $PR_URL
         env:
           GH_TOKEN: ${{ github.token }}

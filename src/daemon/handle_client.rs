@@ -1,16 +1,15 @@
-use crate::client::daemon_running;
 use crate::daemon::handle_fns::{close, init, switch};
-use crate::envs::SYSTEMD_SERVICE;
-use crate::{get_socket_path_buff, global, toast, Share, Transfer, TransferType};
+use crate::transfer::TransferType;
+use crate::daemon::{daemon_running, Share};
+use crate::{get_daemon_socket_path_buff, global, toast};
 use anyhow::Context;
 use rand::Rng;
-use std::env;
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
 use std::time::Instant;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{error, info, trace, warn};
 use tracing::{span, Level};
 
 pub(super) fn start_handler_blocking(share: &Share) {
@@ -18,7 +17,7 @@ pub(super) fn start_handler_blocking(share: &Share) {
         warn!("Daemon already running");
         exit(0);
     }
-    let buf = get_socket_path_buff();
+    let buf = get_daemon_socket_path_buff();
     let path = buf.as_path();
     // remove old PATH
     let listener = {
@@ -64,47 +63,21 @@ pub(super) fn handle_client(stream: UnixStream, share: Share) -> anyhow::Result<
         // debug!("Received empty buffer");
         return Ok(());
     }
-    handle_client_transfer(stream, buffer, share, rand_id)?;
+    let str = String::from_utf8_lossy(&buffer);
+    handle_client_transfer(stream, &str, share, rand_id)?;
     trace!("Handled client in {:?}", now.elapsed());
     Ok(())
 }
 
 pub(super) fn handle_client_transfer(
     mut stream: UnixStream,
-    buffer: Vec<u8>,
+    buffer: &str,
     share: Share,
     client_id: u8,
 ) -> anyhow::Result<()> {
-    let transfer: Transfer = bincode::deserialize(&buffer)
+    let transfer: TransferType = serde_json::from_str(buffer)
         .with_context(|| format!("Failed to deserialize buffer {buffer:?}"))?;
     trace!("Received command: {transfer:?}");
-
-    // check the major and minor number, exclude patch number
-    if *env!("CARGO_PKG_VERSION")
-        .split('.')
-        .take(2)
-        .collect::<Vec<_>>()
-        != transfer.version.split('.').take(2).collect::<Vec<_>>()
-    {
-        error!(
-            "Client version {} and daemon version {} not matching",
-            transfer.version,
-            env!("CARGO_PKG_VERSION")
-        );
-        if *SYSTEMD_SERVICE {
-            // automatically restart if in systemd mode
-            debug!("Restarting daemon");
-            exit(1);
-        } else {
-            toast(VERSION_OUT_OF_SYNC);
-            return_success(false, &mut stream)?;
-
-            // automatically restart if in systemd mode
-
-            // don't return Error (would trigger new toast)
-            return Ok(());
-        }
-    }
 
     let open = *global::OPEN
         .get()
@@ -112,32 +85,17 @@ pub(super) fn handle_client_transfer(
         .lock()
         .expect("Failed to lock ACTIVE");
 
-    match transfer.transfer {
-        TransferType::VersionCheck => {
-            debug!("Received version check command"); // use debug here to not spam the logs
-            return_success(true, &mut stream)?;
-        }
-        TransferType::Open => {
-            info!("Received open command");
-            return_success(open, &mut stream)?;
-        }
-        TransferType::Init(config, gui_config, submap_config) => {
+    match transfer {
+        TransferType::Open(config) => {
             if !open {
                 let _span = span!(Level::TRACE, "init").entered();
-                info!("Received init command {config:?} and {gui_config:?} and {submap_config:?}");
-                match init(
-                    &share,
-                    config.clone(),
-                    gui_config.clone(),
-                    submap_config.clone(),
-                    client_id,
-                )
-                .with_context(|| {
-                    format!(
-                        "Failed to init with config {:?} and gui_config {:?}",
-                        config, gui_config
-                    )
-                }) {
+                info!("Received init command {:?}", &config);
+                let sort_config = (&config).into();
+                let gui_config = (&config).into();
+                let submap_config = (&config).into();
+                match init(&share, sort_config, gui_config, submap_config, client_id)
+                    .with_context(|| format!("Failed to init with config {:?}", config))
+                {
                     Ok(_) => {
                         return_success(true, &mut stream)?;
                     }
@@ -173,8 +131,13 @@ pub(super) fn handle_client_transfer(
             if open {
                 let _span = span!(Level::TRACE, "switch").entered();
                 info!("Received switch command {dispatch_config:?}");
-                match switch(&share, &dispatch_config, client_id)
-                    .with_context(|| format!("Failed to execute with command {dispatch_config:?}"))
+                match switch(
+                    &share,
+                    dispatch_config.reverse,
+                    dispatch_config.offset,
+                    client_id,
+                )
+                .with_context(|| format!("Failed to execute with command {dispatch_config:?}"))
                 {
                     Ok(_) => {
                         return_success(true, &mut stream)?;
@@ -205,10 +168,3 @@ fn return_success(success: bool, stream: &mut UnixStream) -> anyhow::Result<()> 
     }
     Ok(())
 }
-
-const VERSION_OUT_OF_SYNC: &str = r"
-This is most likely caused by updating hyprswitch and not restarting the hyprswitch daemon.
-You must manually start the new version (run `pkill hyprswitch && hyprswitch init &` in a terminal)
-
-(visit https://github.com/H3rmt/hyprswitch/releases to see latest release and new features)
-";

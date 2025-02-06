@@ -1,15 +1,8 @@
-mod debug;
-mod dispatch;
-mod gui;
-mod init;
-mod shared;
 mod simple;
 
 use std::fmt::Debug;
 
 use clap::{Args, Parser, Subcommand};
-
-pub use debug::DebugCommand;
 
 #[derive(Parser, Debug, Clone)]
 #[command(
@@ -43,66 +36,47 @@ pub struct GlobalOpts {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Command {
-    #[cfg(feature = "config")]
-    /// Generate the daemon config and all keybinds according to the config file
-    Generate {
+    /// Read the config file, generate the keybinds and submaps and start the Daemon
+    Run {
         /// Path to config [default: $XDG_CONFIG_HOME/hyprswitch/config.ron]
-        #[arg(long, short = 'w')]
+        #[arg(long, short = 'f')]
         config_file: Option<std::path::PathBuf>,
 
-        /// Specify a path to custom hyprswitch executable [path to current executable]
+        /// Specify a path to custom hyprswitch executable [default: path to current executable]
         #[arg(long)]
         exe: Option<std::path::PathBuf>,
     },
-    /// Initialize and start the Daemon
-    Init {
-        #[clap(flatten)]
-        init_opts: init::InitOpts,
-    },
 
-    #[clap(hide = true)]
-    Dispatch {
-        #[clap(flatten)]
-        dispatch_config: dispatch::DispatchConf,
-    },
-
-    #[clap(hide = true)]
-    Gui {
-        #[clap(flatten)]
-        submap_conf: gui::SubmapConf,
-
-        /// The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
-        ///
-        /// Used for both --submap and --key, --mod-key, --close. --submap needs it to know if the reverse key is a modifier or a key (to display the correct keybinding in the GUI)
-        #[arg(long, value_parser = clap::value_parser!(shared::InputReverseKey), default_value = "mod=shift")]
-        reverse_key: shared::InputReverseKey,
-
-        #[clap(flatten)]
-        gui_conf: gui::GuiConf,
-
-        #[clap(flatten)]
-        simple_config: simple::SimpleConf,
-    },
     /// Switch without using the GUI / Daemon (switches directly)
     Simple {
         #[clap(flatten)]
-        dispatch_config: dispatch::DispatchConf,
+        dispatch_config: simple::DispatchConf,
 
         #[clap(flatten)]
         simple_conf: simple::SimpleConf,
     },
 
-    #[clap(hide = true)]
-    Close {
-        /// Don't switch to the selected window, just close the GUI
-        #[arg(long)]
-        kill: bool,
-    },
     /// Debug command to debug finding icons for the GUI, doesn't interact with the Daemon
     Debug {
         #[clap(subcommand)]
         command: DebugCommand,
     },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum DebugCommand {
+    /// Search for an icon with a window class
+    Search {
+        /// The class (from `hyprctl clients -j | jq -e ".[] | {title, class}"`) of a window to find an icon for
+        #[arg(long)]
+        class: String,
+    },
+
+    /// List all icons in the theme
+    List,
+
+    /// List all desktop files
+    DesktopFiles,
 }
 
 /// only show error if not caused by --help ort -V (every start of every help text needs to be added...)

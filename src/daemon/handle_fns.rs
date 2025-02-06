@@ -1,35 +1,38 @@
-use crate::configs::DispatchConfig;
 use crate::daemon::cache::cache_run;
 use crate::daemon::gui::{reload_desktop_maps, show_launch_spawn};
-use crate::daemon::submap::{activate_submap, deactivate_submap, generate_submap};
+use crate::daemon::{
+    activate_submap, deactivate_submap, GUISend, GuiConfig, Share, SubmapConfig, UpdateCause,
+};
 use crate::handle::{clear_recent_clients, collect_data, find_next, run_program, switch_to_active};
-use crate::{global, GUISend, GuiConfig, Share, SimpleConfig, SubmapConfig, UpdateCause, Warn};
+use crate::{global, SortConfig, Warn};
 use anyhow::Context;
 use std::ops::Deref;
 use tracing::{info, trace, warn};
 
 pub(crate) fn switch(
     share: &Share,
-    dispatch_config: &DispatchConfig,
+    reverse: bool,
+    offset: u8,
     client_id: u8,
 ) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
-        let exec_len = lock.launcher_config.execs.len();
-        if let Some(ref mut selected) = lock.launcher_config.selected {
+        let exec_len = lock.launcher_data.execs.len();
+        if let Some(ref mut selected) = lock.launcher_data.selected {
             if exec_len == 0 {
                 return Ok(());
             }
-            *selected = if dispatch_config.reverse {
-                selected.saturating_sub(dispatch_config.offset as usize)
+            *selected = if reverse {
+                selected.saturating_sub(offset as usize)
             } else {
-                (*selected + dispatch_config.offset as usize).min(exec_len - 1)
+                (*selected + offset as usize).min(exec_len - 1)
             };
         } else {
             let active = find_next(
-                &lock.simple_config.switch_type,
-                dispatch_config,
+                reverse,
+                offset,
+                &lock.sort_config.switch_type,
                 &lock.hypr_data,
                 lock.active.as_ref(),
             )?;
@@ -51,41 +54,25 @@ pub(crate) fn switch(
 
 pub(crate) fn init(
     share: &Share,
-    simple_config: SimpleConfig,
+    sort_config: SortConfig,
     gui_config: GuiConfig,
     submap_config: SubmapConfig,
     client_id: u8,
 ) -> anyhow::Result<()> {
-    let (clients_data, active) = collect_data(simple_config.clone()).with_context(|| {
-        format!(
-            "Failed to collect data with config {:?}",
-            simple_config.clone()
-        )
-    })?;
+    let (clients_data, active) = collect_data(&sort_config)
+        .with_context(|| format!("Failed to collect data with config {:?}", sort_config))?;
 
+    activate_submap(&submap_config.name)?;
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
 
         lock.active = active;
-        lock.simple_config = simple_config.clone();
-        lock.gui_config = gui_config.clone();
+        lock.sort_config = sort_config;
+        lock.gui_config = gui_config;
+        lock.submap_config = submap_config;
         lock.hypr_data = clients_data;
         drop(lock);
-    }
-
-    match submap_config {
-        SubmapConfig::Config {
-            mod_key,
-            key,
-            reverse_key,
-            close,
-        } => {
-            generate_submap(mod_key, key, reverse_key, close)?;
-        }
-        SubmapConfig::Name { name, .. } => {
-            activate_submap(&name)?;
-        }
     }
 
     *(global::OPEN
@@ -115,8 +102,8 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
 
     if !kill {
         let lock = latest.lock().expect("Failed to lock");
-        if let Some(selected) = lock.launcher_config.selected {
-            if let Some(exec) = lock.launcher_config.execs.get(selected) {
+        if let Some(selected) = lock.launcher_data.selected {
+            if let Some(exec) = lock.launcher_data.execs.get(selected) {
                 show_launch_spawn(share.clone(), Some(client_id));
                 run_program(&exec.exec, &exec.path, exec.terminal);
                 cache_run(&exec.exec).warn("Failed to cache run");

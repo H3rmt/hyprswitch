@@ -1,110 +1,28 @@
+use crate::{ClientData, ClientId, MonitorId, WorkspaceId};
 use std::collections::{BTreeMap, VecDeque};
-
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
-
-use crate::ClientData;
 
 /// Sorts clients with complex sorting
 ///
 /// * 'clients' - Vector of clients to sort
 /// * 'ignore_workspaces' - Don't split clients into workspaces (treat all clients on monitor as one workspace)
 /// * 'ignore_monitors' - Don't split clients into monitors (treat all clients as one monitor)
-pub fn sort_clients(
-    clients: Vec<(Address, ClientData)>,
-    ignore_workspaces: bool,
-    ignore_monitors: bool,
-) -> Vec<(Address, ClientData)> {
+pub fn sort_clients(clients: Vec<(ClientId, ClientData)>) -> Vec<(ClientId, ClientData)> {
     // monitor -> workspace -> clients
-    let monitors: Vec<Vec<Vec<(Address, ClientData)>>> = match (ignore_workspaces, ignore_monitors)
-    {
-        (true, true) => {
-            panic!(
-                "Can't ignore workspaces and monitors at the same time (currently not implemented)"
-            );
-            // one monitor with one workspace with every client
-            // vec![vec![clients]]
-        }
-        (true, false) => {
-            // workspace -> clients
-            let mut monitors: BTreeMap<MonitorId, Vec<(Address, ClientData)>> = BTreeMap::new();
-            for (addr, client) in clients {
-                monitors
-                    .entry(client.monitor)
-                    .or_default()
-                    .push((addr, client));
-            }
-            monitors.into_values().map(|m| vec![m]).collect()
-        }
-        (false, true) => {
-            // monitor -> workspaces
-            let mut workspaces: BTreeMap<MonitorId, Vec<WorkspaceId>> = BTreeMap::new();
-            for (_, client) in clients.iter() {
-                workspaces
-                    .entry(client.monitor)
-                    .or_default()
-                    .push(client.workspace);
-            }
-            // sort workspaces on monitor (and remove duplicates)
-            for (_, ws) in workspaces.iter_mut() {
-                ws.sort();
-                ws.dedup();
-                ws.reverse();
-            }
-
-            // old (real) workspaceId -> new workspaceId
-            let mut workspaces_map: BTreeMap<WorkspaceId, WorkspaceId> = BTreeMap::new();
-            loop {
-                let mut current_workspaces = vec![];
-                // get one workspace from each monitor
-                for (_, ws) in workspaces.iter_mut() {
-                    if let Some(workspace) = ws.pop() {
-                        current_workspaces.push(workspace);
-                    }
-                }
-                if current_workspaces.is_empty() {
-                    break;
-                }
-                let new_workspace_id = current_workspaces[0];
-                // debug!("current_workspaces: {:?}, new_workspace_id: {}", current_workspaces, new_workspace_id);
-                for wss in current_workspaces {
-                    workspaces_map.insert(wss, new_workspace_id);
-                }
-            }
-
-            let mut new_workspaces: BTreeMap<WorkspaceId, Vec<(Address, ClientData)>> =
-                BTreeMap::new();
-            for (addr, client) in clients {
-                new_workspaces
-                    .entry(
-                        *workspaces_map
-                            .get(&client.workspace)
-                            .expect("Workspace for client not found"),
-                    )
-                    .or_default()
-                    .push((addr, client));
-            }
-
-            new_workspaces.into_values().map(|m| vec![m]).collect()
-        }
-        (false, false) => {
-            // monitor -> workspace -> clients
-            let mut monitors: BTreeMap<
-                MonitorId,
-                BTreeMap<WorkspaceId, Vec<(Address, ClientData)>>,
-            > = BTreeMap::new();
-            for (addr, client) in clients {
-                monitors
-                    .entry(client.monitor)
-                    .or_default()
-                    .entry(client.workspace)
-                    .or_default()
-                    .push((addr, client));
-            }
+    let monitors: Vec<Vec<Vec<(ClientId, ClientData)>>> = {
+        let mut monitors: BTreeMap<MonitorId, BTreeMap<WorkspaceId, Vec<(ClientId, ClientData)>>> =
+            BTreeMap::new();
+        for (addr, client) in clients {
             monitors
-                .into_values()
-                .map(|m| m.into_values().collect())
-                .collect()
+                .entry(client.monitor)
+                .or_default()
+                .entry(client.workspace)
+                .or_default()
+                .push((addr, client));
         }
+        monitors
+            .into_values()
+            .map(|m| m.into_values().collect())
+            .collect()
     };
 
     let mut sorted_clients = Vec::new();
@@ -118,7 +36,7 @@ pub fn sort_clients(
                     a.x.cmp(&b.x)
                 }
             });
-            let mut queue: VecDeque<(Address, ClientData)> = VecDeque::from(clients);
+            let mut queue: VecDeque<(ClientId, ClientData)> = VecDeque::from(clients);
 
             let mut line_start = queue.pop_front();
             while let Some((current_addr, current)) = line_start {

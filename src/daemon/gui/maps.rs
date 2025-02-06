@@ -193,7 +193,7 @@ fn fill_desktop_file_map(
                 }
 
                 if let Some(ref mut map2) = map2 {
-                    let ttype = lines
+                    let r#type = lines
                         .iter()
                         .find(|l| l.starts_with("Type="))
                         .map(|l| l.trim_start_matches("Type="));
@@ -220,7 +220,7 @@ fn fill_desktop_file_map(
                         .map(|l| l.trim_start_matches("Terminal="))
                         .map(|l| l == "true")
                         .unwrap_or(false);
-                    if ttype == Some("Application") && no_display.map_or(true, |n| !n) {
+                    if r#type == Some("Application") && no_display.map_or(true, |n| !n) {
                         if let (Some(name), Some(exec)) = (name, exec) {
                             let mut exec = String::from(exec);
                             for repl in &["%f", "%F", "%u", "%U"] {

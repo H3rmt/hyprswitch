@@ -1,175 +1,100 @@
+use crate::hypr_data::HyprlandData;
+use crate::{Active, SwitchType};
 use anyhow::Context;
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
-use tracing::{trace, warn};
+use tracing::{info, span, Level};
 
-use crate::{ClientData, DispatchConfig, MonitorData, WorkspaceData};
+macro_rules! find_next {
+    ($reverse:expr, $offset:expr, $data:expr, $selected_id:expr) => {{
+        use tracing::{trace, warn};
+        let filtered = $data.iter().filter(|(_, d)| d.enabled).collect::<Vec<_>>();
 
-pub(crate) fn find_next_monitor<'a>(
-    dispatch_config: &DispatchConfig,
-    monitor_data: &'a [(MonitorId, MonitorData)],
-    selected_id: Option<&MonitorId>,
-) -> anyhow::Result<&'a (MonitorId, MonitorData)> {
-    let filtered_monitors = monitor_data
-        .iter()
-        .filter(|(_, w)| w.enabled)
-        .collect::<Vec<_>>();
-
-    let index = match selected_id {
-        Some(mid) => {
-            let ind = filtered_monitors
-                .iter()
-                .filter(|(_, w)| w.enabled)
-                .position(|(id, _)| *id == *mid);
-            match ind {
-                Some(si) => {
-                    if dispatch_config.reverse {
-                        if si == 0 {
-                            filtered_monitors.len() - dispatch_config.offset as usize
+        let index = match $selected_id {
+            Some(sel) => {
+                let ind = filtered
+                    .iter()
+                    .filter(|(_, w)| w.enabled)
+                    .position(|(id, _)| *id == *sel);
+                match ind {
+                    Some(sindex) => {
+                        if $reverse {
+                            if sindex == 0 {
+                                filtered.len() - $offset as usize
+                            } else {
+                                sindex - $offset as usize
+                            }
+                        } else if sindex + $offset as usize >= filtered.len() {
+                            sindex + $offset as usize - filtered.len()
                         } else {
-                            si - dispatch_config.offset as usize
+                            sindex + $offset as usize
                         }
-                    } else if si + dispatch_config.offset as usize >= filtered_monitors.len() {
-                        si + dispatch_config.offset as usize - filtered_monitors.len()
-                    } else {
-                        si + dispatch_config.offset as usize
                     }
-                }
-                None => {
-                    warn!("selected monitor not found");
-                    if dispatch_config.reverse {
-                        filtered_monitors.len() - dispatch_config.offset as usize
-                    } else {
-                        dispatch_config.offset as usize
+                    None => {
+                        warn!("selected x not found");
+                        if $reverse {
+                            filtered.len() - $offset as usize
+                        } else {
+                            $offset as usize
+                        }
                     }
                 }
             }
-        }
-        None => {
-            if dispatch_config.reverse {
-                filtered_monitors.len() - dispatch_config.offset as usize
-            } else {
-                dispatch_config.offset as usize - 1
+            None => {
+                if $reverse {
+                    filtered.len() - $offset as usize
+                } else {
+                    $offset as usize - 1
+                }
             }
-        }
-    };
-    trace!("index: {}", index);
+        };
+        trace!("index: {}", index);
 
-    let next_monitor = filtered_monitors
-        .iter()
-        .cycle()
-        .nth(index)
-        .context("No next monitor found")?;
-
-    Ok(*next_monitor)
+        let next = filtered
+            .iter()
+            .cycle()
+            .nth(index)
+            .context("No next x found")?;
+        *next
+    }};
 }
 
-pub(crate) fn find_next_workspace<'a>(
-    dispatch_config: &DispatchConfig,
-    workspace_data: &'a [(WorkspaceId, WorkspaceData)],
-    selected_id: Option<&WorkspaceId>,
-) -> anyhow::Result<&'a (WorkspaceId, WorkspaceData)> {
-    let filtered_workspaces = workspace_data
-        .iter()
-        .filter(|(_, w)| w.enabled)
-        .collect::<Vec<_>>();
-
-    let index = match selected_id {
-        Some(wid) => {
-            let ind = filtered_workspaces.iter().position(|(id, _)| *id == *wid);
-            match ind {
-                Some(si) => {
-                    if dispatch_config.reverse {
-                        if si == 0 {
-                            filtered_workspaces.len() - dispatch_config.offset as usize
-                        } else {
-                            si - dispatch_config.offset as usize
-                        }
-                    } else if si + dispatch_config.offset as usize >= filtered_workspaces.len() {
-                        si + dispatch_config.offset as usize - filtered_workspaces.len()
-                    } else {
-                        si + dispatch_config.offset as usize
-                    }
-                }
-                None => {
-                    warn!("selected workspace not found");
-                    if dispatch_config.reverse {
-                        filtered_workspaces.len() - dispatch_config.offset as usize
-                    } else {
-                        dispatch_config.offset as usize
-                    }
-                }
-            }
-        }
-        None => {
-            if dispatch_config.reverse {
-                filtered_workspaces.len() - dispatch_config.offset as usize
+pub fn find_next(
+    reverse: bool,
+    offset: u8,
+    switch_type: &SwitchType,
+    hypr_data: &HyprlandData,
+    active: Option<&Active>,
+) -> anyhow::Result<Active> {
+    let _span = span!(Level::TRACE, "find_next", reverse, offset, switch_type = ?switch_type, active = ?active).entered();
+    match switch_type {
+        SwitchType::Client => {
+            let active_id = if let Some(Active::Client(id)) = active {
+                Some(id)
             } else {
-                dispatch_config.offset as usize - 1
-            }
+                None
+            };
+            let (id, _) = find_next!(reverse, offset, &hypr_data.clients, active_id);
+            info!("Next client: {:?}", id);
+            Ok(Active::Client(*id))
         }
-    };
-    trace!("index: {}", index);
-
-    let next_workspace = filtered_workspaces
-        .iter()
-        .cycle()
-        .nth(index)
-        .context("No next client found")?;
-
-    Ok(*next_workspace)
-}
-
-pub(crate) fn find_next_client<'a>(
-    dispatch_config: &DispatchConfig,
-    clients: &'a [(Address, ClientData)],
-    selected_addr: Option<&Address>,
-) -> anyhow::Result<&'a (Address, ClientData)> {
-    let filtered_clients = clients
-        .iter()
-        .filter(|(_, c)| c.enabled)
-        .collect::<Vec<_>>();
-
-    let index = match selected_addr {
-        Some(add) => {
-            let ind = filtered_clients.iter().position(|(a, _)| *a == *add);
-            match ind {
-                Some(si) => {
-                    if dispatch_config.reverse {
-                        if si == 0 {
-                            filtered_clients.len() - dispatch_config.offset as usize
-                        } else {
-                            si - dispatch_config.offset as usize
-                        }
-                    } else if si + dispatch_config.offset as usize >= filtered_clients.len() {
-                        si + dispatch_config.offset as usize - filtered_clients.len()
-                    } else {
-                        si + dispatch_config.offset as usize
-                    }
-                }
-                None => {
-                    warn!("selected client not found");
-                    if dispatch_config.reverse {
-                        filtered_clients.len() - dispatch_config.offset as usize
-                    } else {
-                        dispatch_config.offset as usize
-                    }
-                }
-            }
-        }
-        None => {
-            if dispatch_config.reverse {
-                filtered_clients.len() - dispatch_config.offset as usize
+        SwitchType::Workspace => {
+            let active_id = if let Some(Active::Workspace(id)) = active {
+                Some(id)
             } else {
-                dispatch_config.offset as usize - 1
-            }
+                None
+            };
+            let (id, _) = find_next!(reverse, offset, &hypr_data.workspaces, active_id);
+            info!("Next workspace: {:?}", id);
+            Ok(Active::Workspace(*id))
         }
-    };
-
-    let next_client = filtered_clients
-        .iter()
-        .cycle()
-        .nth(index)
-        .context("No next client found")?;
-
-    Ok(*next_client)
+        SwitchType::Monitor => {
+            let active_id = if let Some(Active::Monitor(id)) = active {
+                Some(id)
+            } else {
+                None
+            };
+            let (id, _) = find_next!(reverse, offset, &hypr_data.monitors, active_id);
+            info!("Next monitor: {:?}", id);
+            Ok(Active::Monitor(*id))
+        }
+    }
 }

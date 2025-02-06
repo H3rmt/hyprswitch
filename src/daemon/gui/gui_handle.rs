@@ -1,17 +1,16 @@
 use crate::daemon::cache::cache_run;
-use crate::daemon::deactivate_submap;
 use crate::daemon::gui::launcher::show_launch_spawn;
 use crate::daemon::gui::reload_desktop_maps;
+use crate::daemon::{deactivate_submap, GUISend, Share, UpdateCause};
 use crate::handle::{clear_recent_clients, run_program, switch_to_active};
-use crate::{global, Active, GUISend, Share, UpdateCause, Warn};
+use crate::{global, Active, ClientId, MonitorId, Warn, WorkspaceId};
 use anyhow::Context;
 use gtk4::glib::clone;
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use std::ops::Deref;
 use std::thread;
 use tracing::{trace, warn};
 
-pub(crate) fn gui_set_client(share: &Share, address: Address) {
+pub(crate) fn gui_set_client(share: &Share, address: ClientId) {
     let (latest, _, _) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
@@ -62,8 +61,8 @@ pub(crate) fn gui_change_selected_program(share: &Share, reverse: bool) {
             let (latest, _, _) = share.deref();
             {
                 let mut lock = latest.lock().expect("Failed to lock");
-                let exec_len = lock.launcher_config.execs.len();
-                if let Some(ref mut selected) = lock.launcher_config.selected {
+                let exec_len = lock.launcher_data.execs.len();
+                if let Some(ref mut selected) = lock.launcher_data.selected {
                     if exec_len == 0 {
                         return;
                     }
@@ -137,8 +136,8 @@ pub(crate) fn gui_exec(share: &Share, selected: usize) {
             let (latest, _, _) = share.deref();
             {
                 let mut lock = latest.lock().expect("Failed to lock");
-                lock.launcher_config.selected = Some(selected);
-                if let Some(exec) = lock.launcher_config.execs.get(selected) {
+                lock.launcher_data.selected = Some(selected);
+                if let Some(exec) = lock.launcher_data.execs.get(selected) {
                     run_program(&exec.exec, &exec.path, exec.terminal);
                     cache_run(&exec.exec).warn("Failed to cache run");
                 } else {

@@ -1,4 +1,5 @@
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
+use hyprland::shared::WorkspaceId;
+use crate::{ClientId, MonitorId};
 
 #[derive(Debug, Clone)]
 pub struct MonitorData {
@@ -39,7 +40,7 @@ pub struct ClientData {
 
 #[derive(Debug, Default)]
 pub struct HyprlandData {
-    pub clients: Vec<(Address, ClientData)>,
+    pub clients: Vec<(ClientId, ClientData)>,
     pub workspaces: Vec<(WorkspaceId, WorkspaceData)>,
     pub monitors: Vec<(MonitorId, MonitorData)>,
 }
@@ -48,8 +49,8 @@ pub trait FindByFirst<ID, Data> {
     fn find_by_first(&self, id: &ID) -> Option<&Data>;
 }
 
-impl FindByFirst<Address, ClientData> for Vec<(Address, ClientData)> {
-    fn find_by_first(&self, id: &Address) -> Option<&ClientData> {
+impl FindByFirst<ClientId, ClientData> for Vec<(ClientId, ClientData)> {
+    fn find_by_first(&self, id: &ClientId) -> Option<&ClientData> {
         self.iter().find(|(addr, _)| *addr == *id).map(|(_, cd)| cd)
     }
 }
