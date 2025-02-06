@@ -10,10 +10,14 @@ Config(
     ),
     binds: [
         Overview(
+            show_launcher: true,
             open: (
                 modifier: super,
                 key: "super_l"
             ),
+            other: (
+                max_switch_offset: 0,
+            )
         ),
         Switch(
             open: (

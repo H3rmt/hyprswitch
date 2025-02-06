@@ -1,4 +1,3 @@
-use crate::envs::SHOW_LAUNCHER;
 use anyhow::Context;
 use async_channel::{Receiver, RecvError, Sender};
 use gtk4::gdk::{Display, Monitor};
@@ -30,6 +29,7 @@ mod launcher;
 mod maps;
 mod windows;
 
+use crate::daemon::gui::maps::init_icon_map;
 use crate::daemon::{GUISend, InitGuiConfig, Payload, Share, UpdateCause};
 use crate::{ClientId, MonitorId, Warn, WorkspaceId};
 pub use launcher::show_launch_spawn;
@@ -53,6 +53,10 @@ pub(super) fn start_gui_blocking(
         trace!("start connect_activate");
         check_themes();
 
+        // load all installed icons
+        // https://github.com/H3rmt/hyprswitch/discussions/137
+        init_icon_map();
+
         apply_css(init_gui_config.custom_css.as_ref());
 
         let (visibility_sender, visibility_receiver) = async_channel::unbounded();
@@ -72,10 +76,8 @@ pub(super) fn start_gui_blocking(
         }
 
         let launcher_refs: LauncherRefs = Rc::new(Mutex::new(None));
-        if *SHOW_LAUNCHER {
-            launcher::create_launcher(app, &share, launcher_refs.clone(), visibility_sender)
-                .warn("Failed to create launcher");
-        }
+        launcher::create_launcher(app, &share, launcher_refs.clone(), visibility_sender)
+            .warn("Failed to create launcher");
 
         glib::spawn_future_local(clone!(
             #[strong]
@@ -168,7 +170,6 @@ async fn handle_update(
                     } else {
                         window.set_anchor(Edge::Bottom, false);
                     }
-
                     trace!("Showing window {:?}", window);
                     windows += 1;
                     window.set_visible(true);

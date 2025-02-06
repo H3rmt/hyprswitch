@@ -3,9 +3,6 @@ use std::env;
 use tracing::debug;
 
 lazy_static! {
-    pub static ref SHOW_LAUNCHER: bool = env::var("SHOW_LAUNCHER")
-        .map(|s| s.parse().expect("Failed to parse SHOW_LAUNCHER"))
-        .unwrap_or(false);
     pub static ref LAUNCHER_MAX_ITEMS: usize = env::var("LAUNCHER_MAX_ITEMS")
         .map(|s| {
             let value = s.parse().expect("Failed to parse LAUNCHER_MAX_ITEMS");
@@ -43,10 +40,10 @@ lazy_static! {
 
 pub fn envvar_dump() {
     debug!("ENV dump: \
-    SHOW_LAUNCHER: {:?}, LAUNCHER_MAX_ITEMS: {:?}, \
-    DEFAULT_TERMINAL: {:?}, LOG_MODULE_PATH: {:?}, REMOVE_HTML_FROM_WORKSPACE_NAME: {:?}, DISABLE_TOASTS: {:?}, \
+    LAUNCHER_MAX_ITEMS: {:?}, DEFAULT_TERMINAL: {:?}, LOG_MODULE_PATH: {:?}, \
+    REMOVE_HTML_FROM_WORKSPACE_NAME: {:?}, DISABLE_TOASTS: {:?}, \
     SHOW_LAUNCHER_EXECS: {:?}, LAUNCHER_ANIMATE_LAUNCH_TIME: {:?}, SYSTEMD_SERVICE: {:?}",
-        *SHOW_LAUNCHER, *LAUNCHER_MAX_ITEMS,
-        *DEFAULT_TERMINAL, *LOG_MODULE_PATH, *REMOVE_HTML_FROM_WORKSPACE_NAME, *DISABLE_TOASTS,
+        *LAUNCHER_MAX_ITEMS,*DEFAULT_TERMINAL, *LOG_MODULE_PATH,
+        *REMOVE_HTML_FROM_WORKSPACE_NAME, *DISABLE_TOASTS,
         *SHOW_LAUNCHER_EXECS, *LAUNCHER_ANIMATE_LAUNCH_TIME, *SYSTEMD_SERVICE);
 }

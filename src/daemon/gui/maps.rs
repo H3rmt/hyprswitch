@@ -1,16 +1,22 @@
 use crate::Warn;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 use std::{env, fs::DirEntry, path::PathBuf, sync::OnceLock};
+use gtk4::IconTheme;
 use tracing::{debug, span, trace, warn, Level};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum Source {
+    // desktop file found which has a name that matches the class of a window
     DesktopFileName,
+    // desktop file found which has a startupWmClass that matches the class of a window
     DesktopFileStartupWmClass,
+    // desktop file found which has an exec name(/bin/<that> -u ....) that matches the class of a window
     DesktopFileExecName,
+    // the windows corresponding program from the cmdline in /proc was equal to DesktopFile* or found
+    // in the theme so it is cached in this list so the /proc check doesn't have to be done again
     ByPidExec,
 }
 
@@ -24,6 +30,25 @@ type DesktopFileMap = Vec<(
     bool,
     Box<Path>,
 )>;
+
+fn get_icon_map() -> &'static Mutex<BTreeSet<Box<str>>> {
+    static MAP_LOCK: OnceLock<Mutex<BTreeSet<Box<str>>>> = OnceLock::new();
+    MAP_LOCK.get_or_init(|| Mutex::new(BTreeSet::new()))
+}
+
+pub fn init_icon_map() {
+    let theme = IconTheme::new();
+    let mut map = get_icon_map().lock().expect("Failed to lock icon map");
+    for icon in theme.icon_names() {
+        map.insert(Box::from(icon));
+    }
+}
+
+/// https://github.com/H3rmt/hyprswitch/discussions/137
+pub fn icon_has_name(name: &str) -> bool {
+    let map = get_icon_map().lock().expect("Failed to lock icon map");
+    map.contains(&Box::from(name))
+}
 
 fn get_icon_path_map() -> &'static Mutex<IconPathMap> {
     static MAP_LOCK: OnceLock<Mutex<IconPathMap>> = OnceLock::new();

@@ -33,7 +33,7 @@ type ClientId = u64;
 
 /// trim 0x from hexadecimal (base-16) string and convert to id
 pub fn to_client_id(id: &hyprland::shared::Address) -> ClientId {
-    u64::from_str_radix(&id.to_string(), 16)
+    u64::from_str_radix(&id.to_string().trim_start_matches("0x"), 16)
         .expect("Failed to parse client id, this should never happen")
 }
 /// convert id to hexadecimal (base-16) string
