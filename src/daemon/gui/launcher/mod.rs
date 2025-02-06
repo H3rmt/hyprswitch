@@ -215,7 +215,7 @@ fn create_launch_widget(
                 if icon_path.contains('/') {
                     icon.set_from_file(Some(Path::new(&**icon_path)));
                 } else {
-                    icon.set_icon_name(Some(&*icon_path));
+                    icon.set_icon_name(Some(icon_path));
                 }
             }
         }
