@@ -52,9 +52,12 @@ jobs:
           ssh_keyscan_types: rsa,ecdsa,ed25519
       - name: Push commits from tag to release
         run: |
+          git ls-remote --heads origin
+          git fetch origin main
           TAG_NAME=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///')
-          PR_URL=$(gh pr create --title "Release $TAG_NAME" --fill --base release --head main)
+          echo "Tag name: $TAG_NAME"
+          PR_URL=$(gh pr create --title "Release $TAG_NAME" --base release --head main)
           echo "Pull Request URL: $PR_URL"
-          gh pr merge -- --auto $PR_URL
+          gh pr merge -m --auto $PR_URL -t "Release $TAG_NAME"
         env:
           GH_TOKEN: ${{ github.token }}
