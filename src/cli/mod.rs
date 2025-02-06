@@ -41,10 +41,6 @@ pub enum Command {
         /// Path to config [default: $XDG_CONFIG_HOME/hyprswitch/config.ron]
         #[arg(long, short = 'f')]
         config_file: Option<std::path::PathBuf>,
-
-        /// Specify a path to custom hyprswitch executable [default: path to current executable]
-        #[arg(long)]
-        exe: Option<std::path::PathBuf>,
     },
 
     /// Switch without using the GUI / Daemon (switches directly)

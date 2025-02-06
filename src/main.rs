@@ -55,7 +55,7 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         cli::Command::Run {
-            exe, config_file, ..
+            config_file, ..
         } => {
             info!("Loading config");
             let config = hyprswitch::config::load(config_file).context("Failed to load config")?;
@@ -70,7 +70,7 @@ fn main() -> anyhow::Result<()> {
                 workspaces_per_row: config.general.gui.workspaces_per_row,
                 size_factor: config.general.size_factor,
             };
-            let list = hyprswitch::config::create_binds_and_submaps(exe, config)
+            let list = hyprswitch::config::create_binds_and_submaps(config)
                 .context("Failed to create binds and submaps")?;
             let text = hyprswitch::config::export(list);
             println!("{}", text);

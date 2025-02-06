@@ -22,8 +22,7 @@ pub fn init_windows(
     show_workspaces_on_all_monitors: bool,
     size_factor: f64,
 ) {
-    clear_monitor(monitor_data);
-
+    // clear_monitor(monitor_data);
     let workspaces = {
         let mut workspaces = workspaces_p
             .iter()

@@ -10,20 +10,10 @@ use std::path::PathBuf;
 use tracing::{span, trace, Level};
 
 pub fn create_binds_and_submaps<'a>(
-    exe: Option<PathBuf>,
     config: Config,
 ) -> anyhow::Result<Vec<(&'a str, String)>> {
     let _span = span!(Level::DEBUG, "create_binds_and_submaps").entered();
     let mut keyword_list = Vec::<(&str, String)>::new();
-    let current_exe = if let Some(exe) = exe {
-        exe.into_os_string()
-    } else {
-        let exe = env::current_exe()?;
-        exe.into_os_string()
-    };
-    let current_exe = current_exe.to_string_lossy();
-    trace!("current_exe: {}", current_exe);
-
     let rand_id = rand::rng().random_range(10..=99);
 
     for (i, bind) in config.binds.into_iter().enumerate() {

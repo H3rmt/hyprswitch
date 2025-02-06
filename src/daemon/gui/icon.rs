@@ -1,5 +1,5 @@
 use crate::daemon::gui::maps::{add_path_for_icon, get_icon_path_by_name, icon_has_name, Source};
-use gtk4::{glib, Image};
+use gtk4::Image;
 use std::fs;
 use std::path::Path;
 use tracing::{span, trace, warn, Level};
