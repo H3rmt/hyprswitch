@@ -4,16 +4,9 @@
 [![Docs](https://docs.rs/built/badge.svg)](https://docs.rs/hyprswitch)
 [![Tests](https://github.com/h3rmt/hyprswitch/actions/workflows/rust.yml/badge.svg)](https://github.com/h3rmt/hyprswitch/actions/workflows/rust.yml)
 
-A rust CLI/GUI to switch between windows in [Hyprland](https://github.com/hyprwm/Hyprland)
+A rust GUI to switch between windows in [Hyprland](https://github.com/hyprwm/Hyprland)
 
-It can cycle through windows using keyboard shortcuts or/and a GUI.
-
-Windows are sorted by their position on the screen, and can be filtered by class or workspace.
-
-To use the GUI, you need to start the daemon once at the start of Hyprland with `exec-once = hyprswitch init &` in your
-config.
-Subsequent calls to hyprswitch (with the `gui`, `dispatch` or `close` command) will send the command to the daemon which will execute the
-command and update the GUI.
+TODO: rewrite this 
 
 ![image.png](imgs/image_4.png)
 
@@ -47,6 +40,7 @@ Table of Contents
 ### From Source
 
 - gtk4 and [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell) must be installed
+- socat must be installed for the daemon to work
 - `cargo install hyprswitch`
 
 ### Arch
@@ -64,111 +58,17 @@ Table of Contents
 
 Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
 
-## Parameters
-
-### This list only includes the most common options or values, (see `hyprswitch gui --help` / `hyprswitch init --help` / ... for more detailed info)
-
-- `--dry-run / -d` Print the command that would be executed instead of executing it (Daemon/simple doesn't switch, client doesn't send command to daemon)
-- `-v` Increase the verbosity level (-v: debug, -vv: trace) (Use [RUST_LOG](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) env-var for more control)
-- `-q` Turn off all output (Except when using `--dry-run`)
-
-- `init` Initialize and start the Daemon
-    - `--custom-css <PATH>` Specify a path to custom CSS file
-    - `--show-title` [default=true] Show the window title instead of its class in Overview (fallback to class if title is empty)
-    - `--workspaces-per-row` [default=5] Limit amount of workspaces in one row (overflows to next row)
-    - `--size-factor` [default=6] The size factor (float) for the GUI (original_size / 30 * size_factor)
-- `gui` Opens the GUI
-    - `--mod-key <MODIFIER>` [{required}] The modifier key used to open the GUI (super/super_l, super_r, alt/alt_l, alt_r, ctrl/ctrl_l, ctrl_r) (You might want to use a variable, see Examples)
-    - `--key <KEY>` [{required}] The key to used to open the GUI (e.g., tab) (You might want to use a variable, see Examples)
-    - `--reverse-key <KEYTYPE>=<KEY>` [default=shift] The key used for reverse switching. Format: reverse-key=mod=<MODIFIER> or
-      reverse-key=key=<KEY> (e.g., --reverse-key=mod=shift, --reverse-key=key=grave)
-    - `--close <TYPE>` How to close hyprswitch (`Return` or pressing a window always closes, ESC always kills)
-        - `default` [default] Close when pressing the `mod key` + `key` again (e.g., SUPER + TAB) or an index key (1, 2, 3, ...)
-        - `mod-key-release` Close when releasing the `mod key` (e.g., SUPER)
-
-    - `--max-switch-offset <MAX_SWITCH_OFFSET>` [default=6] The maximum offset you can switch to with number keys, use 0 to disable number keys to switch and hide index in GUI
-    - `--hide-active-window-border` [default=false] Hide the active window border in the GUI (also hides the border for selected workspace or monitor)
-    - `--monitors` Show the GUI only on this monitor(s) [default: display on all monitors] Example: `--monitors=HDMI-0,DP-1` / `--monitors=eDP-1` Available values: `hyprctl monitors -j | jq '.[].name'`
-      (You might want to use this together with the next option as using arrow keys to select a window on a different monitor will still be possible. Or use `--filter-current-monitor` to only show windows of the current monitor)
-    - `--show-workspaces-on-all-monitors` Show all workspaces on all monitors [default: only show workspaces on the corresponding monitor]
-    - Same options as `simple` except `--offset` and `--reverse`
-
-- `simple` Switch without using the GUI / Daemon (switches directly)
-    - `--reverse / -r` Reverse the order of windows / switch backwards
-    - `--offset / -o <OFFSET>` Switch to a specific window offset (default 1)
-
-    - `--include-special-workspaces` Include special workspaces (e.g., scratchpad)
-    - `--filter-same-class / -s` Only switch between windows that have the same class/type as the currently focused
-      window
-    - `--filter-current-workspace / -w` Only switch between windows that are on the same workspace as the currently
-      focused window
-    - `--filter-current-monitor / -m` Only switch between windows that are on the same monitor as the currently focused
-      window
-    - `--sort-recent` Sort windows by most recently focused
-    - `--switch-type` Switches to next / previous workspace / client / monitor
-        - `client` [default] Switch to next / previous client
-        - `workspace` Switch to next / previous workspace
-        - `monitor` Switch to next / previous monitor
+## Config
 
 ## Examples:
 
-**(Modify the $... variables to use the keys you prefer)**
-
-**It is recommended to keep the `$key` variables to prevent errors when forgetting to change the parameter value when changing the keybinding**
-
-### GUI
-
 **Simple**: Press `super` + `$key(tab)` to open the GUI, use mouse to click on window or press `1` / `2` / ... to switch to index
-
-```ini
-exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
-
-$key = tab
-$mod = super
-bind = $mod , $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9 --hide-active-window-border
-```
 
 **Simple Arrow keys**: Press `super` + `$key(tab)` to open the GUI, or press `1` / `2` / ... or arrow keys to change selected window, `return` to switch
 
-```ini
-exec-once = hyprswitch init --show-title --size-factor 5.5 --workspaces-per-row 5 &
-
-$key = tab
-$mod = super
-bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --max-switch-offset 9
-```
-
 **Keyboard (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to next window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the next window, press ``$reverse(`)`` to switch backwards, release alt to switch
 
-```ini
-exec-once = hyprswitch init --show-title &
-$key = tab
-$mod = alt
-$reverse = grave
-
-bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=key=$reverse && hyprswitch dispatch
-bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=key=$reverse && hyprswitch dispatch -r
-
-# use the if switching to the next window with the opening keypress is unwanted
-#bind = alt, $key, exec, hyprswitch gui --mod-key alt_l --key $key --close mod-key-release --reverse-key=key=$reverse
-#bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=key=$reverse
-```
-
 **Keyboard recent (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to previously used window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the less and less previously used window, press ``$reverse(`)`` to switch to more recent used windows, release alt to switch
-
-```ini
-exec-once = hyprswitch init --show-title &
-$key = tab
-$mod = alt
-$reverse = grave
-
-bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=key=$reverse --sort-recent && hyprswitch dispatch
-bind = $mod $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=key=$reverse --sort-recent && hyprswitch dispatch -r
-
-# use the if switching to the next window with the opening keypress is unwanted
-#bind = $mod, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=key=$reverse
-#bind = alt $reverse, $key, exec, hyprswitch gui --mod-key $mod --key $key --close mod-key-release --reverse-key=key=$reverse
-```
 
 ### More Examples in [Wiki](https://github.com/H3rmt/hyprswitch/wiki/Examples)
 
