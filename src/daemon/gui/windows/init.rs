@@ -1,13 +1,13 @@
 use crate::daemon::gui::icon::set_icon;
 use crate::daemon::gui::windows::click::{click_client, click_workspace};
 use crate::daemon::gui::MonitorData;
+use crate::daemon::Share;
 use crate::envs::REMOVE_HTML_FROM_WORKSPACE_NAME;
 use crate::{ClientData, ClientId, WorkspaceData, WorkspaceId};
 use gtk4::{pango, prelude::*, Fixed, Frame, Image, Label, Overflow, Overlay};
 use regex::Regex;
 use std::borrow::Cow;
 use std::cmp::min;
-use crate::daemon::Share;
 
 fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
@@ -126,7 +126,8 @@ pub fn init_windows(
                     let image = Image::builder()
                         .css_classes(vec!["client-image"])
                         .pixel_size(
-                            (scale(client.height, size_factor).clamp(50, 200) as f64 / 1.5) as i32 - 20,
+                            (scale(client.height, size_factor).clamp(50, 200) as f64 / 1.5) as i32
+                                - 20,
                         )
                         .build();
                     if !client.enabled {
@@ -158,7 +159,7 @@ pub fn init_windows(
     }
 }
 
-fn clear_monitor(monitor_data: &mut MonitorData) {
+pub fn clear_monitor(monitor_data: &mut MonitorData) {
     // remove all children
     while let Some(child) = monitor_data.workspaces_flow.first_child() {
         monitor_data.workspaces_flow.remove(&child);
