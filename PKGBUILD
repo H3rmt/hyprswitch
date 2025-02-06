@@ -8,7 +8,7 @@ arch=('any')
 url="https://github.com/h3rmt/hyprswitch/"
 license=("MIT")
 makedepends=('cargo')
-depends=('hyprland' 'gtk4-layer-shell' 'gtk4')
+depends=('hyprland' 'gtk4-layer-shell' 'gtk4' 'socat')
 source=("$pkgname-$pkgver.tar.gz::https://static.crates.io/crates/$pkgname/$pkgname-$pkgver.crate")
 
 prepare() {

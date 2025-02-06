@@ -4,7 +4,7 @@
             cy="50"
             r="40"
             stroke="#4A90E2"
-            stroke-width="12"
+            stroke-width="10"
             fill="none"
             stroke-dasharray="10 40"
             stroke-linecap="round"

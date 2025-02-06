@@ -1,7 +1,8 @@
 use crate::daemon::gui::windows::click::click_monitor;
 use crate::daemon::gui::MonitorData;
+use crate::daemon::Share;
 use crate::handle::get_monitors;
-use crate::{Share, Warn};
+use crate::Warn;
 use anyhow::Context;
 use async_channel::Sender;
 use gtk4::gdk::{Display, Monitor};

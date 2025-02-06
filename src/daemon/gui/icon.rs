@@ -1,11 +1,12 @@
 use crate::daemon::gui::maps::{add_path_for_icon, get_icon_path_by_name, icon_has_name, Source};
-use gtk4::{Image};
+use gtk4::Image;
 use std::fs;
 use std::path::Path;
 use tracing::{span, trace, warn, Level};
 
 pub fn load_icon_from_cache(name: &str, pic: &Image) -> Option<Box<str>> {
     // check if the icon is in theme and apply it
+    // if theme.has_icon(name) {
     if icon_has_name(name) {
         pic.set_icon_name(Some(name));
         Some(Box::from(name))

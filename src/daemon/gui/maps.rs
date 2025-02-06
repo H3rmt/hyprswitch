@@ -1,17 +1,22 @@
 use crate::Warn;
-use gtk4::IconTheme;
 use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 use std::{env, fs::DirEntry, path::PathBuf, sync::OnceLock};
+use gtk4::IconTheme;
 use tracing::{debug, span, trace, warn, Level};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum Source {
+    // desktop file found which has a name that matches the class of a window
     DesktopFileName,
+    // desktop file found which has a startupWmClass that matches the class of a window
     DesktopFileStartupWmClass,
+    // desktop file found which has an exec name(/bin/<that> -u ....) that matches the class of a window
     DesktopFileExecName,
+    // the windows corresponding program from the cmdline in /proc was equal to DesktopFile* or found
+    // in the theme so it is cached in this list so the /proc check doesn't have to be done again
     ByPidExec,
 }
 
@@ -213,7 +218,7 @@ fn fill_desktop_file_map(
                 }
 
                 if let Some(ref mut map2) = map2 {
-                    let ttype = lines
+                    let r#type = lines
                         .iter()
                         .find(|l| l.starts_with("Type="))
                         .map(|l| l.trim_start_matches("Type="));
@@ -240,7 +245,7 @@ fn fill_desktop_file_map(
                         .map(|l| l.trim_start_matches("Terminal="))
                         .map(|l| l == "true")
                         .unwrap_or(false);
-                    if ttype == Some("Application") && no_display.map_or(true, |n| !n) {
+                    if r#type == Some("Application") && no_display.map_or(true, |n| !n) {
                         if let (Some(name), Some(exec)) = (name, exec) {
                             let mut exec = String::from(exec);
                             for repl in &["%f", "%F", "%u", "%U"] {

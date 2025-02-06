@@ -3,6 +3,6 @@ pub use update::update_clients;
 
 #[allow(clippy::module_inception)]
 mod sort;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 mod update;

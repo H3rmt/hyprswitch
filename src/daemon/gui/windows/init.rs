@@ -1,10 +1,9 @@
 use crate::daemon::gui::icon::set_icon;
 use crate::daemon::gui::windows::click::{click_client, click_workspace};
 use crate::daemon::gui::MonitorData;
-use crate::envs::REMOVE_HTML_FROM_WORKSPACE_NAME;
-use crate::{ClientData, Share, WorkspaceData};
+use crate::daemon::Share;
+use crate::{ClientData, ClientId, WorkspaceData, WorkspaceId};
 use gtk4::{pango, prelude::*, Fixed, Frame, Image, Label, Overflow, Overlay};
-use hyprland::shared::{Address, WorkspaceId};
 use regex::Regex;
 use std::borrow::Cow;
 use std::cmp::min;
@@ -16,14 +15,14 @@ fn scale(value: i16, size_factor: f64) -> i32 {
 pub fn init_windows(
     share: Share,
     workspaces_p: &[(WorkspaceId, WorkspaceData)],
-    clients_p: &[(Address, ClientData)],
+    clients_p: &[(ClientId, ClientData)],
     monitor_data: &mut MonitorData,
     show_title: bool,
     show_workspaces_on_all_monitors: bool,
     size_factor: f64,
+    strip_html_workspace_title: bool,
 ) {
-    clear_monitor(monitor_data);
-
+    // clear_monitor(monitor_data);
     let workspaces = {
         let mut workspaces = workspaces_p
             .iter()
@@ -42,7 +41,7 @@ pub fn init_windows(
 
         let id_string = wid.to_string();
         let title = if show_title && !workspace.name.trim().is_empty() {
-            if *REMOVE_HTML_FROM_WORKSPACE_NAME {
+            if strip_html_workspace_title {
                 regex.replace_all(&workspace.name, "$1")
             } else {
                 Cow::from(&workspace.name)
@@ -126,7 +125,8 @@ pub fn init_windows(
                     let image = Image::builder()
                         .css_classes(vec!["client-image"])
                         .pixel_size(
-                            (scale(client.height, size_factor).clamp(50, 200) as f64 / 1.5) as i32 - 20,
+                            (scale(client.height, size_factor).clamp(50, 200) as f64 / 1.5) as i32
+                                - 20,
                         )
                         .build();
                     if !client.enabled {
@@ -143,7 +143,7 @@ pub fn init_windows(
                     .width_request(scale(client.width, size_factor))
                     .height_request(scale(client.height, size_factor))
                     .build();
-                client_overlay.add_controller(click_client(&share, address));
+                client_overlay.add_controller(click_client(&share, *address));
                 client_overlay
             };
             workspace_fixed.put(
@@ -153,12 +153,12 @@ pub fn init_windows(
             );
             monitor_data
                 .client_refs
-                .insert(address.clone(), (client_overlay, None));
+                .insert(*address, (client_overlay, None));
         }
     }
 }
 
-fn clear_monitor(monitor_data: &mut MonitorData) {
+pub fn clear_monitor(monitor_data: &mut MonitorData) {
     // remove all children
     while let Some(child) = monitor_data.workspaces_flow.first_child() {
         monitor_data.workspaces_flow.remove(&child);

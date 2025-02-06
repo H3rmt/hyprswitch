@@ -3,17 +3,16 @@ use crate::daemon::gui::gui_handle::{
 };
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
-use crate::envs::{LAUNCHER_ANIMATE_LAUNCH_TIME, LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
-use crate::{Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause, Warn};
+use crate::daemon::{global, Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause};
+use crate::{Warn};
 use async_channel::Sender;
 use gtk4::gdk::{Key, Texture};
 use gtk4::glib::{clone, ControlFlow, Propagation};
 use gtk4::pango::EllipsizeMode;
 use gtk4::prelude::{BoxExt, EditableExt, GestureExt, WidgetExt};
 use gtk4::{
-    glib, Align, Application, ApplicationWindow, Entry, EventControllerKey,
-    EventSequenceState, GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation,
-    SelectionMode,
+    glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, EventSequenceState,
+    GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation, SelectionMode,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::ops::Deref;
@@ -105,8 +104,10 @@ pub(super) fn update_launcher(
     text: &str,
     list: &ListBox,
     selected: Option<usize>,
-    launch_state: LaunchState,
+    launch_state: &LaunchState,
     reverse_key: &ReverseKey,
+    launcher_max_items: u8,
+    show_launcher_execs: bool,
 ) -> Vec<Exec> {
     while let Some(child) = list.first_child() {
         list.remove(&child);
@@ -138,8 +139,10 @@ pub(super) fn update_launcher(
         }
     }
 
-    for (index, (name, icon, exec, path, terminal)) in
-        matches.into_iter().take(*LAUNCHER_MAX_ITEMS).enumerate()
+    for (index, (name, icon, exec, path, terminal)) in matches
+        .into_iter()
+        .take(launcher_max_items as usize)
+        .enumerate()
     {
         let i = index as i32 - selected.unwrap_or(0) as i32;
         let widget = create_launch_widget(
@@ -172,6 +175,7 @@ pub(super) fn update_launcher(
             } else {
                 None
             },
+            show_launcher_execs,
         );
         list.append(&widget);
         execs.push(Exec {
@@ -191,7 +195,8 @@ fn create_launch_widget(
     exec: &str,
     raw_index: usize,
     index: &str,
-    selected: Option<LaunchState>,
+    selected: Option<&LaunchState>,
+    show_launcher_execs: bool,
 ) -> ListBoxRow {
     let hbox = gtk4::Box::builder()
         .orientation(Orientation::Horizontal)
@@ -229,7 +234,7 @@ fn create_launch_widget(
         .build();
     hbox.append(&title);
 
-    if *SHOW_LAUNCHER_EXECS {
+    if show_launcher_execs {
         let exec = Label::builder()
             .halign(Align::Start)
             .valign(Align::Center)
@@ -290,7 +295,7 @@ pub fn show_launch_spawn(share: Share, cause: Option<u8>) {
         let (latest, send, receive) = share.deref();
         {
             let mut lat = latest.lock().expect("Failed to lock");
-            lat.launcher_config.launch_state = LaunchState::Launching;
+            lat.launcher_data.launch_state = LaunchState::Launching;
             drop(lat);
         }
 
@@ -301,11 +306,17 @@ pub fn show_launch_spawn(share: Share, cause: Option<u8>) {
         trace!("Received refresh finish from GUI: {rec:?}");
 
         // wait for the GUI to update
-        thread::sleep(Duration::from_millis(*LAUNCHER_ANIMATE_LAUNCH_TIME));
+        thread::sleep(Duration::from_millis(
+            global::OPTS
+                .get()
+                .map(|o| o.animate_launch_time)
+                .warn("Failed to access global animate_launch_time")
+                .unwrap_or(300),
+        ));
 
         {
             let mut lat = latest.lock().expect("Failed to lock");
-            lat.launcher_config.launch_state = LaunchState::Default;
+            lat.launcher_data.launch_state = LaunchState::Default;
             drop(lat);
         }
 

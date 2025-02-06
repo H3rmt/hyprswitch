@@ -1,6 +1,4 @@
-use crate::SimpleConfig;
-use clap::Args;
-use crate::cli::shared;
+use clap::{Args, ValueEnum};
 
 #[derive(Args, Debug, Clone)]
 pub struct SimpleConf {
@@ -38,20 +36,48 @@ pub struct SimpleConf {
 
     /// Switches to next / previous workspace / client / monitor
     #[arg(long, default_value_t, value_enum)]
-    pub switch_type: shared::InputSwitchType,
+    pub switch_type: InputSwitchType,
 }
 
-impl From<SimpleConf> for SimpleConfig {
+impl From<SimpleConf> for hyprswitch::SortConfig {
     fn from(opts: SimpleConf) -> Self {
         Self {
-            ignore_monitors: opts.ignore_monitors,
-            ignore_workspaces: opts.ignore_workspaces,
             sort_recent: opts.sort_recent,
             filter_current_workspace: opts.filter_current_workspace,
             filter_current_monitor: opts.filter_current_monitor,
             filter_same_class: opts.filter_same_class,
             include_special_workspaces: opts.include_special_workspaces,
             switch_type: opts.switch_type.into(),
+        }
+    }
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct DispatchConf {
+    /// Reverse the order of windows / switch backwards
+    #[arg(short = 'r', long)]
+    pub reverse: bool,
+
+    /// Switch to a specific window offset (default 1)
+    #[arg(short = 'o', long, default_value = "1", value_parser = clap::value_parser!(u8).range(1..)
+    )]
+    pub offset: u8,
+}
+
+#[derive(Debug, ValueEnum, Clone, Default)]
+pub enum InputSwitchType {
+    #[default]
+    Client,
+    Workspace,
+    Monitor,
+}
+
+impl From<InputSwitchType> for hyprswitch::SwitchType {
+    fn from(s: InputSwitchType) -> Self {
+        match s {
+            InputSwitchType::Client => hyprswitch::SwitchType::Client,
+            InputSwitchType::Workspace => hyprswitch::SwitchType::Workspace,
+            InputSwitchType::Monitor => hyprswitch::SwitchType::Monitor,
         }
     }
 }
