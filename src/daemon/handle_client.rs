@@ -1,7 +1,7 @@
 use crate::daemon::handle_fns::{close, init, switch};
+use crate::daemon::{daemon_running, global, Share};
 use crate::transfer::TransferType;
-use crate::daemon::{daemon_running, Share};
-use crate::{get_daemon_socket_path_buff, global, toast};
+use crate::{get_daemon_socket_path_buff, toast};
 use anyhow::Context;
 use rand::Rng;
 use std::fs::remove_file;

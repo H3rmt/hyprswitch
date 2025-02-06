@@ -19,21 +19,6 @@ pub use hypr_data::*;
 // changed fullscreen types
 const MIN_VERSION: Version = Version::new(0, 42, 0);
 
-pub mod global {
-    /// global variable to store if gui is open TODO check if this can be put in shared data
-    pub static OPEN: std::sync::OnceLock<std::sync::Mutex<bool>> = std::sync::OnceLock::new();
-
-    /// immutable global variable to store global options
-    pub static OPTS: std::sync::OnceLock<Global> = std::sync::OnceLock::new();
-
-    pub struct Global {
-        pub dry: bool,
-        pub toasts_allowed: bool,
-        pub animate_launch_time: u64,
-        pub default_terminal: Option<String>,
-    }
-}
-
 type WorkspaceId = i32;
 type MonitorId = i128;
 type ClientId = u64;
@@ -102,7 +87,7 @@ impl<A, E: Display> Warn<A> for Result<A, E> {
 }
 
 pub fn toast(_body: &str) {
-    if global::OPTS
+    if daemon::global::OPTS
         .get()
         .map(|o| o.toasts_allowed)
         .warn("Failed to access global toasts_allowed")

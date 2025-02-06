@@ -1,11 +1,10 @@
 use anyhow::Context;
 use clap::Parser;
 use hyprswitch::daemon::{
-    debug_desktop_files, debug_list, debug_search_class, get_cached_runs, InitGuiConfig,
+    debug_desktop_files, debug_list, debug_search_class, get_cached_runs, global, InitGuiConfig,
 };
 use hyprswitch::envs::LOG_MODULE_PATH;
-use hyprswitch::handle::check_version;
-use hyprswitch::{global, handle, toast, SortConfig, Warn};
+use hyprswitch::{handle, toast, SortConfig, Warn};
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Mutex;
@@ -44,22 +43,26 @@ fn main() -> anyhow::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).warn("Unable to initialize logging");
 
-    global::DRY
-        .set(cli.global_opts.dry_run)
-        .warn("unable to set DRY (already filled???)");
     global::OPEN
         .set(Mutex::new(false))
-        .warn("unable to set ACTIVE (already filled???)");
+        .ok()
+        .context("unable to set ACTIVE (already filled???)")?;
 
-    check_version().warn("Unable to check Hyprland version, continuing anyway");
+    handle::check_version().warn("Unable to check Hyprland version, continuing anyway");
 
     match cli.command {
         cli::Command::Run { config_file, .. } => {
             info!("Loading config");
             let config = hyprswitch::config::load(config_file).context("Failed to load config")?;
-            global::TOASTS_ALLOWED
-                .set(!config.general.disable_toast)
-                .warn("unable to set TOASTS_ALLOWED (already filled???)");
+            global::OPTS
+                .set(global::Global {
+                    dry: cli.global_opts.dry_run,
+                    toasts_allowed: !config.general.disable_toast,
+                    animate_launch_time: config.general.launcher.animate_launch_time_ms,
+                    default_terminal: config.general.launcher.default_terminal.clone(),
+                })
+                .ok() // discard the value of error as it is the global::Global struct
+                .warn("unable to set DRY (already filled???)");
             trace!(
                 "Config read: {}",
                 serde_json::to_string(&config).unwrap_or("Failed to serialize config".to_string())
@@ -103,7 +106,7 @@ fn main() -> anyhow::Result<()> {
                 active.as_ref(),
             );
             if let Ok(next_active) = next_active {
-                handle::switch_to_active(Some(&next_active), &hypr_data)?;
+                handle::switch_to_active(Some(&next_active), &hypr_data, cli.global_opts.dry_run)?;
             }
         }
         cli::Command::Debug { command } => {

@@ -1,12 +1,12 @@
-use std::ops::Deref;
 use crate::daemon::cache::cache_run;
 use crate::daemon::gui::launcher::show_launch_spawn;
 use crate::daemon::gui::reload_desktop_maps;
-use crate::daemon::{deactivate_submap, GUISend, Share, UpdateCause};
+use crate::daemon::{deactivate_submap, global, GUISend, Share, UpdateCause};
 use crate::handle::{clear_recent_clients, run_program, switch_to_active};
-use crate::{global, Active, ClientId, MonitorId, Warn, WorkspaceId};
+use crate::{Active, ClientId, MonitorId, Warn, WorkspaceId};
 use anyhow::Context;
 use gtk4::glib::clone;
+use std::ops::Deref;
 use std::thread;
 use tracing::{trace, warn};
 
@@ -110,7 +110,16 @@ pub(crate) fn gui_close(share: &Share) {
 
             {
                 let lock = latest.lock().expect("Failed to lock");
-                switch_to_active(lock.active.as_ref(), &lock.hypr_data).warn("Failed to switch");
+                switch_to_active(
+                    lock.active.as_ref(),
+                    &lock.hypr_data,
+                    global::OPTS
+                        .get()
+                        .map(|o| o.dry)
+                        .warn("Failed to access global dry")
+                        .unwrap_or(false),
+                )
+                .warn("Failed to switch");
                 drop(lock);
             }
 

@@ -19,6 +19,9 @@ pub use data::*;
 
 pub use cache::get_cached_runs;
 pub use gui::{debug_desktop_files, debug_list, debug_search_class};
+
+// TODO clean this up
+
 #[derive(Debug, Clone)]
 pub(crate) enum GUISend {
     Refresh,
@@ -142,4 +145,19 @@ pub fn deactivate_submap() {
     let _span = span!(Level::TRACE, "submap").entered();
     Dispatch::call(DispatchType::Custom("submap", "reset")).warn("unable to deactivate submap");
     debug!("Deactivated submap");
+}
+
+pub mod global {
+    /// global variable to store if gui is open TODO check if this can be put in shared data
+    pub static OPEN: std::sync::OnceLock<std::sync::Mutex<bool>> = std::sync::OnceLock::new();
+
+    /// immutable global variable to store global options (only initialized when run with the run subcommand)
+    pub static OPTS: std::sync::OnceLock<Global> = std::sync::OnceLock::new();
+
+    pub struct Global {
+        pub dry: bool,
+        pub toasts_allowed: bool,
+        pub animate_launch_time: u64,
+        pub default_terminal: Option<String>,
+    }
 }

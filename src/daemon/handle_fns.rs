@@ -1,10 +1,11 @@
 use crate::daemon::cache::cache_run;
 use crate::daemon::gui::{reload_desktop_maps, show_launch_spawn};
 use crate::daemon::{
-    activate_submap, deactivate_submap, GUISend, GuiConfig, Share, SubmapConfig, UpdateCause,
+    activate_submap, deactivate_submap, global, GUISend, GuiConfig, Share, SubmapConfig,
+    UpdateCause,
 };
 use crate::handle::{clear_recent_clients, collect_data, find_next, run_program, switch_to_active};
-use crate::{global, SortConfig, Warn};
+use crate::{SortConfig, Warn};
 use anyhow::Context;
 use std::ops::Deref;
 use tracing::{info, trace, warn};
@@ -125,7 +126,15 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
             // switch after closing gui
             // (KeyboardMode::Exclusive on launcher doesn't allow switching windows if it is still active)
             let lock = latest.lock().expect("Failed to lock");
-            switch_to_active(lock.active.as_ref(), &lock.hypr_data)?;
+            switch_to_active(
+                lock.active.as_ref(),
+                &lock.hypr_data,
+                global::OPTS
+                    .get()
+                    .map(|o| o.dry)
+                    .warn("Failed to access global dry")
+                    .unwrap_or(false),
+            )?;
             drop(lock);
         }
     } else {

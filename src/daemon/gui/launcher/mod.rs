@@ -3,8 +3,8 @@ use crate::daemon::gui::gui_handle::{
 };
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
-use crate::daemon::{Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause};
-use crate::{global, Warn};
+use crate::daemon::{global, Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause};
+use crate::{Warn};
 use async_channel::Sender;
 use gtk4::gdk::{Key, Texture};
 use gtk4::glib::{clone, ControlFlow, Propagation};
