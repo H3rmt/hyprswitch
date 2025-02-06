@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.3.2](https://github.com/H3rmt/hyprswitch/compare/v3.3.1...v3.3.2) (2025-02-06)
+
+
+### Bug Fixes
+
+* fix memory leak https://github.com/H3rmt/hyprswitch/discussions/137 ([c63ff80](https://github.com/H3rmt/hyprswitch/commit/c63ff80087918395065bd80865a5e4fad217889d))
+* fix release pr creation ([21894b2](https://github.com/H3rmt/hyprswitch/commit/21894b291fe433452f2ad424dd3f27b822afd7fe))
+
 ## [3.3.1](https://github.com/H3rmt/hyprswitch/compare/v3.3.0...v3.3.1) (2025-02-02)
 
 
