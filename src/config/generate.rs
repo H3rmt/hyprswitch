@@ -1,5 +1,5 @@
 use crate::config::config_structs::{
-    Bind, Config, FilterBy, OverviewBindConfig, Reverse, SwitchBindConfig, ToKey,
+    Bind, FilterBy, OverviewBindConfig, Reverse, SwitchBindConfig, ToKey,
 };
 use crate::get_daemon_socket_path_buff;
 use crate::transfer::{DispatchConfig, OpenConfig, TransferType};
@@ -8,14 +8,17 @@ use rand::Rng;
 use std::path::PathBuf;
 use tracing::{span, trace, Level};
 
-pub fn create_binds_and_submaps<'a>(
-    config: Config,
-) -> anyhow::Result<Vec<(&'a str, String)>> {
+pub fn create_binds_and_submaps<'a>(binds: &Vec<Bind>) -> anyhow::Result<Vec<(&'a str, String)>> {
     let _span = span!(Level::DEBUG, "create_binds_and_submaps").entered();
     let mut keyword_list = Vec::<(&str, String)>::new();
     let rand_id = rand::rng().random_range(10..=99);
 
-    for (i, bind) in config.binds.into_iter().enumerate() {
+    // TODO add config for these
+    keyword_list.push(("layerrule", "dimaround, hyprswitch".to_string()));
+    keyword_list.push(("layerrule", "noanim, hyprswitch_launcher".to_string()));
+    keyword_list.push(("layerrule", "noanim, hyprswitch".to_string()));
+
+    for (i, bind) in binds.into_iter().enumerate() {
         let submap_name = format!("hyprswitch-{rand_id}-{i}");
         trace!("submap_name: {}", submap_name);
         match bind {
@@ -121,7 +124,7 @@ fn generate_dispatch(reverse: bool, offset: u8) -> anyhow::Result<String> {
 
 fn generate_overview(
     keyword_list: &mut Vec<(&str, String)>,
-    press: OverviewBindConfig,
+    press: &OverviewBindConfig,
     submap_name: String,
 ) -> anyhow::Result<()> {
     keyword_list.push((
@@ -195,7 +198,7 @@ fn generate_overview(
             generate_dispatch(false, 1)?
         ),
     ));
-    match press.navigate.reverse {
+    match &press.navigate.reverse {
         Reverse::Key(key) => keyword_list.push((
             "bind",
             format!(", {}, exec, {}", key, generate_dispatch(true, 1)?),
@@ -217,7 +220,7 @@ fn generate_overview(
 
 fn generate_switch(
     keyword_list: &mut Vec<(&str, String)>,
-    hold: SwitchBindConfig,
+    hold: &SwitchBindConfig,
     submap_name: String,
 ) -> anyhow::Result<()> {
     keyword_list.push((

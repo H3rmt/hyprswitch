@@ -107,7 +107,7 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
             if let Some(exec) = lock.launcher_data.execs.get(selected) {
                 show_launch_spawn(share.clone(), Some(client_id));
                 run_program(&exec.exec, &exec.path, exec.terminal);
-                cache_run(&exec.exec).warn("Failed to cache run");
+                cache_run(&exec.desktop_file).warn("Failed to cache run");
             } else {
                 warn!("Selected program (nr. {}) not found, killing", selected);
             }

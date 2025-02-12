@@ -3,8 +3,10 @@ use crate::daemon::gui::gui_handle::{
 };
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
-use crate::daemon::{global, Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause};
-use crate::{Warn};
+use crate::daemon::{
+    get_cached_runs, global, Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause,
+};
+use crate::Warn;
 use async_channel::Sender;
 use gtk4::gdk::{Key, Texture};
 use gtk4::glib::{clone, ControlFlow, Propagation};
@@ -15,6 +17,8 @@ use gtk4::{
     GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation, SelectionMode,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use std::cmp::Ordering::{Greater, Less};
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::Path;
 use std::thread;
@@ -120,26 +124,62 @@ pub(super) fn update_launcher(
     let mut execs = Vec::new();
 
     let entries = get_all_desktop_files();
-    let mut matches = Vec::new();
-    for (name, icon, _, exec, path, terminal, _) in entries.deref() {
-        if name
+    // 2 = keyword, 1 = name, 0 = exact Match
+    let mut matches = HashMap::new();
+    for entry in entries.deref() {
+        if entry.keywords.iter().any(|k| {
+            k.to_ascii_lowercase()
+                .starts_with(&text.to_ascii_lowercase())
+        }) {
+            matches.insert(entry.desktop_file.clone(), (2, entry));
+        }
+    }
+    // do name last to let them appear first
+    for entry in entries.deref() {
+        if entry
+            .name
             .to_ascii_lowercase()
             .contains(&text.to_ascii_lowercase())
         {
-            matches.push((name, icon, exec, path, terminal));
+            if entry
+                .name
+                .to_ascii_lowercase()
+                .starts_with(&text.to_ascii_lowercase())
+            {
+                matches.insert(entry.desktop_file.clone(), (0, entry));
+            } else {
+                matches.insert(entry.desktop_file.clone(), (1, entry));
+            }
         }
     }
-    for (name, icon, keywords, exec, path, terminal, _) in entries.deref() {
-        if keywords
-            .iter()
-            .any(|k| k.to_ascii_lowercase().contains(&text.to_ascii_lowercase()))
-            && !matches.iter().any(|(n, _, _, _, _)| name.eq(n))
-        {
-            matches.push((name, icon, exec, path, terminal));
-        }
-    }
+    let runs = get_cached_runs().unwrap_or_default();
 
-    for (index, (name, icon, exec, path, terminal)) in matches
+    // sort each of the sections by times run in the past
+    let mut matches: Vec<_> = matches.into_values().collect();
+    matches.sort_by(|(a_t, a), (b_t, b)| {
+        if a_t != b_t {
+            return a_t.cmp(&b_t);
+        } else {
+            let a_e = runs.get(&a.desktop_file);
+            let b_e = runs.get(&b.desktop_file);
+            match (a_e, b_e) {
+                (Some(_), None) => Less,
+                (None, Some(_)) => Greater,
+                (Some(a_e), Some(b_e)) if a_e != b_e => b_e.cmp(a_e), // higher means lower in sort
+                _ => a.name.cmp(&b.name),
+            }
+        }
+    });
+    trace!(
+        "Matches: {:?}",
+        matches
+            .iter()
+            .take(launcher_max_items as usize)
+            .map(|(v, e)| format!("{}: {}|{:?}", v, e.name, runs.get(&e.desktop_file)))
+            .collect::<Vec<_>>()
+    );
+
+    for (index, (_, entry)) in matches
         .into_iter()
         .take(launcher_max_items as usize)
         .enumerate()
@@ -147,9 +187,9 @@ pub(super) fn update_launcher(
         let i = index as i32 - selected.unwrap_or(0) as i32;
         let widget = create_launch_widget(
             share.clone(),
-            name,
-            icon,
-            exec,
+            &entry.name,
+            &entry.icon,
+            &*entry.exec,
             index,
             &match reverse_key {
                 ReverseKey::Mod(m) => match i {
@@ -179,9 +219,10 @@ pub(super) fn update_launcher(
         );
         list.append(&widget);
         execs.push(Exec {
-            exec: exec.clone(),
-            path: path.clone(),
-            terminal: *terminal,
+            exec: entry.exec.clone(),
+            path: entry.exec_path.clone(),
+            terminal: entry.terminal,
+            desktop_file: entry.desktop_file.clone(),
         });
     }
 
@@ -242,10 +283,36 @@ fn create_launch_widget(
             .css_classes(vec!["launcher-exec"])
             .ellipsize(EllipsizeMode::End) // "flatpak 'run'" = pwa from browser inside flatpak
             .label(
-                if exec.contains("flatpak run") || exec.contains("flatpak 'run'") {
-                    "(flatpak)".to_string()
+                if exec.contains("--app-id=") && exec.contains("--profile-directory=") {
+                    if exec.contains("flatpak run") || exec.contains("flatpak 'run'") {
+                        format!(
+                            "(flatpak {} pwa)",
+                            exec.replace("'", "")
+                                .split(' ')
+                                .find(|s| s.contains("--command="))
+                                .and_then(|s| s.split('=').last().and_then(|s| s.split('/').last()))
+                                .unwrap_or_default()
+                        )
+                    } else {
+                        format!(
+                            "({} pwa)",
+                            exec.split(' ')
+                                .next()
+                                .and_then(|s| s.split('/').last())
+                                .unwrap_or_default()
+                        )
+                    }
+                } else if exec.contains("flatpak run") || exec.contains("flatpak 'run'") {
+                    format!(
+                        "(flatpak {})",
+                        exec.replace("'", "")
+                            .split(' ')
+                            .find(|s| s.contains("--command="))
+                            .and_then(|s| s.split('=').last().and_then(|s| s.split('/').last()))
+                            .unwrap_or_default()
+                    )
                 } else {
-                    format!("({})", exec)
+                    format!("{}", exec) // show full exec instead of only last part of /path/to/exec
                 },
             )
             .build();

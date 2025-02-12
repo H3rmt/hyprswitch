@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use hyprswitch::daemon::{
-    debug_desktop_files, debug_list, debug_search_class, get_cached_runs, global, InitGuiConfig,
+    debug_desktop_files, debug_list, debug_search_class, get_cached_runs, global,
 };
 use hyprswitch::envs::LOG_MODULE_PATH;
 use hyprswitch::{handle, toast, SortConfig, Warn};
@@ -68,26 +68,14 @@ fn main() -> anyhow::Result<()> {
                 serde_json::to_string(&config).unwrap_or("Failed to serialize config".to_string())
             );
             hyprswitch::config::validate(&config).context("Failed to validate config")?;
-            let init_config = InitGuiConfig {
-                custom_css: config.general.custom_css_path.clone().map(PathBuf::from),
-                show_title: config.general.windows.show_title,
-                workspaces_per_row: config.general.windows.workspaces_per_row,
-                size_factor: config.general.size_factor,
-                launcher_max_items: config.general.launcher.items,
-                default_terminal: config.general.launcher.default_terminal.clone(),
-                show_execs: config.general.launcher.show_execs,
-                animate_launch_time: config.general.launcher.animate_launch_time_ms,
-                strip_html_workspace_title: config.general.windows.strip_html_from_workspace_title,
-            };
-            let list = hyprswitch::config::create_binds_and_submaps(config)
-                .context("Failed to create binds and submaps")?;
-            let text = hyprswitch::config::export(list);
-            println!("{}", text);
-            hyprswitch::daemon::start_daemon(init_config)
+            hyprswitch::daemon::start_daemon(config)
                 .context("Failed to run daemon")
                 .inspect_err(|_| {
                     hyprswitch::daemon::deactivate_submap();
                 })?;
+        }
+        cli::Command::Config { command } => {
+            todo!("Config command not implemented")
         }
         cli::Command::Simple {
             dispatch_config,

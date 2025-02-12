@@ -148,7 +148,7 @@ pub(crate) fn gui_exec(share: &Share, selected: usize) {
                 lock.launcher_data.selected = Some(selected);
                 if let Some(exec) = lock.launcher_data.execs.get(selected) {
                     run_program(&exec.exec, &exec.path, exec.terminal);
-                    cache_run(&exec.exec).warn("Failed to cache run");
+                    cache_run(&exec.desktop_file).warn("Failed to cache run");
                 } else {
                     warn!("Selected program (nr. {}) not found, closing", selected);
                 }

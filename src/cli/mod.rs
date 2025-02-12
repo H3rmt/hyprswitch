@@ -52,11 +52,25 @@ pub enum Command {
         simple_conf: simple::SimpleConf,
     },
 
+    /// Generate or check the config file
+    Config {
+        #[clap(subcommand)]
+        command: ConfigCommand,
+    },
+
     /// Debug command to debug finding icons for the GUI, doesn't interact with the Daemon
     Debug {
         #[clap(subcommand)]
         command: DebugCommand,
     },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum ConfigCommand {
+    /// Generate a default config file
+    Generate {},
+    /// Check the config file for errors
+    Check {},
 }
 
 #[derive(Subcommand, Debug, Clone)]

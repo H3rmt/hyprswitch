@@ -1,5 +1,4 @@
-use crate::config::config_structs::Config;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use ron::extensions::Extensions;
 use ron::Options;
 use std::env;
@@ -14,6 +13,8 @@ mod config_structs;
 mod generate;
 mod validate;
 
+pub use config_structs::*;
+
 pub fn load(config_file: Option<PathBuf>) -> anyhow::Result<Config> {
     let _span = span!(Level::TRACE, "load_config").entered();
     let config = config_file
@@ -24,6 +25,9 @@ pub fn load(config_file: Option<PathBuf>) -> anyhow::Result<Config> {
         .with_default_extension(Extensions::IMPLICIT_SOME)
         .with_default_extension(Extensions::UNWRAP_NEWTYPES)
         .with_default_extension(Extensions::UNWRAP_VARIANT_NEWTYPES);
+    if !config.exists() {
+        bail!("Config file does not exist, create it using `hyprswitch config generate`");
+    }
     let file = std::fs::File::open(&config)
         .with_context(|| format!("Failed to open config at ({config:?})"))?;
     let config: Config = options

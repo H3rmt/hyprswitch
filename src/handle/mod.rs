@@ -60,8 +60,8 @@ pub fn check_version() -> anyhow::Result<()> {
 
     trace!("Hyprland {version:?}");
     info!(
-        "Starting Hyprswitch ({}) on Hyprland {}",
-        option_env!("CARGO_PKG_VERSION").unwrap_or("?.?.?"),
+        "Starting Hyprswitch {} on Hyprland {}",
+        env!("CARGO_PKG_VERSION"),
         version.version.clone().unwrap_or(version.tag.clone()),
     );
 

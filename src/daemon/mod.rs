@@ -1,13 +1,12 @@
-use crate::Warn;
+use crate::{config, Warn};
 use async_channel::{Receiver, Sender};
 use gtk4::glib::clone;
 use hyprland::dispatch::{Dispatch, DispatchType};
 use std::fmt;
 use std::fmt::Display;
 use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, span, trace, Level};
+use tracing::{debug, info, span, trace, Level};
 
 mod cache;
 mod data;
@@ -17,9 +16,9 @@ mod handle_fns;
 
 pub use data::*;
 
+use crate::config::Config;
 pub use cache::get_cached_runs;
 pub use gui::{debug_desktop_files, debug_list, debug_search_class};
-
 // TODO clean this up
 
 #[derive(Debug, Clone)]
@@ -60,20 +59,23 @@ pub(crate) type Share = Arc<(
     Receiver<Option<Payload>>,
 )>;
 
-#[derive(Debug, Clone, Default)]
-pub struct InitGuiConfig {
-    pub custom_css: Option<PathBuf>,
-    pub show_title: bool,
-    pub workspaces_per_row: u8,
-    pub size_factor: f64,
-    pub launcher_max_items: u8,
-    pub default_terminal: Option<String>,
-    pub show_execs: bool,
-    pub animate_launch_time: u64,
-    pub strip_html_workspace_title: bool,
+pub fn start_config_applier(binds: Vec<config::Bind>) {
+    let mut event_listener = hyprland::event_listener::EventListener::new();
+    event_listener.add_config_reloaded_handler(move || {
+        info!("Hyprland Config reloaded, applying custom binds and submaps");
+        if let Some(list) =
+            config::create_binds_and_submaps(&binds).warn("Failed to create binds and submaps")
+        {
+            let text = config::export(list);
+            println!("{}", text);
+        }
+    });
+    event_listener
+        .start_listener()
+        .warn("Failed to start config reload event listener");
 }
 
-pub fn start_daemon(init_gui_config: InitGuiConfig) -> anyhow::Result<()> {
+pub fn start_daemon(config: Config) -> anyhow::Result<()> {
     // we don't have any config here, so we just create a default one with no filtering (but fill the monitors as they are needed for gtk)
     // create arc to send to threads containing the config the daemon was initialized with and the data (clients, etc.)
     let (sender, receiver) = async_channel::bounded::<Payload>(1);
@@ -81,6 +83,13 @@ pub fn start_daemon(init_gui_config: InitGuiConfig) -> anyhow::Result<()> {
     let share: Share = Arc::new((Mutex::new(SharedData::default()), sender, return_receiver));
 
     std::thread::scope(move |scope| {
+        scope.spawn(clone!(move || {
+            let _span = span!(Level::TRACE, "config").entered();
+            // TODO: reload config on start
+            // TODO: warn if binds with hyprswitch already exist
+            start_config_applier(config.binds);
+        }));
+
         scope.spawn(clone!(
             #[strong]
             share,
@@ -106,7 +115,7 @@ pub fn start_daemon(init_gui_config: InitGuiConfig) -> anyhow::Result<()> {
                 gui::reload_desktop_maps();
                 gui::start_gui_blocking(
                     share.clone(),
-                    init_gui_config.clone(),
+                    config.general.clone(),
                     receiver.clone(),
                     return_sender.clone(),
                 );

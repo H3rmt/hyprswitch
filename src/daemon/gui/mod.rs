@@ -29,14 +29,15 @@ mod launcher;
 mod maps;
 mod windows;
 
+use crate::config::General;
 use crate::daemon::gui::maps::init_icon_map;
-use crate::daemon::{GUISend, InitGuiConfig, Payload, Share, UpdateCause};
+use crate::daemon::{GUISend, Payload, Share, UpdateCause};
 use crate::{ClientId, MonitorId, Warn, WorkspaceId};
 pub use launcher::show_launch_spawn;
 
 pub(super) fn start_gui_blocking(
     share: Share,
-    init_gui_config: InitGuiConfig,
+    general_config: General,
     receiver: Receiver<Payload>,
     return_sender: Sender<Option<Payload>>,
 ) {
@@ -57,7 +58,7 @@ pub(super) fn start_gui_blocking(
         // https://github.com/H3rmt/hyprswitch/discussions/137
         init_icon_map();
 
-        apply_css(init_gui_config.custom_css.as_ref());
+        apply_css(general_config.custom_css_path.clone().map(PathBuf::from).as_ref());
 
         let (visibility_sender, visibility_receiver) = async_channel::unbounded();
         let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>> =
@@ -68,7 +69,7 @@ pub(super) fn start_gui_blocking(
                 app,
                 &share,
                 &mut monitor_data_list,
-                init_gui_config.workspaces_per_row as u32,
+                general_config.windows.workspaces_per_row as u32,
                 visibility_sender.clone(),
             )
             .warn("Failed to create windows");
@@ -85,7 +86,7 @@ pub(super) fn start_gui_blocking(
             #[strong]
             monitor_data_list,
             #[strong]
-            init_gui_config,
+            general_config,
             #[strong]
             receiver,
             #[strong]
@@ -98,7 +99,7 @@ pub(super) fn start_gui_blocking(
                     let mess = receiver.recv().await;
                     handle_update(
                         &share,
-                        &init_gui_config,
+                        &general_config,
                         &mess,
                         monitor_data_list.clone(),
                         launcher_refs.clone(),
@@ -122,7 +123,7 @@ pub(super) fn start_gui_blocking(
 
 async fn handle_update(
     share: &Share,
-    init_gui_config: &InitGuiConfig,
+    general_config: &General,
     mess: &Result<Payload, RecvError>,
     monitor_data: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>>,
     launcher: Rc<Mutex<Option<(ApplicationWindow, Entry, ListBox)>>>,
@@ -159,7 +160,7 @@ async fn handle_update(
                             })
                             .collect::<Vec<_>>()
                             .len() as i32;
-                        let rows = (workspaces as f32 / init_gui_config.workspaces_per_row as f32)
+                        let rows = (workspaces as f32 / general_config.windows.workspaces_per_row as f32)
                             .ceil() as i32;
                         let height = monitor.geometry().height();
                         window.set_margin(
@@ -179,10 +180,10 @@ async fn handle_update(
                         &data.hypr_data.workspaces,
                         &data.hypr_data.clients,
                         monitor_data,
-                        init_gui_config.show_title,
+                        general_config.windows.show_title,
                         data.gui_config.show_workspaces_on_all_monitors,
-                        init_gui_config.size_factor,
-                        init_gui_config.strip_html_workspace_title,
+                        general_config.size_factor,
+                        general_config.windows.strip_html_from_workspace_title,
                     );
 
                     trace!("Refresh window {:?}", window);
@@ -234,8 +235,8 @@ async fn handle_update(
                         data.launcher_data.selected,
                         &data.launcher_data.launch_state,
                         &data.submap_config.reverse_key,
-                        init_gui_config.launcher_max_items,
-                        init_gui_config.show_execs,
+                        general_config.launcher.items,
+                        general_config.launcher.show_execs,
                     );
                     data.launcher_data.execs = execs;
                 });

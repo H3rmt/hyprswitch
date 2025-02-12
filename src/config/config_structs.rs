@@ -2,13 +2,13 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Display;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     pub binds: Vec<Bind>,
     pub general: General,
 }
 
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct General {
     #[default = false]
@@ -21,7 +21,7 @@ pub struct General {
     pub windows: Windows,
 }
 
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Launcher {
     #[default = 6]
@@ -34,7 +34,7 @@ pub struct Launcher {
     pub animate_launch_time_ms: u64,
 }
 
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Windows {
     #[default = true]
@@ -45,13 +45,13 @@ pub struct Windows {
     pub strip_html_from_workspace_title: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Bind {
     Switch(SwitchBindConfig),
     Overview(OverviewBindConfig),
 }
 
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct SwitchBindConfig {
     pub open: OpenSwitch,
@@ -59,20 +59,20 @@ pub struct SwitchBindConfig {
     pub close: CloseSwitch,
     pub other: Other,
 }
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct OpenSwitch {
     #[default(Mod::Super)]
     pub modifier: Mod,
 }
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct CloseSwitch {
     #[default = true]
     pub escape: bool,
 }
 
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct OverviewBindConfig {
     #[default = true]
@@ -82,7 +82,7 @@ pub struct OverviewBindConfig {
     pub close: CloseOverview,
     pub other: Other,
 }
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct OpenOverview {
     #[default(Mod::Super)]
@@ -91,7 +91,7 @@ pub struct OpenOverview {
     pub key: KeyMaybeMod,
 }
 
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct CloseOverview {
     #[default = true]
@@ -100,7 +100,7 @@ pub struct CloseOverview {
     pub close_on_reopen: bool,
 }
 
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Navigate {
     #[default = "tab"]
@@ -109,7 +109,7 @@ pub struct Navigate {
     pub reverse: Reverse,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Reverse {
     Key(String),
     Mod(Mod),
@@ -124,24 +124,24 @@ pub enum Reverse {
 //     }
 // }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct SimpleBindConfig {
-    #[serde(default)]
-    pub reverse: bool,
-    #[serde(default)]
-    pub offset: u8,
-    pub open: OpenSimple,
-    #[serde(default)]
-    pub other: Other,
-}
+// #[derive(Debug, Deserialize, Serialize)]
+// pub struct SimpleBindConfig {
+//     #[serde(default)]
+//     pub reverse: bool,
+//     #[serde(default)]
+//     pub offset: u8,
+//     pub open: OpenSimple,
+//     #[serde(default)]
+//     pub other: Other,
+// }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct OpenSimple {
-    pub modifier: Mod,
-    pub key: KeyMaybeMod,
-}
+// #[derive(Debug, Deserialize, Serialize)]
+// pub struct OpenSimple {
+//     pub modifier: Mod,
+//     pub key: KeyMaybeMod,
+// }
 
-#[derive(SmartDefault, Debug, Deserialize, Serialize)]
+#[derive(SmartDefault, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Other {
     #[default = 6]
@@ -163,7 +163,7 @@ pub struct Other {
     pub filter_by: Option<Vec<FilterBy>>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum FilterBy {
     SameClass,
@@ -171,7 +171,7 @@ pub enum FilterBy {
     CurrentMonitor,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SwitchType {
     Client,
@@ -189,7 +189,7 @@ pub enum SwitchType {
 //     }
 // }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Mod {
     Alt,
@@ -221,7 +221,7 @@ impl Display for Mod {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct KeyMaybeMod(String);
 impl From<&str> for KeyMaybeMod {
     fn from(s: &str) -> Self {

@@ -69,12 +69,12 @@ pub fn debug_list() -> anyhow::Result<()> {
 
 pub fn debug_desktop_files() -> anyhow::Result<()> {
     let map = get_desktop_files_debug()?;
-    for (name, icon, _, exec, _, _, file) in map {
+    for entry in map {
         #[allow(clippy::print_stdout)]
         {
             println!(
                 "Desktop file: {} [{:?}] -> {:?} [{:?}]",
-                name, file, exec, icon
+                entry.name, entry.desktop_file, entry.exec, entry.icon
             );
         }
     }
