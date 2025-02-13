@@ -41,12 +41,15 @@ pub fn create_windows(
             .max_children_per_line(workspaces_per_row)
             .min_children_per_line(workspaces_per_row)
             .build();
-        let workspaces_flow_overlay = Overlay::builder().child(&workspaces_flow).build();
+        let workspaces_flow_overlay = Overlay::builder()
+            .child(&workspaces_flow)
+            .css_classes(vec!["monitor"])
+            .build();
 
         workspaces_flow_overlay.add_controller(click_monitor(share, monitor_id));
 
         let window = ApplicationWindow::builder()
-            .css_classes(vec!["window", "monitor", "background"])
+            .css_classes(vec!["window"])
             .application(app)
             .child(&workspaces_flow_overlay)
             .default_height(10)

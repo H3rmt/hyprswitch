@@ -105,7 +105,7 @@ pub struct CloseOverview {
 pub struct Navigate {
     #[default = "tab"]
     pub forward: String,
-    #[default(Reverse::Key("grave".to_string()))]
+    #[default(Reverse::Mod(Mod::Shift))]
     pub reverse: Reverse,
 }
 

@@ -1,12 +1,18 @@
-use crate::{config, Warn};
+use crate::{config, toast, Warn};
+use anyhow::bail;
 use async_channel::{Receiver, Sender};
 use gtk4::glib::clone;
+use hyprland::ctl::notify;
+use hyprland::data::Binds;
 use hyprland::dispatch::{Dispatch, DispatchType};
+use hyprland::keyword::Keyword;
+use hyprland::shared::HyprData;
 use std::fmt;
 use std::fmt::Display;
 use std::os::unix::net::UnixStream;
+use std::process::exit;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, info, span, trace, Level};
+use tracing::{debug, info, span, trace, warn, Level};
 
 mod cache;
 mod data;
@@ -17,6 +23,7 @@ mod handle_fns;
 pub use data::*;
 
 use crate::config::Config;
+use crate::handle::reload_config;
 pub use cache::get_cached_runs;
 pub use gui::{debug_desktop_files, debug_list, debug_search_class};
 // TODO clean this up
@@ -63,16 +70,38 @@ pub fn start_config_applier(binds: Vec<config::Bind>) {
     let mut event_listener = hyprland::event_listener::EventListener::new();
     event_listener.add_config_reloaded_handler(move || {
         info!("Hyprland Config reloaded, applying custom binds and submaps");
-        if let Some(list) =
-            config::create_binds_and_submaps(&binds).warn("Failed to create binds and submaps")
-        {
-            let text = config::export(list);
-            println!("{}", text);
-        }
+        apply_config(&binds);
     });
     event_listener
         .start_listener()
         .warn("Failed to start config reload event listener");
+}
+
+fn apply_config(binds: &Vec<config::Bind>) {
+    if let Some(list) =
+        config::create_binds_and_submaps(binds).warn("Failed to create binds and submaps")
+    {
+        trace!("Applying binds and submaps");
+        for (a, b) in list {
+            trace!("{}={}", a, b);
+            Keyword::set(a, b).warn("Failed to apply bind and submap");
+        }
+    }
+}
+
+fn check_binds() -> anyhow::Result<()> {
+    if let Ok(binds) = Binds::get() {
+        for bind in binds.into_iter() {
+            if bind.dispatcher == "exec" && bind.arg.contains("hyprswitch") {
+                toast(
+                    "A hyprswitch bind is already present, please remove it from your config. If you think this is a mistake, you can disable this warning in the config",
+                    notify::Icon::Warning,
+                );
+                bail!("hyprswitch bind already present");
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn start_daemon(config: Config) -> anyhow::Result<()> {
@@ -82,11 +111,17 @@ pub fn start_daemon(config: Config) -> anyhow::Result<()> {
     let (return_sender, return_receiver) = async_channel::bounded::<Option<Payload>>(1);
     let share: Share = Arc::new((Mutex::new(SharedData::default()), sender, return_receiver));
 
+    reload_config();
+    check_binds()?;
+    if daemon_running() {
+        warn!("Daemon already running");
+        exit(0);
+    }
+
     std::thread::scope(move |scope| {
         scope.spawn(clone!(move || {
             let _span = span!(Level::TRACE, "config").entered();
-            // TODO: reload config on start
-            // TODO: warn if binds with hyprswitch already exist
+            apply_config(&config.binds);
             start_config_applier(config.binds);
         }));
 
@@ -168,5 +203,7 @@ pub mod global {
         pub toasts_allowed: bool,
         pub animate_launch_time: u64,
         pub default_terminal: Option<String>,
+        pub show_launch_output: bool,
+        pub workspaces_per_row: u8,
     }
 }

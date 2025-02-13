@@ -58,7 +58,13 @@ pub(super) fn start_gui_blocking(
         // https://github.com/H3rmt/hyprswitch/discussions/137
         init_icon_map();
 
-        apply_css(general_config.custom_css_path.clone().map(PathBuf::from).as_ref());
+        apply_css(
+            general_config
+                .custom_css_path
+                .clone()
+                .map(PathBuf::from)
+                .as_ref(),
+        );
 
         let (visibility_sender, visibility_receiver) = async_channel::unbounded();
         let monitor_data_list: Rc<Mutex<HashMap<ApplicationWindow, (MonitorData, Monitor)>>> =
@@ -148,7 +154,6 @@ async fn handle_update(
                         }
                     }
 
-                    // TODO only open when using --close = default
                     if data.gui_config.show_launcher {
                         let workspaces = data
                             .hypr_data
@@ -160,7 +165,8 @@ async fn handle_update(
                             })
                             .collect::<Vec<_>>()
                             .len() as i32;
-                        let rows = (workspaces as f32 / general_config.windows.workspaces_per_row as f32)
+                        let rows = (workspaces as f32
+                            / general_config.windows.workspaces_per_row as f32)
                             .ceil() as i32;
                         let height = monitor.geometry().height();
                         window.set_margin(

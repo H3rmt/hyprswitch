@@ -1,7 +1,21 @@
+/* style reset */
 * {
-    border: unset;
+    all: unset;
 }
 
+label {
+    padding-top: 3px;
+}
+
+.large-icons {
+    -gtk-icon-size: 32px;
+}
+
+flowboxchild {
+    padding: 2px;
+}
+
+/* set css variables */
 :root {
     --border-color: rgba(90, 90, 120, 0.4);
     --border-color-active: rgba(239, 9, 9, 0.9);
@@ -30,10 +44,5 @@
 }
 
 .window {
-    padding: 2px;
-
     color: rgb(245, 245, 245);
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    border: 3px solid var(--border-color);
 }

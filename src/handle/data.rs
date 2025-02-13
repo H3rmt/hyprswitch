@@ -2,14 +2,14 @@ use crate::handle::get_recent_clients_map;
 use crate::handle::sort::{sort_clients, update_clients};
 use crate::{
     to_client_id, Active, ClientData, ClientId, FindByFirst, HyprlandData, MonitorData, MonitorId,
-    SortConfig, SwitchType, WorkspaceData, WorkspaceId,
+    SortConfig, WorkspaceData, WorkspaceId,
 };
 use hyprland::data::{Client, Clients, Monitors, Workspaces};
 use hyprland::prelude::{HyprData, HyprDataActiveOptional};
 use tracing::{span, trace, warn, Level};
 // type Active = (Option<Address>, Option<WorkspaceId>, Option<MonitorId>);
 
-pub fn collect_data(config: &SortConfig) -> anyhow::Result<(HyprlandData, Option<Active>)> {
+pub fn collect_data(config: &SortConfig) -> anyhow::Result<(HyprlandData, Active)> {
     let _span = span!(Level::TRACE, "collect_data").entered();
     let clients = Clients::get()?
         .into_iter()
@@ -155,14 +155,14 @@ pub fn collect_data(config: &SortConfig) -> anyhow::Result<(HyprlandData, Option
     monitor_data.sort_by(|a, b| a.0.cmp(&b.0));
 
     let active = Client::get_active()?;
-    let active: Option<(String, WorkspaceId, MonitorId, ClientId)> = active.as_ref().map_or_else(
+    let active: Option<(String, ClientId, WorkspaceId, MonitorId)> = active.as_ref().map_or_else(
         || None,
         |a| {
             Some((
                 a.class.clone(),
+                to_client_id(&a.address),
                 a.workspace.id,
                 a.monitor,
-                to_client_id(&a.address),
             ))
         },
     );
@@ -177,11 +177,11 @@ pub fn collect_data(config: &SortConfig) -> anyhow::Result<(HyprlandData, Option
             && (!config.filter_current_workspace
                 || active
                     .as_ref()
-                    .map_or(true, |active| client.workspace == active.1))
+                    .map_or(true, |active| client.workspace == active.2))
             && (!config.filter_current_monitor
                 || active
                     .as_ref()
-                    .map_or(true, |active| client.monitor == active.2));
+                    .map_or(true, |active| client.monitor == active.3));
     }
 
     // iterate over all workspaces and set active to false if no client is on the workspace is active
@@ -202,10 +202,10 @@ pub fn collect_data(config: &SortConfig) -> anyhow::Result<(HyprlandData, Option
     trace!("workspace_data: {:?}", workspace_data);
     trace!("monitor_data: {:?}", monitor_data);
 
-    let active = match config.switch_type {
-        SwitchType::Client => active.as_ref().map(|a| a.3).map(Active::Client),
-        SwitchType::Workspace => active.as_ref().map(|a| a.1).map(Active::Workspace),
-        SwitchType::Monitor => active.as_ref().map(|a| a.2).map(Active::Monitor),
+    let active = Active {
+        client: active.as_ref().map(|a| a.1),
+        workspace: active.as_ref().map(|a| a.2),
+        monitor: active.as_ref().map(|a| a.3),
     };
 
     Ok((

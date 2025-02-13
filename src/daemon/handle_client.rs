@@ -1,22 +1,18 @@
 use crate::daemon::handle_fns::{close, init, switch};
-use crate::daemon::{daemon_running, global, Share};
+use crate::daemon::{global, Share};
 use crate::transfer::TransferType;
 use crate::{get_daemon_socket_path_buff, toast};
 use anyhow::Context;
+use hyprland::ctl::notify;
 use rand::Rng;
 use std::fs::remove_file;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::process::exit;
 use std::time::Instant;
-use tracing::{error, info, trace, warn};
+use tracing::{error, info, trace};
 use tracing::{span, Level};
 
 pub(super) fn start_handler_blocking(share: &Share) {
-    if daemon_running() {
-        warn!("Daemon already running");
-        exit(0);
-    }
     let buf = get_daemon_socket_path_buff();
     let path = buf.as_path();
     // remove old PATH
@@ -35,8 +31,7 @@ pub(super) fn start_handler_blocking(share: &Share) {
                 let arc_share = share.clone();
                 handle_client(stream, arc_share).context("Failed to handle client")
                         .unwrap_or_else(|e| {
-                            toast(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e));
-                            warn!("{:?}", e)
+                            toast(&format!("Failed to handle client (restarting the hyprswitch daemon will most likely fix the issue) {:?}", e), notify::Icon::Warning);
                         });
             }
             Err(e) => {
@@ -135,6 +130,7 @@ pub(super) fn handle_client_transfer(
                     &share,
                     dispatch_config.reverse,
                     dispatch_config.offset,
+                    dispatch_config.gui_navigation,
                     client_id,
                 )
                 .with_context(|| format!("Failed to execute with command {dispatch_config:?}"))

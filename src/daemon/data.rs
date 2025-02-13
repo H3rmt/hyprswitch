@@ -7,7 +7,7 @@ pub struct SharedData {
     pub sort_config: SortConfig,
     pub gui_config: GuiConfig,
     pub submap_config: SubmapConfig,
-    pub active: Option<Active>,
+    pub active: Active,
     pub launcher_data: LauncherData,
     pub hypr_data: HyprlandData,
 }

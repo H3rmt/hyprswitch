@@ -6,7 +6,7 @@
 
 A rust GUI to switch between windows in [Hyprland](https://github.com/hyprwm/Hyprland)
 
-TODO: rewrite this 
+TODO: rewrite this
 
 ![image.png](imgs/image_4.png)
 
@@ -23,15 +23,10 @@ Table of Contents
     * [Examples](#examples)
 * [Features](#features)
 * [Theming](#theming---custom-css)
-* [Other](#other)
-    * [Sorting of windows](#sorting-of-windows)
-    * [Experimental Environment Variables](#experimental-environment-variables)
 
-# Migration to 3.0.0
+# Migration to 4.0.0
 
-1. The complex Config has been removed in favor of a simpler config.
-2. More GUI - CLI options added. (`--mod-key` / `--switch-type` / ...)
-3. Removed some cli args. (`--do-initial-execute`, `--stay-open-on-close`)
+TODO: write this
 
 ### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/Migration-from-2.x.x-to-3.0.0) for more details
 
@@ -56,7 +51,9 @@ Table of Contents
 
 # Usage
 
-Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`.
+1. Run `hyprswitch config generate` to generate a default config file.
+2. Run `hyprswitch run -v` in a terminal to test the program.
+3. Enable the systemd service with `systemctl --user enable --now hyprswitch`.
 
 ## Config
 
@@ -70,21 +67,19 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 
 **Keyboard recent (reverse = grave / \` )**: Press `alt` + `$key(tab)` to open the GUI _(and switch to previously used window)_, hold `alt`, press `$key(tab)` repeatedly to switch to the less and less previously used window, press ``$reverse(`)`` to switch to more recent used windows, release alt to switch
 
-### More Examples in [Wiki](https://github.com/H3rmt/hyprswitch/wiki/Examples)
+### More Examples in [Docs](./docs/Examples.md)
 
 # Features
 
 - Switch between windows using keyboard shortcuts or/and a GUI
 - Customizable Keybindings
-- TODO add features to this list
+- TODO: add features to this list
 
 ## Experimental Features
 
 - Launch applications from the GUI
-- Support for plugging in new monitors while running [Only when run as systemd service]
-- Automatically restart when version changes [Only when run as systemd service]
-- Create all binds and configs from a single config file
-- TODO add experimental features to this list
+- Support for plugging in new monitors while running
+- TODO: add experimental features to this list
 
 # Theming (`--custom-css`)
 
@@ -102,92 +97,4 @@ Once the binary is installed, you can modify your `~/.config/hypr/hyprland.conf`
 }
 ```
 
-### Example custom CSS for 4K screen to override default CSS values:
-
-```css
-/* light blue borders for active, more transparent bg and more border-radius */
-:root {
-    --border-color-active: rgba(17, 170, 217, 0.9);
-    --bg-color: rgba(20, 20, 20, 0.8);
-    --border-radius: 15px;
-}
-
-/* more margin around image for 4K screen */
-.client-image {
-    margin: 15px;
-}
-
-/* increased index for 4K screen */
-.index {
-    margin: 10px;
-    font-size: 25px;
-}
-
-/* increased font size for 4K screen */
-.workspace {
-    font-size: 35px;
-}
-
-/* increased font size for 4K screen */
-.client {
-    font-size: 25px;
-}
-```
-
-### See [Wiki](https://github.com/H3rmt/hyprswitch/wiki/CSS) for more info and [Default](src/daemon/gui/defaults.css), [Windows](src/daemon/gui/windows/windows.css) and [Launcher](src/daemon/gui/launcher/launcher.css) for the default Styles
-
-# Other
-
-### Sorting of windows
-
-```
-   1      2  3      4
-1  +------+  +------+
-2  |  1   |  |  2   |
-3  |      |  +------+
-4  +------+  +------+
-5  +------+  |  4   |
-6  |  3   |  |      |
-7  +------+  +------+
-   1      2  3      4
-```
-
-```
-      Workspace 1           Workspace 2
-1  +------+  +------+ | +------+  +------+
-2  |  1   |  |  2   |   |  5   |  |  6   |
-3  |      |  |      | | |      |  +------+
-4  +------+  +------+   +------+  +------+
-5  +------+  +------+ | +------+  |  8   |
-6  |  3   |  |  4   |   |  7   |  |      |
-7  +------+  +------+ | +------+  +------+
-   1      2  3      4   1      2  3      4
-```
-
-```
-      1       3    5   6     8   10  11  12
-   +----------------------------------------+
-1  |  +-------+                      +---+  |
-2  |  |   1   |              +---+   | 5 |  |
-3  |  |       |    +---+     | 3 |   |   |  |
-4  |  +-------+    | 2 |     +---+   |   |  |
-5  |               +---+     +---+   |   |  |
-6  |                         | 4 |   |   |  |
-7  |    +-------+            +---+   +---+  |
-8  |    |   6   |         +----+            |
-9  |    |       |         | 7  |            |
-10 |    +-------+         +----+            |
-   +----------------------------------------+
-        2       4         7    9
-```
-
-### Experimental Environment Variables
-
-These variables are subject to change and might be removed in the future (activate debug mode with -v and look for `ENV dump:` in the logs to see the current values or inside the [envs.rs](./src/envs.rs) file)
-
-- `REMOVE_HTML_FROM_WORKSPACE_NAME` bool [default: true]: Remove HTML tag (currently only `<span>{}</span>`) from workspace name
-- `SHOW_LAUNCHER` bool [default: true]: Show a Launcher Icon in the GUI when using default `--close` mode
-- `LAUNCHER_MAX_ITEMS` i32 [default: 5]: Maximum number of items in the Launcher
-- `DEFAULT_TERMINAL` string [default: ""]: Terminal to use for launching terminal applications, e.g., `alacritty`. (If
-  empty, a list if known terminals is used)
-- `DISABLE_TOASTS` bool [default: false]: Disable toasts when errors in the daemon or keybinds are detected
+### See [Docs](./docs/CSS) for more info and [Default](src/daemon/gui/defaults.css), [Windows](src/daemon/gui/windows/windows.css) and [Launcher](src/daemon/gui/launcher/launcher.css) for the default Styles

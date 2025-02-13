@@ -33,6 +33,7 @@ pub struct OpenConfig {
 pub struct DispatchConfig {
     pub reverse: bool,
     pub offset: u8,
+    pub gui_navigation: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

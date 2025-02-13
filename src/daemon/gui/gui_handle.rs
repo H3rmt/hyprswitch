@@ -3,39 +3,12 @@ use crate::daemon::gui::launcher::show_launch_spawn;
 use crate::daemon::gui::reload_desktop_maps;
 use crate::daemon::{deactivate_submap, global, GUISend, Share, UpdateCause};
 use crate::handle::{clear_recent_clients, run_program, switch_to_active};
-use crate::{Active, ClientId, MonitorId, Warn, WorkspaceId};
 use anyhow::Context;
 use gtk4::glib::clone;
 use std::ops::Deref;
 use std::thread;
 use tracing::{trace, warn};
-
-pub(crate) fn gui_set_client(share: &Share, address: ClientId) {
-    let (latest, _, _) = share.deref();
-    {
-        let mut lock = latest.lock().expect("Failed to lock");
-        lock.active = Some(Active::Client(address));
-        drop(lock);
-    }
-}
-
-pub(crate) fn gui_set_workspace(share: &Share, id: WorkspaceId) {
-    let (latest, _, _) = share.deref();
-    {
-        let mut lock = latest.lock().expect("Failed to lock");
-        lock.active = Some(Active::Workspace(id));
-        drop(lock);
-    }
-}
-
-pub(crate) fn gui_set_monitor(share: &Share, id: MonitorId) {
-    let (latest, _, _) = share.deref();
-    {
-        let mut lock = latest.lock().expect("Failed to lock");
-        lock.active = Some(Active::Monitor(id));
-        drop(lock);
-    }
-}
+use crate::{Active, Warn};
 
 pub(crate) fn gui_change_entry_input(share: &Share) {
     thread::spawn(clone!(
@@ -88,7 +61,7 @@ pub(crate) fn gui_change_selected_program(share: &Share, reverse: bool) {
     ));
 }
 
-pub(crate) fn gui_close(share: &Share) {
+pub(crate) fn gui_close(share: &Share, active: Active) {
     thread::spawn(clone!(
         #[strong]
         share,
@@ -111,7 +84,7 @@ pub(crate) fn gui_close(share: &Share) {
             {
                 let lock = latest.lock().expect("Failed to lock");
                 switch_to_active(
-                    lock.active.as_ref(),
+                    &active,
                     &lock.hypr_data,
                     global::OPTS
                         .get()

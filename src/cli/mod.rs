@@ -54,6 +54,10 @@ pub enum Command {
 
     /// Generate or check the config file
     Config {
+        /// Path to config [default: $XDG_CONFIG_HOME/hyprswitch/config.ron]
+        #[arg(long, short = 'f')]
+        config_file: Option<std::path::PathBuf>,
+
         #[clap(subcommand)]
         command: ConfigCommand,
     },
@@ -96,9 +100,11 @@ pub enum DebugCommand {
 pub fn check_invalid_inputs(e: &clap::Error) -> bool {
     e.to_string()
         .starts_with("A CLI/GUI that allows switching between windows in Hyprland")
-        || e.to_string().starts_with("Initialize and start the Daemon")
+        || e.to_string().starts_with("Read the config file")
         || e.to_string()
             .starts_with("Switch without using the GUI / Daemon (switches directly)")
+        || e.to_string()
+            .starts_with("Generate or check the config file")
         || e.to_string().starts_with(
             "Debug command to debug finding icons for the GUI, doesn't interact with the Daemon",
         )

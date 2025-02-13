@@ -46,15 +46,21 @@ fn run_command(command: &mut Command, run: &str, path: &Option<Box<str>>) -> io:
         .stderr(Stdio::piped())
         .spawn()?;
 
-    // spawn a thread to wait for the output
-    thread::spawn(move || {
-        let output = out.wait_with_output();
-        if let Ok(output) = output {
-            if !output.stdout.is_empty() || !output.stderr.is_empty() {
-                debug!("Output: {:?}", output);
+    if global::OPTS
+        .get()
+        .map(|o| o.show_launch_output)
+        .unwrap_or(false)
+    {
+        // spawn a thread to wait for the output
+        thread::spawn(move || {
+            let output = out.wait_with_output();
+            if let Ok(output) = output {
+                if !output.stdout.is_empty() || !output.stderr.is_empty() {
+                    debug!("Output: {:?}", output);
+                }
             }
-        }
-    });
+        });
+    }
     Ok(())
 }
 

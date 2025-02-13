@@ -1,6 +1,7 @@
 use crate::Warn;
 use gtk4::IconTheme;
 use std::collections::{BTreeSet, HashMap};
+use std::fs::read_dir;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
@@ -39,11 +40,39 @@ fn get_icon_map() -> &'static Mutex<BTreeSet<Box<str>>> {
 }
 
 pub fn init_icon_map() {
-    let theme = IconTheme::new();
     let mut map = get_icon_map().lock().expect("Failed to lock icon map");
-    for icon in theme.icon_names() {
-        map.insert(Box::from(icon));
+
+    // use this to get all icons, as the IconTheme::icon_names() doesn't return all icons
+    let theme = IconTheme::new();
+    if let Some(settings) = gtk4::Settings::default() {
+        if let Some(icon_theme_name) = settings.gtk_icon_theme_name() {
+            for mut path in theme.search_path() {
+                path.push(&icon_theme_name);
+                if path.exists() {
+                    let mut dirs: Vec<_> = read_dir(&path).unwrap().flatten().collect();
+                    while let Some(d) = dirs.pop() {
+                        if d.file_type().unwrap().is_dir() {
+                            dirs.extend(read_dir(&d.path()).unwrap().flatten());
+                        } else {
+                            let name = d.file_name();
+                            let name = name.to_string_lossy();
+                            if name.ends_with(".png") || name.ends_with(".svg") {
+                                let name = name.trim_end_matches(".png").trim_end_matches(".svg");
+                                map.insert(Box::from(name));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    // doesn't return all icons
+    // for icon in theme.icon_names() {
+    //     map.insert(Box::from(icon));
+    // }
+
+    debug!("found {} icons", map.len());
 }
 
 /// https://github.com/H3rmt/hyprswitch/discussions/137

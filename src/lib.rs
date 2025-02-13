@@ -1,10 +1,14 @@
 #![deny(clippy::print_stdout)]
 #![allow(clippy::from_over_into)]
 
+use hyprland::ctl;
+use hyprland::ctl::notify;
+use hyprland::ctl::notify::Icon;
 use semver::Version;
 use std::env::var;
 use std::fmt::Display;
 use std::path::PathBuf;
+use std::time::Duration;
 use tracing::warn;
 
 pub mod config;
@@ -33,7 +37,7 @@ pub fn to_client_address(id: ClientId) -> hyprland::shared::Address {
     hyprland::shared::Address::new(format!("{:x}", id))
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum SwitchType {
     #[default]
     Client,
@@ -41,11 +45,11 @@ pub enum SwitchType {
     Monitor,
 }
 
-#[derive(Debug, Clone)]
-pub enum Active {
-    Workspace(WorkspaceId),
-    Monitor(MonitorId),
-    Client(ClientId),
+#[derive(Debug, Clone, Default)]
+pub struct Active {
+    workspace: Option<WorkspaceId>,
+    monitor: Option<MonitorId>,
+    client: Option<ClientId>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -86,24 +90,20 @@ impl<A, E: Display> Warn<A> for Result<A, E> {
     }
 }
 
-pub fn toast(_body: &str) {
+pub fn toast(body: &str, icon: Icon) {
     if daemon::global::OPTS
         .get()
         .map(|o| o.toasts_allowed)
         .warn("Failed to access global toasts_allowed")
         .unwrap_or(true)
     {
-        #[cfg(not(debug_assertions))]
-        let _ = notify_rust::Notification::new()
-            .summary(&format!(
-                "{} ({}) Error",
-                env!("CARGO_PKG_NAME"),
-                env!("CARGO_PKG_VERSION")
-            ))
-            .body(_body)
-            .timeout(10000)
-            .hint(notify_rust::Hint::Urgency(notify_rust::Urgency::Critical))
-            .show();
+        warn!("{}", body);
+        let _ = notify::call(
+            icon,
+            Duration::from_secs(10),
+            ctl::Color::new(255, 0, 0, 255),
+            body.to_string(),
+        );
     }
 }
 

@@ -1,11 +1,13 @@
+use crate::cli::ConfigCommand;
 use anyhow::Context;
 use clap::Parser;
+use hyprland::ctl::notify;
+use hyprswitch::config::write_config;
 use hyprswitch::daemon::{
     debug_desktop_files, debug_list, debug_search_class, get_cached_runs, global,
 };
 use hyprswitch::envs::LOG_MODULE_PATH;
 use hyprswitch::{handle, toast, SortConfig, Warn};
-use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Mutex;
 use tracing::level_filters::LevelFilter;
@@ -18,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     let cli = cli::App::try_parse()
         .unwrap_or_else(|e| {
             if !cli::check_invalid_inputs(&e) {
-                toast("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see all CLI Args)");
+                toast("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see all CLI Args)", notify::Icon::Error);
             }
             eprintln!("{}", e);
             exit(1);
@@ -60,6 +62,8 @@ fn main() -> anyhow::Result<()> {
                     toasts_allowed: !config.general.disable_toast,
                     animate_launch_time: config.general.launcher.animate_launch_time_ms,
                     default_terminal: config.general.launcher.default_terminal.clone(),
+                    show_launch_output: true,
+                    workspaces_per_row: config.general.windows.workspaces_per_row,
                 })
                 .ok() // discard the value of error as it is the global::Global struct
                 .warn("unable to set DRY (already filled???)");
@@ -74,9 +78,19 @@ fn main() -> anyhow::Result<()> {
                     hyprswitch::daemon::deactivate_submap();
                 })?;
         }
-        cli::Command::Config { command } => {
-            todo!("Config command not implemented")
-        }
+        cli::Command::Config {
+            command,
+            config_file,
+        } => match command {
+            ConfigCommand::Generate {} => {
+                let config = hyprswitch::config::generate_default_config();
+                let path = write_config(config_file, config).context("Failed to write config")?;
+                info!("Default Config generated at {path:?}");
+            }
+            ConfigCommand::Check {} => {
+                todo!("Config command not implemented")
+            }
+        },
         cli::Command::Simple {
             dispatch_config,
             simple_conf,
@@ -91,10 +105,11 @@ fn main() -> anyhow::Result<()> {
                 dispatch_config.offset,
                 &sort_config.switch_type,
                 &hypr_data,
-                active.as_ref(),
+                &active,
+                false,
             );
             if let Ok(next_active) = next_active {
-                handle::switch_to_active(Some(&next_active), &hypr_data, cli.global_opts.dry_run)?;
+                handle::switch_to_active(&next_active, &hypr_data, cli.global_opts.dry_run)?;
             }
         }
         cli::Command::Debug { command } => {
@@ -110,9 +125,13 @@ fn main() -> anyhow::Result<()> {
                     debug_desktop_files().warn("Failed to run debug_desktop_files");
                 }
                 cli::DebugCommand::LaunchCache => {
-                    let runs = get_cached_runs().warn("Failed to run get_cached_runs");
-                    for (run, count) in runs.unwrap_or_default() {
-                        println!("{}: {}", run, count);
+                    if let Some(runs) = get_cached_runs().warn("Failed to run get_cached_runs") {
+                        let mut runs: Vec<_> = runs.into_iter().collect();
+                        runs.sort_by(|a, b| b.1.cmp(&a.1));
+                        for (run, count) in runs {
+                            // TODO: read desktop file and extract name
+                            println!("{}: {}", run, count);
+                        }
                     }
                 }
             };

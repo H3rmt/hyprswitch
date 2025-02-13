@@ -8,7 +8,7 @@ StartLimitBurst=20
 
 [Service]
 Type=simple
-ExecStart=/home/user/RustroverProjects/hyprswitch/target/debug/hyprswitch -vv run
+ExecStart=/usr/bin/hyprswitch run
 Restart=always
 
 [Install]

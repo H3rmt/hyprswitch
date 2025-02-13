@@ -74,7 +74,7 @@ pub(super) fn create_launcher(
     main_vbox.append(&entries);
 
     let window = ApplicationWindow::builder()
-        .css_classes(vec!["window", "background"])
+        .css_classes(vec!["window"])
         .application(app)
         .child(&main_vbox)
         .default_height(10)
@@ -201,8 +201,8 @@ pub(super) fn update_launcher(
                     if i == 0 {
                         "Return".to_string()
                     } else if i == -1 {
-                        // k.to_string() // TODO fix this
-                        "".to_string()
+                        _k.to_string() // TODO fix this
+                        // "".to_string()
                     } else if i > 0 {
                         i.to_string()
                     } else {

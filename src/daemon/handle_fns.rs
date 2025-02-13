@@ -14,6 +14,7 @@ pub(crate) fn switch(
     share: &Share,
     reverse: bool,
     offset: u8,
+    gui_navigation: bool,
     client_id: u8,
 ) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
@@ -24,20 +25,31 @@ pub(crate) fn switch(
             if exec_len == 0 {
                 return Ok(());
             }
-            *selected = if reverse {
-                selected.saturating_sub(offset as usize)
+            // arrow up and down have offset of workspaces_per_row to navigate workspaces in gui
+            // so we must reduce the offset to navigate the execs
+            if gui_navigation {
+                *selected = if reverse {
+                    selected.saturating_sub(1)
+                } else {
+                    (*selected + 1).min(exec_len - 1)
+                };
             } else {
-                (*selected + offset as usize).min(exec_len - 1)
-            };
+                *selected = if reverse {
+                    selected.saturating_sub(offset as usize)
+                } else {
+                    (*selected + offset as usize).min(exec_len - 1)
+                };
+            }
         } else {
             let active = find_next(
                 reverse,
                 offset,
                 &lock.sort_config.switch_type,
                 &lock.hypr_data,
-                lock.active.as_ref(),
+                &lock.active,
+                gui_navigation,
             )?;
-            lock.active = Some(active);
+            lock.active = active;
         }
         drop(lock);
     }
@@ -108,10 +120,20 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
                 show_launch_spawn(share.clone(), Some(client_id));
                 run_program(&exec.exec, &exec.path, exec.terminal);
                 cache_run(&exec.desktop_file).warn("Failed to cache run");
+
+                drop(lock);
             } else {
+                drop(lock); // drop lock after both ifs
                 warn!("Selected program (nr. {}) not found, killing", selected);
+
+                trace!("Sending hide to GUI");
+                send.send_blocking((GUISend::Hide, UpdateCause::Client(client_id)))
+                    .context("Unable to hide the GUI")?;
+                let rec = receive
+                    .recv_blocking()
+                    .context("Unable to receive GUI update")?;
+                trace!("Received hide finish from GUI: {rec:?}");
             }
-            drop(lock); // drop lock after both ifs
         } else {
             drop(lock); // drop lock before sending hide
 
@@ -127,7 +149,7 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
             // (KeyboardMode::Exclusive on launcher doesn't allow switching windows if it is still active)
             let lock = latest.lock().expect("Failed to lock");
             switch_to_active(
-                lock.active.as_ref(),
+                &lock.active,
                 &lock.hypr_data,
                 global::OPTS
                     .get()

@@ -2,15 +2,17 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use anyhow::Context;
+use hyprland::ctl;
+use hyprland::ctl::notify;
 use hyprland::data::{Client, Monitor, Monitors};
-use hyprland::prelude::{HyprData, HyprDataActiveOptional, HyprDataVec};
+use hyprland::prelude::*;
 use semver::Version;
-use tracing::{info, trace, warn};
+use tracing::{debug, info, trace};
 
 pub use data::collect_data;
 pub use exec::switch_to_active;
 
-use crate::{toast, ClientId, MIN_VERSION};
+use crate::{toast, ClientId, Warn, MIN_VERSION};
 
 mod data;
 mod exec;
@@ -73,11 +75,16 @@ pub fn check_version() -> anyhow::Result<()> {
     .context("Unable to parse Hyprland Version")?;
 
     if parsed_version.lt(&MIN_VERSION) {
-        toast(&format!(
-            "Hyprland version too old or unknown: {parsed_version:?} < {MIN_VERSION:?}"
-        ));
-        warn!("Hyprland version too old or unknown: {parsed_version:?} < {MIN_VERSION:?}");
+        toast(
+            &format!("Hyprland version too old or unknown: {parsed_version:?} < {MIN_VERSION:?}"),
+            notify::Icon::Warning,
+        );
     }
 
     Ok(())
+}
+
+pub fn reload_config() {
+    debug!("Reloading Hyprland config");
+    ctl::reload::call().warn("Failed to reload Hyprland config");
 }

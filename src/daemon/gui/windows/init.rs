@@ -58,7 +58,7 @@ pub fn init_windows(
 
         let workspace_overlay = {
             let workspace_overlay = Overlay::builder()
-                .css_classes(vec!["workspace", "background"])
+                .css_classes(vec!["workspace"])
                 .child(&workspace_frame)
                 .build();
             // special workspace
@@ -137,7 +137,7 @@ pub fn init_windows(
                 }
 
                 let client_overlay = Overlay::builder()
-                    .css_classes(vec!["client", "background"])
+                    .css_classes(vec!["client"])
                     .overflow(Overflow::Hidden)
                     .child(&client_frame)
                     .width_request(scale(client.width, size_factor))
