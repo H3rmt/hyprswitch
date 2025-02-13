@@ -71,7 +71,7 @@ fn main() -> anyhow::Result<()> {
                 "Config read: {}",
                 serde_json::to_string(&config).unwrap_or("Failed to serialize config".to_string())
             );
-            hyprswitch::config::validate(&config).context("Failed to validate config")?;
+            hyprswitch::config::check(&config).context("Failed to validate config")?;
             hyprswitch::daemon::start_daemon(config)
                 .context("Failed to run daemon")
                 .inspect_err(|_| {
@@ -83,12 +83,14 @@ fn main() -> anyhow::Result<()> {
             config_file,
         } => match command {
             ConfigCommand::Generate {} => {
+                // TODO make interactive to add: minimal, default, full
                 let config = hyprswitch::config::generate_default_config();
                 let path = write_config(config_file, config).context("Failed to write config")?;
                 info!("Default Config generated at {path:?}");
             }
             ConfigCommand::Check {} => {
                 todo!("Config command not implemented")
+                // read config and run check
             }
         },
         cli::Command::Simple {

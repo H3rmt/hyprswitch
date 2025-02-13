@@ -5,14 +5,14 @@ use std::env;
 use std::path::PathBuf;
 use tracing::{span, Level};
 
-pub use convert::create_binds_and_submaps;
-pub use generate::{generate_default_config, write_config};
-pub use validate::validate;
+pub use generate::create_binds_and_submaps;
+pub use create::{generate_default_config, write_config};
+pub use check::check;
 
 mod config_structs;
-mod convert;
 mod generate;
-mod validate;
+mod create;
+mod check;
 
 pub use config_structs::*;
 
