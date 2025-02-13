@@ -9,7 +9,7 @@ use rand::Rng;
 use std::path::PathBuf;
 use tracing::{span, trace, Level};
 
-pub fn create_binds_and_submaps<'a>(binds: &Vec<Bind>) -> anyhow::Result<Vec<(&'a str, String)>> {
+pub fn create_binds_and_submaps<'a>(binds: &[Bind]) -> anyhow::Result<Vec<(&'a str, String)>> {
     let _span = span!(Level::DEBUG, "create_binds_and_submaps").entered();
     let workspaces_per_row = global::OPTS
         .get()
@@ -25,7 +25,7 @@ pub fn create_binds_and_submaps<'a>(binds: &Vec<Bind>) -> anyhow::Result<Vec<(&'
     keyword_list.push(("layerrule", "noanim, hyprswitch_launcher".to_string()));
     keyword_list.push(("layerrule", "noanim, hyprswitch".to_string()));
 
-    for (i, bind) in binds.into_iter().enumerate() {
+    for (i, bind) in binds.iter().enumerate() {
         let submap_name = format!("hyprswitch-{rand_id}-{i}");
         trace!("submap_name: {}", submap_name);
         match bind {
@@ -147,7 +147,7 @@ fn generate_overview(
             "{}, {}, exec, {}",
             press.open.modifier,
             press.open.key.to_key(),
-            generate_open_string_press(submap_name.clone(), &press)?,
+            generate_open_string_press(submap_name.clone(), press)?,
         ),
     ));
 
@@ -264,7 +264,7 @@ fn generate_switch(
             "{}, {}, exec, {} && {}",
             hold.open.modifier,
             hold.navigate.forward,
-            generate_open_string_hold(submap_name.clone(), &hold)?,
+            generate_open_string_hold(submap_name.clone(), hold)?,
             generate_dispatch(false, 1, false)?,
         ),
     ));
@@ -276,7 +276,7 @@ fn generate_switch(
                 "{}, {}, exec, {} && {}",
                 hold.open.modifier,
                 key,
-                generate_open_string_hold(submap_name.clone(), &hold)?,
+                generate_open_string_hold(submap_name.clone(), hold)?,
                 generate_dispatch(false, 1, false)?,
             ),
         )),
@@ -287,7 +287,7 @@ fn generate_switch(
                 hold.open.modifier,
                 modk,
                 hold.navigate.forward,
-                generate_open_string_hold(submap_name.clone(), &hold)?,
+                generate_open_string_hold(submap_name.clone(), hold)?,
                 generate_dispatch(false, 1, false)?,
             ),
         )),

@@ -50,7 +50,7 @@ macro_rules! find_next {
             }
         } else {
             if index < 0 {
-                index += filtered.len() as i8 * (((index as i8) * -1 / filtered.len() as i8) + 1);
+                index += filtered.len() as i8 * ((-(index as i8) / filtered.len() as i8) + 1);
             }
             index %= filtered.len() as i8;
         }
@@ -84,32 +84,30 @@ pub fn find_next(
                     Some(id),
                     gui_navigation
                 )
-            } else {
-                if let Some(id2) = active.workspace {
-                    let mut clients = hypr_data.clients.iter().filter(|(_, c)| c.workspace == id2);
-                    if reverse {
-                        clients.last()
-                    } else {
-                        clients.next()
-                    }
-                    .context("Workspace not found")?
-                } else if let Some(id2) = active.monitor {
-                    let mut clients = hypr_data.clients.iter().filter(|(_, c)| c.monitor == id2);
-                    if reverse {
-                        clients.last()
-                    } else {
-                        clients.next()
-                    }
-                    .context("Monitor not found")?
+            } else if let Some(id2) = active.workspace {
+                let mut clients = hypr_data.clients.iter().filter(|(_, c)| c.workspace == id2);
+                if reverse {
+                    clients.last()
                 } else {
-                    find_next!(
-                        reverse,
-                        offset as i8,
-                        &hypr_data.clients,
-                        None::<ClientId>,
-                        gui_navigation
-                    )
+                    clients.next()
                 }
+                .context("Workspace not found")?
+            } else if let Some(id2) = active.monitor {
+                let mut clients = hypr_data.clients.iter().filter(|(_, c)| c.monitor == id2);
+                if reverse {
+                    clients.last()
+                } else {
+                    clients.next()
+                }
+                .context("Monitor not found")?
+            } else {
+                find_next!(
+                    reverse,
+                    offset as i8,
+                    &hypr_data.clients,
+                    None::<ClientId>,
+                    gui_navigation
+                )
             };
             info!("Next client: {:?}", id);
             Ok(Active {
@@ -128,27 +126,25 @@ pub fn find_next(
                     Some(id),
                     gui_navigation
                 )
-            } else {
-                if let Some(id2) = active.monitor {
-                    let mut workspaces = hypr_data
-                        .workspaces
-                        .iter()
-                        .filter(|(_, c)| c.monitor == id2);
-                    if reverse {
-                        workspaces.last()
-                    } else {
-                        workspaces.next()
-                    }
-                    .context("Monitor not found")?
+            } else if let Some(id2) = active.monitor {
+                let mut workspaces = hypr_data
+                    .workspaces
+                    .iter()
+                    .filter(|(_, c)| c.monitor == id2);
+                if reverse {
+                    workspaces.last()
                 } else {
-                    find_next!(
-                        reverse,
-                        offset as i8,
-                        &hypr_data.workspaces,
-                        None::<WorkspaceId>,
-                        gui_navigation
-                    )
+                    workspaces.next()
                 }
+                .context("Monitor not found")?
+            } else {
+                find_next!(
+                    reverse,
+                    offset as i8,
+                    &hypr_data.workspaces,
+                    None::<WorkspaceId>,
+                    gui_navigation
+                )
             };
             info!("Next workspace: {:?}", id);
             Ok(Active {
@@ -158,16 +154,11 @@ pub fn find_next(
             })
         }
         (false, SwitchType::Monitor) => {
-            let active_id = if let Some(id) = active.monitor {
-                Some(id)
-            } else {
-                None
-            };
             let (id, _) = find_next!(
                 reverse,
                 offset as i8,
                 &hypr_data.monitors,
-                active_id,
+                active.monitor,
                 gui_navigation
             );
             info!("Next monitor: {:?}", id);

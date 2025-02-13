@@ -77,7 +77,7 @@ pub fn start_config_applier(binds: Vec<config::Bind>) {
         .warn("Failed to start config reload event listener");
 }
 
-fn apply_config(binds: &Vec<config::Bind>) {
+fn apply_config(binds: &[config::Bind]) {
     if let Some(list) =
         config::create_binds_and_submaps(binds).warn("Failed to create binds and submaps")
     {

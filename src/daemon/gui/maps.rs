@@ -52,7 +52,7 @@ pub fn init_icon_map() {
                     let mut dirs: Vec<_> = read_dir(&path).unwrap().flatten().collect();
                     while let Some(d) = dirs.pop() {
                         if d.file_type().unwrap().is_dir() {
-                            dirs.extend(read_dir(&d.path()).unwrap().flatten());
+                            dirs.extend(read_dir(d.path()).unwrap().flatten());
                         } else {
                             let name = d.file_name();
                             let name = name.to_string_lossy();

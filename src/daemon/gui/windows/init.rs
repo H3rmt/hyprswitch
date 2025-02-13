@@ -12,6 +12,7 @@ fn scale(value: i16, size_factor: f64) -> i32 {
     (value as f64 / 30.0 * size_factor) as i32
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn init_windows(
     share: Share,
     workspaces_p: &[(WorkspaceId, WorkspaceData)],

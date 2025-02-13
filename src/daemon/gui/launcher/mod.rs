@@ -103,6 +103,7 @@ pub(super) fn create_launcher(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn update_launcher(
     share: Share,
     text: &str,
@@ -158,7 +159,7 @@ pub(super) fn update_launcher(
     let mut matches: Vec<_> = matches.into_values().collect();
     matches.sort_by(|(a_t, a), (b_t, b)| {
         if a_t != b_t {
-            return a_t.cmp(&b_t);
+            a_t.cmp(b_t)
         } else {
             let a_e = runs.get(&a.desktop_file);
             let b_e = runs.get(&b.desktop_file);
@@ -189,7 +190,7 @@ pub(super) fn update_launcher(
             share.clone(),
             &entry.name,
             &entry.icon,
-            &*entry.exec,
+            &entry.exec,
             index,
             &match reverse_key {
                 ReverseKey::Mod(m) => match i {
@@ -229,6 +230,7 @@ pub(super) fn update_launcher(
     execs
 }
 
+#[allow(clippy::too_many_arguments)]
 fn create_launch_widget(
     share: Share,
     name: &str,
@@ -312,7 +314,7 @@ fn create_launch_widget(
                             .unwrap_or_default()
                     )
                 } else {
-                    format!("{}", exec) // show full exec instead of only last part of /path/to/exec
+                    exec.to_string() // show full exec instead of only last part of /path/to/exec
                 },
             )
             .build();
