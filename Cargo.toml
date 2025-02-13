@@ -13,25 +13,23 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
-hyprland = { version = "0.4.0-beta.2", features = ["async-lite", "dispatch", "keyword", "data", "listener"], default-features = false }
+hyprland = { version = "0.4.0-beta.2", features = ["async-lite", "dispatch", "keyword", "data", "listener", "ctl"], default-features = false }
 async-channel = { version = "2.3.1", default-features = false }
 tracing = { version = "0.1.41" }
 tracing-subscriber = { version = "0.3.19", features = ["std", "fmt", "env-filter", "ansi"], default-features = false }
 anyhow = { version = "1.0.95" }
 lazy_static = { version = "1.5.0" }
-notify-rust = { version = "4.11.3", features = ["zbus", "serde"], default-features = false }
 rand = { version = "0.9.0" }
 semver = "1.0.24"
 serde = { version = "1.0.217", features = ["derive"] }
-bincode = { version = "1.3.3" }
 serde_json = { version = "1.0.135" }
 smart-default = { version = "0.7.1" }
 regex = { version = "1.11.1" }
+ron = { version = "0.8.1" }
 
 gtk4 = { version = "0.9.5", default-features = false, features = ["v4_6"] }
 gtk4-layer-shell = { version = "0.4.0" }
 
-ron = { version = "0.8.1", optional = true }
 
 [dev-dependencies]
 random_color = { version = "1.0.0", default-features = false }
@@ -41,7 +39,3 @@ svg = { version = "0.18.0", default-features = false }
 strip = "debuginfo"
 lto = true
 opt-level = "s"
-
-[features]
-default = []
-config = ["ron"]

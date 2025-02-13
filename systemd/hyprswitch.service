@@ -8,11 +8,8 @@ StartLimitBurst=20
 
 [Service]
 Type=simple
-ExecStart=/home/user/RustroverProjects/hyprswitch/target/debug/hyprswitch -vv init --show-title --size-factor 5.5 --workspaces-per-row 4
+ExecStart=/usr/bin/hyprswitch run
 Restart=always
-
-Environment="LAUNCHER_MAX_ITEMS=5"
-Environment="SHOW_LAUNCHER=true"
 
 [Install]
 WantedBy=graphical-session.target

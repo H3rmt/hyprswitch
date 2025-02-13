@@ -1,6 +1,7 @@
 use crate::Warn;
 use gtk4::IconTheme;
 use std::collections::{BTreeSet, HashMap};
+use std::fs::read_dir;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
@@ -9,22 +10,29 @@ use tracing::{debug, span, trace, warn, Level};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum Source {
+    // desktop file found which has a name that matches the class of a window
     DesktopFileName,
+    // desktop file found which has a startupWmClass that matches the class of a window
     DesktopFileStartupWmClass,
+    // desktop file found which has an exec name(/bin/<that> -u ....) that matches the class of a window
     DesktopFileExecName,
+    // the windows corresponding program from the cmdline in /proc was equal to DesktopFile* or found
+    // in the theme so it is cached in this list so the /proc check doesn't have to be done again
     ByPidExec,
 }
 
 type IconPathMap = HashMap<(Box<str>, Source), (Box<str>, Box<Path>)>;
-type DesktopFileMap = Vec<(
-    Box<str>,
-    Option<Box<str>>,
-    Vec<Box<str>>,
-    Box<str>,
-    Option<Box<str>>,
-    bool,
-    Box<Path>,
-)>;
+
+#[derive(Debug)]
+pub struct DesktopFileEntry {
+    pub name: Box<str>,
+    pub icon: Option<Box<str>>,
+    pub keywords: Vec<Box<str>>,
+    pub exec: Box<str>,
+    pub exec_path: Option<Box<str>>,
+    pub terminal: bool,
+    pub desktop_file: Box<str>,
+}
 
 fn get_icon_map() -> &'static Mutex<BTreeSet<Box<str>>> {
     static MAP_LOCK: OnceLock<Mutex<BTreeSet<Box<str>>>> = OnceLock::new();
@@ -32,11 +40,39 @@ fn get_icon_map() -> &'static Mutex<BTreeSet<Box<str>>> {
 }
 
 pub fn init_icon_map() {
-    let theme = IconTheme::new();
     let mut map = get_icon_map().lock().expect("Failed to lock icon map");
-    for icon in theme.icon_names() {
-        map.insert(Box::from(icon));
+
+    // use this to get all icons, as the IconTheme::icon_names() doesn't return all icons
+    let theme = IconTheme::new();
+    if let Some(settings) = gtk4::Settings::default() {
+        if let Some(icon_theme_name) = settings.gtk_icon_theme_name() {
+            for mut path in theme.search_path() {
+                path.push(&icon_theme_name);
+                if path.exists() {
+                    let mut dirs: Vec<_> = read_dir(&path).unwrap().flatten().collect();
+                    while let Some(d) = dirs.pop() {
+                        if d.file_type().unwrap().is_dir() {
+                            dirs.extend(read_dir(d.path()).unwrap().flatten());
+                        } else {
+                            let name = d.file_name();
+                            let name = name.to_string_lossy();
+                            if name.ends_with(".png") || name.ends_with(".svg") {
+                                let name = name.trim_end_matches(".png").trim_end_matches(".svg");
+                                map.insert(Box::from(name));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    // doesn't return all icons
+    // for icon in theme.icon_names() {
+    //     map.insert(Box::from(icon));
+    // }
+
+    debug!("found {} icons", map.len());
 }
 
 /// https://github.com/H3rmt/hyprswitch/discussions/137
@@ -50,8 +86,8 @@ fn get_icon_path_map() -> &'static Mutex<IconPathMap> {
     MAP_LOCK.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-fn get_desktop_file_map() -> &'static Mutex<DesktopFileMap> {
-    static MAP_LOCK: OnceLock<Mutex<DesktopFileMap>> = OnceLock::new();
+fn get_desktop_file_map() -> &'static Mutex<Vec<DesktopFileEntry>> {
+    static MAP_LOCK: OnceLock<Mutex<Vec<DesktopFileEntry>>> = OnceLock::new();
     MAP_LOCK.get_or_init(|| Mutex::new(Vec::new()))
 }
 
@@ -68,7 +104,7 @@ pub fn add_path_for_icon(class: &str, name: &str, source: Source) {
     );
 }
 
-pub fn get_all_desktop_files<'a>() -> MutexGuard<'a, DesktopFileMap> {
+pub fn get_all_desktop_files<'a>() -> MutexGuard<'a, Vec<DesktopFileEntry>> {
     let map = get_desktop_file_map()
         .lock()
         .expect("Failed to lock desktop file map");
@@ -143,7 +179,7 @@ fn collect_desktop_files() -> Vec<DirEntry> {
 
 fn fill_desktop_file_map(
     map: &mut IconPathMap,
-    mut map2: Option<&mut DesktopFileMap>,
+    mut map2: Option<&mut Vec<DesktopFileEntry>>,
 ) -> anyhow::Result<()> {
     let _span = span!(Level::TRACE, "fill_desktop_file_map").entered();
 
@@ -213,7 +249,7 @@ fn fill_desktop_file_map(
                 }
 
                 if let Some(ref mut map2) = map2 {
-                    let ttype = lines
+                    let r#type = lines
                         .iter()
                         .find(|l| l.starts_with("Type="))
                         .map(|l| l.trim_start_matches("Type="));
@@ -240,7 +276,7 @@ fn fill_desktop_file_map(
                         .map(|l| l.trim_start_matches("Terminal="))
                         .map(|l| l == "true")
                         .unwrap_or(false);
-                    if ttype == Some("Application") && no_display.map_or(true, |n| !n) {
+                    if r#type == Some("Application") && no_display.map_or(true, |n| !n) {
                         if let (Some(name), Some(exec)) = (name, exec) {
                             let mut exec = String::from(exec);
                             for repl in &["%f", "%F", "%u", "%U"] {
@@ -248,17 +284,17 @@ fn fill_desktop_file_map(
                                     exec = exec.replace(repl, "");
                                 }
                             }
-                            map2.push((
-                                name.trim().into(),
-                                icon.map(Box::from),
-                                keywords
-                                    .map(|k| k.split(';').map(|k| k.trim().into()).collect())
+                            map2.push(DesktopFileEntry {
+                                name: Box::from(name.trim()),
+                                icon: icon.map(Box::from),
+                                keywords: keywords
+                                    .map(|k| k.split(';').map(|k| Box::from(k.trim())).collect())
                                     .unwrap_or_else(Vec::new),
-                                exec.trim().into(),
-                                exec_path.map(Box::from),
+                                exec: Box::from(exec.trim()),
+                                exec_path: exec_path.map(Box::from),
                                 terminal,
-                                entry.path().into_boxed_path(),
-                            ));
+                                desktop_file: Box::from(entry.path().to_string_lossy()),
+                            });
                         }
                     }
                 }
@@ -278,7 +314,7 @@ pub(in crate::daemon::gui) fn get_icon_name_debug(
 }
 
 #[allow(clippy::type_complexity)]
-pub(in crate::daemon::gui) fn get_desktop_files_debug() -> anyhow::Result<DesktopFileMap> {
+pub(in crate::daemon::gui) fn get_desktop_files_debug() -> anyhow::Result<Vec<DesktopFileEntry>> {
     let mut map = HashMap::new();
     let mut map2 = Vec::new();
     fill_desktop_file_map(&mut map, Some(&mut map2))?;

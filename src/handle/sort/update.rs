@@ -1,4 +1,4 @@
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
+use crate::{ClientId, MonitorId, WorkspaceId};
 use tracing::error;
 
 use crate::{ClientData, FindByFirst, MonitorData, WorkspaceData};
@@ -10,10 +10,10 @@ use crate::{ClientData, FindByFirst, MonitorData, WorkspaceData};
 ///
 /// removes offset by monitor, adds offset by workspace (client on monitor 1 and workspace 2 will be moved left by monitor 1 offset and right by workspace 2 offset (workspace width * 2))
 pub fn update_clients(
-    clients: Vec<(Address, ClientData)>,
+    clients: Vec<(ClientId, ClientData)>,
     workspace_data: Option<&Vec<(WorkspaceId, WorkspaceData)>>,
     monitor_data: Option<&Vec<(MonitorId, MonitorData)>>,
-) -> Vec<(Address, ClientData)> {
+) -> Vec<(ClientId, ClientData)> {
     clients
         .into_iter()
         .filter_map(|(a, mut c)| {

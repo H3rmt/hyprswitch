@@ -1,25 +1,27 @@
 Config(
     general: (
-        disable_toast: false,
         size_factor: 5.0,
         custom_css_path: "path/to/custom.css",
         launcher: (
+            // removed
             enable: true,
             items: 8,
             default_terminal: "alacritty",
             show_execs: true,
             animate_launch_time_ms: 350,
         ),
-        gui: (
+        windows: (
             show_title: true,
             workspaces_per_row: 4,
-            strip_html_from_title: true,
+            strip_html_from_workspace_title: true,
+            // removed
             icon_size: 512,
+            // removed
             show_default_icon: true,
         )
     ),
     binds: [
-        Press(
+        Overview(
             open: (
                 modifier: super,
                 key: "super"
@@ -33,7 +35,7 @@ Config(
                 close_on_reopen: true
             )
         ),
-        Press(
+        Overview(
             show_launcher: true,
             open: (
                 modifier: super,
@@ -42,20 +44,20 @@ Config(
             navigate: (
                 forward: "tab",
                 reverse: Mod(shift),
-                arrow_keys: true
             ),
             other: (
                 hide_active_window_border: true,
                 switch_type: workspace
             )
         ),
-        Hold(
+        Switch(
             open: (
                 modifier: alt,
             ),
             navigate: (
                 forward: "tab",
                 reverse: Key("grave"),
+                // removed
                 arrow_keys: false
             ),
             close: (
@@ -66,23 +68,22 @@ Config(
                 hide_active_window_border: false,
                 monitors: ["HDMI-0", "DP-1"],
                 show_workspaces_on_all_monitors: false,
-                filter_by: [current_monitor, current_workspace],
+                filter_by: [current_monitor, same_class],
             )
         ),
-        Press(
+        Overview(
             open: (
                 modifier: super,
                 key: "super_l"
             ),
         ),
-        Hold(
+        Switch(
             open: (
                 modifier: alt,
             ),
             navigate: (
                 forward: "tab",
                 reverse: Mod(shift),
-                arrow_keys: true
             )
         ),
         Simple(
@@ -96,7 +97,7 @@ Config(
                 switch_type: workspace,
                 sort_by_recent: true,
                 include_special_workspaces: true,
-                filter_by: [same_class]
+                filter_by: [current_workspace],
             )
         ),
         Simple(

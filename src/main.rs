@@ -1,15 +1,17 @@
+use crate::cli::ConfigCommand;
 use anyhow::Context;
 use clap::Parser;
-use hyprswitch::daemon::gui::{debug_desktop_files, debug_list, debug_search_class};
-use hyprswitch::envs::{envvar_dump, LOG_MODULE_PATH};
-use hyprswitch::{
-    check_version, client, global, handle, toast, DispatchConfig, GuiConfig, InitConfig,
-    SimpleConfig, SubmapConfig, SwitchType, Warn,
+use hyprland::ctl::notify;
+use hyprswitch::config::write_config;
+use hyprswitch::daemon::{
+    debug_desktop_files, debug_list, debug_search_class, get_cached_runs, global,
 };
+use hyprswitch::envs::LOG_MODULE_PATH;
+use hyprswitch::{handle, toast, SortConfig, Warn};
 use std::process::exit;
 use std::sync::Mutex;
 use tracing::level_filters::LevelFilter;
-use tracing::{info, warn};
+use tracing::{info, trace};
 use tracing_subscriber::EnvFilter;
 
 mod cli;
@@ -18,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     let cli = cli::App::try_parse()
         .unwrap_or_else(|e| {
             if !cli::check_invalid_inputs(&e) {
-                toast("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see all CLI Args)");
+                toast("Unable to parse CLI Arguments (visit https://github.com/H3rmt/hyprswitch/blob/main/README.md to see all CLI Args)", notify::Icon::Error);
             }
             eprintln!("{}", e);
             exit(1);
@@ -43,94 +45,74 @@ fn main() -> anyhow::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).warn("Unable to initialize logging");
 
-    envvar_dump();
-
-    check_version().warn("Unable to check Hyprland version, continuing anyway");
-
-    global::DRY
-        .set(cli.global_opts.dry_run)
-        .expect("unable to set DRY (already filled???)");
     global::OPEN
         .set(Mutex::new(false))
-        .expect("unable to set ACTIVE (already filled???)");
+        .ok()
+        .context("unable to set ACTIVE (already filled???)")?;
+
+    handle::check_version().warn("Unable to check Hyprland version, continuing anyway");
 
     match cli.command {
-        #[cfg(feature = "config")]
-        cli::Command::Generate { exe, .. } => {
+        cli::Command::Run { config_file, .. } => {
             info!("Loading config");
-            let config = hyprswitch::config::load().context("Failed to load config")?;
-            hyprswitch::config::validate(&config).context("Failed to validate config")?;
-            let list = hyprswitch::config::create_binds_and_submaps(exe, config)
-                .context("Failed to create binds and submaps")?;
-            let text = hyprswitch::config::export(list);
-            println!("{}", text);
-        }
-        cli::Command::Init { init_opts } => {
-            info!("Starting daemon");
-            let init_config = InitConfig::from(init_opts);
-            hyprswitch::daemon::start_daemon(init_config)
+            let config = hyprswitch::config::load(config_file).context("Failed to load config")?;
+            global::OPTS
+                .set(global::Global {
+                    dry: cli.global_opts.dry_run,
+                    toasts_allowed: !config.general.disable_toast,
+                    animate_launch_time: config.general.launcher.animate_launch_time_ms,
+                    default_terminal: config.general.launcher.default_terminal.clone(),
+                    show_launch_output: true,
+                    workspaces_per_row: config.general.windows.workspaces_per_row,
+                })
+                .ok() // discard the value of error as it is the global::Global struct
+                .warn("unable to set DRY (already filled???)");
+            trace!(
+                "Config read: {}",
+                serde_json::to_string(&config).unwrap_or("Failed to serialize config".to_string())
+            );
+            hyprswitch::config::check(&config).context("Failed to validate config")?;
+            hyprswitch::daemon::start_daemon(config)
                 .context("Failed to run daemon")
                 .inspect_err(|_| {
                     hyprswitch::daemon::deactivate_submap();
                 })?;
         }
-        cli::Command::Close { kill } => {
-            // client::send_version_check_command()
-            //     .context("Failed to send check command to daemon")?;
-
-            if !client::daemon_running() {
-                warn!("Daemon not running");
-                return Ok(());
+        cli::Command::Config {
+            command,
+            config_file,
+        } => match command {
+            ConfigCommand::Generate {} => {
+                // TODO make interactive to add: minimal, default, full
+                let config = hyprswitch::config::generate_default_config();
+                let path = write_config(config_file, config).context("Failed to write config")?;
+                info!("Default Config generated at {path:?}");
             }
-            client::send_close_daemon(kill).context("Failed to send kill command to daemon")?;
-        }
-        cli::Command::Dispatch { dispatch_config } => {
-            // client::send_version_check_command()
-            //     .context("Failed to send check command to daemon")?;
-
-            let dispatch_config = DispatchConfig::from(dispatch_config);
-            client::send_dispatch_command(dispatch_config.clone()).with_context(|| {
-                format!("Failed to send switch command with command {dispatch_config:?} to daemon")
-            })?;
-        }
+            ConfigCommand::Check {} => {
+                todo!("Config command not implemented")
+                // read config and run check
+            }
+        },
         cli::Command::Simple {
             dispatch_config,
             simple_conf,
         } => {
-            let simple_config = SimpleConfig::from(simple_conf);
-            let (clients_data, active) = handle::collect_data(simple_config.clone())
-                .with_context(|| format!("Failed to collect data with config {simple_config:?}"))?;
+            let sort_config = SortConfig::from(simple_conf);
+            let (hypr_data, active) = handle::collect_data(&sort_config).with_context(|| {
+                format!("Failed to collect data with sort_config {sort_config:?}")
+            })?;
             info!("Active: {:?}", active);
-
-            let dispatch_config = DispatchConfig::from(dispatch_config);
             let next_active = handle::find_next(
-                &simple_config.switch_type,
-                &dispatch_config,
-                &clients_data,
-                active.as_ref(),
+                dispatch_config.reverse,
+                dispatch_config.offset,
+                &sort_config.switch_type,
+                &hypr_data,
+                &active,
+                false,
             );
             if let Ok(next_active) = next_active {
-                handle::switch_to_active(Some(&next_active), &clients_data)?;
+                handle::switch_to_active(&next_active, &hypr_data, cli.global_opts.dry_run)?;
             }
-        }
-        cli::Command::Gui {
-            gui_conf,
-            submap_conf,
-            simple_config,
-            reverse_key,
-        } => {
-            if !client::daemon_running() {
-                toast("Daemon not running (add ``exec-once = hyprswitch init &`` to your Hyprland config or run ``hyprswitch init &`` it in a terminal)\nvisit https://github.com/H3rmt/hyprswitch/wiki/Examples to see Example configs");
-                return Err(anyhow::anyhow!("Daemon not running"));
-            }
-            // client::send_version_check_command()
-            //     .context("Failed to send check command to daemon")?;
-
-            let config = SimpleConfig::from(simple_config);
-            let gui_config = GuiConfig::from(gui_conf);
-            let submap_config = submap_conf.into_submap_conf(reverse_key.clone());
-            client::send_init_command(config.clone(), gui_config.clone(), submap_config.clone())
-                .with_context(|| format!("Failed to send init command with config {config:?} and gui_config {gui_config:?} and submap_config {submap_config:?} to daemon"))?;
         }
         cli::Command::Debug { command } => {
             println!("use with -vv ... to see full logs!");
@@ -143,6 +125,16 @@ fn main() -> anyhow::Result<()> {
                 }
                 cli::DebugCommand::DesktopFiles => {
                     debug_desktop_files().warn("Failed to run debug_desktop_files");
+                }
+                cli::DebugCommand::LaunchCache => {
+                    if let Some(runs) = get_cached_runs().warn("Failed to run get_cached_runs") {
+                        let mut runs: Vec<_> = runs.into_iter().collect();
+                        runs.sort_by(|a, b| b.1.cmp(&a.1));
+                        for (run, count) in runs {
+                            // TODO: read desktop file and extract name
+                            println!("{}: {}", run, count);
+                        }
+                    }
                 }
             };
         }

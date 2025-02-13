@@ -1,15 +1,15 @@
 use crate::handle::get_recent_clients_map;
 use crate::handle::sort::{sort_clients, update_clients};
-use crate::{Active, ClientData, HyprlandData, MonitorData, SwitchType, WorkspaceData};
-use crate::{FindByFirst, SimpleConfig};
+use crate::{
+    to_client_id, Active, ClientData, ClientId, FindByFirst, HyprlandData, MonitorData, MonitorId,
+    SortConfig, WorkspaceData, WorkspaceId,
+};
 use hyprland::data::{Client, Clients, Monitors, Workspaces};
 use hyprland::prelude::{HyprData, HyprDataActiveOptional};
-use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use tracing::{span, trace, warn, Level};
-
 // type Active = (Option<Address>, Option<WorkspaceId>, Option<MonitorId>);
 
-pub fn collect_data(config: SimpleConfig) -> anyhow::Result<(HyprlandData, Option<Active>)> {
+pub fn collect_data(config: &SortConfig) -> anyhow::Result<(HyprlandData, Active)> {
     let _span = span!(Level::TRACE, "collect_data").entered();
     let clients = Clients::get()?
         .into_iter()
@@ -81,12 +81,12 @@ pub fn collect_data(config: SimpleConfig) -> anyhow::Result<(HyprlandData, Optio
     };
 
     let mut client_data = {
-        let mut cd: Vec<(Address, ClientData)> = Vec::with_capacity(clients.len());
+        let mut cd: Vec<(ClientId, ClientData)> = Vec::with_capacity(clients.len());
 
         for client in clients {
             if workspace_data.find_by_first(&client.workspace.id).is_some() {
                 cd.push((
-                    client.address.clone(),
+                    to_client_id(&client.address),
                     ClientData {
                         x: client.at.0,
                         y: client.at.1,
@@ -112,11 +112,11 @@ pub fn collect_data(config: SimpleConfig) -> anyhow::Result<(HyprlandData, Optio
         cd
     };
 
-    if config.ignore_monitors {
-        client_data = update_clients(client_data, Some(&workspace_data), None);
-    } else {
-        client_data = update_clients(client_data, Some(&workspace_data), Some(&monitor_data));
-    }
+    // if config.ignore_monitors {
+    //     client_data = update_clients(client_data, Some(&workspace_data), None);
+    // } else {
+    client_data = update_clients(client_data, Some(&workspace_data), Some(&monitor_data));
+    // }
 
     if config.sort_recent {
         let mut focus_map = get_recent_clients_map()
@@ -126,7 +126,7 @@ pub fn collect_data(config: SimpleConfig) -> anyhow::Result<(HyprlandData, Optio
             focus_map.extend(
                 client_data
                     .iter()
-                    .map(|(address, client_data)| (address.clone(), client_data.focus_history_id)),
+                    .map(|(id, client_data)| (*id, client_data.focus_history_id)),
             );
         };
         client_data.sort_by(|(a_addr, a), (b_addr, b)| {
@@ -144,29 +144,25 @@ pub fn collect_data(config: SimpleConfig) -> anyhow::Result<(HyprlandData, Optio
             }
         });
     } else {
-        client_data = sort_clients(
-            client_data,
-            config.ignore_workspaces,
-            config.ignore_monitors,
-        );
+        client_data = sort_clients(client_data);
     }
     // also remove offset of monitors (else gui will be offset)
-    if config.ignore_monitors {
-        client_data = update_clients(client_data, None, Some(&monitor_data));
-    }
+    // if config.ignore_monitors {
+    //     client_data = update_clients(client_data, None, Some(&monitor_data));
+    // }
 
     workspace_data.sort_by(|a, b| a.0.cmp(&b.0));
     monitor_data.sort_by(|a, b| a.0.cmp(&b.0));
 
     let active = Client::get_active()?;
-    let active: Option<(String, WorkspaceId, MonitorId, Address)> = active.as_ref().map_or_else(
+    let active: Option<(String, ClientId, WorkspaceId, MonitorId)> = active.as_ref().map_or_else(
         || None,
         |a| {
             Some((
                 a.class.clone(),
+                to_client_id(&a.address),
                 a.workspace.id,
                 a.monitor,
-                a.address.clone(),
             ))
         },
     );
@@ -181,11 +177,11 @@ pub fn collect_data(config: SimpleConfig) -> anyhow::Result<(HyprlandData, Optio
             && (!config.filter_current_workspace
                 || active
                     .as_ref()
-                    .map_or(true, |active| client.workspace == active.1))
+                    .map_or(true, |active| client.workspace == active.2))
             && (!config.filter_current_monitor
                 || active
                     .as_ref()
-                    .map_or(true, |active| client.monitor == active.2));
+                    .map_or(true, |active| client.monitor == active.3));
     }
 
     // iterate over all workspaces and set active to false if no client is on the workspace is active
@@ -206,10 +202,10 @@ pub fn collect_data(config: SimpleConfig) -> anyhow::Result<(HyprlandData, Optio
     trace!("workspace_data: {:?}", workspace_data);
     trace!("monitor_data: {:?}", monitor_data);
 
-    let active = match config.switch_type {
-        SwitchType::Client => active.as_ref().map(|a| a.3.clone()).map(Active::Client),
-        SwitchType::Workspace => active.as_ref().map(|a| a.1).map(Active::Workspace),
-        SwitchType::Monitor => active.as_ref().map(|a| a.2).map(Active::Monitor),
+    let active = Active {
+        client: active.as_ref().map(|a| a.1),
+        workspace: active.as_ref().map(|a| a.2),
+        monitor: active.as_ref().map(|a| a.3),
     };
 
     Ok((

@@ -1,0 +1,38 @@
+Config(
+    general: (
+        size_factor: 5.0,
+        launcher: (
+            default_terminal: "alacritty",
+        ),
+        windows: (
+            workspaces_per_row: 5,
+        )
+    ),
+    binds: [
+        Overview(
+            show_launcher: true,
+            open: (
+                modifier: super,
+                key: "super_l"
+            ),
+            other: (
+                max_switch_offset: 0,
+            )
+        ),
+        Switch(
+            open: (
+                modifier: alt,
+            ),
+            navigate: (
+                forward: "tab",
+                reverse: Key("grave"),
+            ),
+            close: (
+                escape: true
+            ),
+            other: (
+                switch_type: workspace,
+            )
+        ),
+    ]
+)

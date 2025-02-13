@@ -1,24 +1,29 @@
-use std::cmp::min;
-use gtk4::Align;
-use crate::{Active, SharedData};
+use crate::daemon::data::SharedData;
 use crate::daemon::gui::MonitorData;
+use crate::SwitchType;
+use gtk4::Align;
+use std::cmp::min;
 
 macro_rules! update_type {
     (
-        $htypr_data:expr, $identifier_name:ident, $css_active_name:expr, $id:expr,
+        $htypr_data:expr, $css_active_name:expr, $id:expr, $show_labels:expr, $border_allowed:expr,
         $overlay:expr, $label:expr, $active:expr, $gui_config:expr, $submap_info:expr, $valign: expr
     ) => {
         use gtk4::prelude::WidgetExt;
         let find = $htypr_data.iter().find(|(i, _)| *i == $id);
         if let Some((_, data)) = find {
             if data.enabled {
-                // mark the active client
-                if !$gui_config.hide_active_window_border && $active == $id {
-                    $overlay.add_css_class($css_active_name);
+                if let Some(i) = $active {
+                    if $border_allowed && i == $id {
+                        // mark the active client
+                        $overlay.add_css_class($css_active_name);
+                    } else {
+                        $overlay.remove_css_class($css_active_name);
+                    }
                 } else {
                     $overlay.remove_css_class($css_active_name);
                 }
-                if $gui_config.max_switch_offset != 0 {
+                if $show_labels && $gui_config.max_switch_offset != 0 {
                     // create label if not exists
                     if $label.is_none() {
                         let new_label = gtk4::Label::builder()
@@ -30,7 +35,7 @@ macro_rules! update_type {
                         *$label = Some(new_label.clone());
                     }
 
-                    // will always be some, TODO find better way to handle this
+                    // will always be some
                     if let Some(label) = $label {
                         let position = $htypr_data
                             .iter()
@@ -40,17 +45,14 @@ macro_rules! update_type {
                         let selected_client_position = $htypr_data
                             .iter()
                             .filter(|(_, d)| d.enabled)
-                            .position(|(oid, _)| *oid == $active)
+                            .position(|(oid, _)| *oid == $active.unwrap_or(0))
                             .unwrap_or(0);
                         let offset = calc_offset(
                             $htypr_data.iter().filter(|(_, wd)| wd.enabled).count(),
                             selected_client_position,
                             position,
                             $gui_config.max_switch_offset,
-                            if let crate::ReverseKey::Mod(_) = (match $submap_info {
-                                crate::SubmapConfig::Name { reverse_key, .. } => reverse_key,
-                                crate::SubmapConfig::Config { reverse_key, .. } => reverse_key,
-                            }) {
+                            if let crate::daemon::ReverseKey::Mod(_) = ($submap_info.reverse_key) {
                                 true
                             } else {
                                 false
@@ -77,55 +79,57 @@ macro_rules! update_type {
 }
 
 pub fn update_windows(gui_monitor_data: &mut MonitorData, data: &SharedData) -> anyhow::Result<()> {
-    match &data.active {
-        Some(Active::Client(addr)) => {
-            for (id, (overlay, label)) in gui_monitor_data.client_refs.iter_mut() {
-                update_type!(
-                    data.hypr_data.clients,
-                    address,
-                    "client_active",
-                    *id,
-                    overlay,
-                    label,
-                    *addr,
-                    &data.gui_config,
-                    &data.submap_config,
-                    Align::End
-                );
-            }
-        }
-        Some(Active::Workspace(active_id)) => {
-            for (wid, (overlay, label)) in gui_monitor_data.workspace_refs.iter_mut() {
-                update_type!(
-                    data.hypr_data.workspaces,
-                    id,
-                    "workspace_active",
-                    *wid,
-                    overlay,
-                    label,
-                    *active_id,
-                    &data.gui_config,
-                    &data.submap_config,
-                    Align::Start
-                );
-            }
-        }
-        Some(Active::Monitor(active_id)) => {
-            let (overlay, label) = &mut gui_monitor_data.workspaces_flow_overlay;
-            update_type!(
-                data.hypr_data.monitors,
-                id,
-                "monitor_active",
-                gui_monitor_data.id,
-                overlay,
-                label,
-                *active_id,
-                &data.gui_config,
-                &data.submap_config,
-                Align::Start
-            );
-        }
-        _ => {}
+    for (id, (overlay, label)) in gui_monitor_data.client_refs.iter_mut() {
+        update_type!(
+            data.hypr_data.clients,
+            "client_active",
+            *id,
+            data.sort_config.switch_type == SwitchType::Client,
+            !data.gui_config.hide_active_window_border && data.active.client.is_some(),
+            overlay,
+            label,
+            data.active.client,
+            &data.gui_config,
+            &data.submap_config,
+            Align::End
+        );
+    }
+
+    for (wid, (overlay, label)) in gui_monitor_data.workspace_refs.iter_mut() {
+        update_type!(
+            data.hypr_data.workspaces,
+            "workspace_active",
+            *wid,
+            data.sort_config.switch_type == SwitchType::Workspace,
+            !data.gui_config.hide_active_window_border
+                && data.active.workspace.is_some()
+                && data.active.client.is_none(),
+            overlay,
+            label,
+            data.active.workspace,
+            &data.gui_config,
+            &data.submap_config,
+            Align::Start
+        );
+    }
+    let (overlay, label) = &mut gui_monitor_data.workspaces_flow_overlay;
+    {
+        update_type!(
+            data.hypr_data.monitors,
+            "monitor_active",
+            gui_monitor_data.id,
+            data.sort_config.switch_type == SwitchType::Monitor,
+            !data.gui_config.hide_active_window_border
+                && data.active.monitor.is_some()
+                && data.active.workspace.is_none()
+                && data.active.client.is_none(),
+            overlay,
+            label,
+            data.active.monitor,
+            &data.gui_config,
+            &data.submap_config,
+            Align::Start
+        );
     }
     Ok(())
 }

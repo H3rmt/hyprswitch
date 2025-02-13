@@ -1,10 +1,31 @@
 use anyhow::Context;
+use std::collections::HashMap;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 
-pub fn cache_run(run: &str) -> anyhow::Result<()> {
+pub fn get_cached_runs() -> anyhow::Result<HashMap<Box<str>, i64>> {
+    let cache_path = get_path().context("Failed to get cache path")?;
+    let cache_data = if cache_path.exists() {
+        let file = OpenOptions::new()
+            .read(true)
+            .open(&cache_path)
+            .context("Failed to open cache file")?;
+        serde_json::from_reader(file).unwrap_or_else(|_| serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    let runs = cache_data.as_object().map(|o| {
+        o.into_iter()
+            .map(|(k, v)| (k.as_str().into(), v.as_i64().unwrap_or(0)))
+            .collect()
+    });
+    Ok(runs.unwrap_or_default())
+}
+
+pub fn cache_run(desktop_file: &str) -> anyhow::Result<()> {
     let cache_path = get_path().context("Failed to get cache path")?;
     let mut cache_data = if cache_path.exists() {
         let file = OpenOptions::new()
@@ -19,8 +40,8 @@ pub fn cache_run(run: &str) -> anyhow::Result<()> {
         serde_json::json!({})
     };
 
-    cache_data[run] = serde_json::json!(cache_data
-        .get(run)
+    cache_data[desktop_file] = serde_json::json!(cache_data
+        .get(desktop_file)
         .map(|v| v.as_i64().unwrap_or(0) + 1)
         .unwrap_or(1));
 

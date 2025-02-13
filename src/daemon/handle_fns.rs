@@ -1,39 +1,55 @@
-use crate::configs::DispatchConfig;
 use crate::daemon::cache::cache_run;
 use crate::daemon::gui::{reload_desktop_maps, show_launch_spawn};
-use crate::daemon::submap::{activate_submap, deactivate_submap, generate_submap};
+use crate::daemon::{
+    activate_submap, deactivate_submap, global, GUISend, GuiConfig, Share, SubmapConfig,
+    UpdateCause,
+};
 use crate::handle::{clear_recent_clients, collect_data, find_next, run_program, switch_to_active};
-use crate::{global, GUISend, GuiConfig, Share, SimpleConfig, SubmapConfig, UpdateCause, Warn};
+use crate::{SortConfig, Warn};
 use anyhow::Context;
 use std::ops::Deref;
 use tracing::{info, trace, warn};
 
 pub(crate) fn switch(
     share: &Share,
-    dispatch_config: &DispatchConfig,
+    reverse: bool,
+    offset: u8,
+    gui_navigation: bool,
     client_id: u8,
 ) -> anyhow::Result<()> {
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
-        let exec_len = lock.launcher_config.execs.len();
-        if let Some(ref mut selected) = lock.launcher_config.selected {
+        let exec_len = lock.launcher_data.execs.len();
+        if let Some(ref mut selected) = lock.launcher_data.selected {
             if exec_len == 0 {
                 return Ok(());
             }
-            *selected = if dispatch_config.reverse {
-                selected.saturating_sub(dispatch_config.offset as usize)
+            // arrow up and down have offset of workspaces_per_row to navigate workspaces in gui
+            // so we must reduce the offset to navigate the execs
+            if gui_navigation {
+                *selected = if reverse {
+                    selected.saturating_sub(1)
+                } else {
+                    (*selected + 1).min(exec_len - 1)
+                };
             } else {
-                (*selected + dispatch_config.offset as usize).min(exec_len - 1)
-            };
+                *selected = if reverse {
+                    selected.saturating_sub(offset as usize)
+                } else {
+                    (*selected + offset as usize).min(exec_len - 1)
+                };
+            }
         } else {
             let active = find_next(
-                &lock.simple_config.switch_type,
-                dispatch_config,
+                reverse,
+                offset,
+                &lock.sort_config.switch_type,
                 &lock.hypr_data,
-                lock.active.as_ref(),
+                &lock.active,
+                gui_navigation,
             )?;
-            lock.active = Some(active);
+            lock.active = active;
         }
         drop(lock);
     }
@@ -51,41 +67,25 @@ pub(crate) fn switch(
 
 pub(crate) fn init(
     share: &Share,
-    simple_config: SimpleConfig,
+    sort_config: SortConfig,
     gui_config: GuiConfig,
     submap_config: SubmapConfig,
     client_id: u8,
 ) -> anyhow::Result<()> {
-    let (clients_data, active) = collect_data(simple_config.clone()).with_context(|| {
-        format!(
-            "Failed to collect data with config {:?}",
-            simple_config.clone()
-        )
-    })?;
+    let (clients_data, active) = collect_data(&sort_config)
+        .with_context(|| format!("Failed to collect data with config {:?}", sort_config))?;
 
+    activate_submap(&submap_config.name)?;
     let (latest, send, receive) = share.deref();
     {
         let mut lock = latest.lock().expect("Failed to lock");
 
         lock.active = active;
-        lock.simple_config = simple_config.clone();
-        lock.gui_config = gui_config.clone();
+        lock.sort_config = sort_config;
+        lock.gui_config = gui_config;
+        lock.submap_config = submap_config;
         lock.hypr_data = clients_data;
         drop(lock);
-    }
-
-    match submap_config {
-        SubmapConfig::Config {
-            mod_key,
-            key,
-            reverse_key,
-            close,
-        } => {
-            generate_submap(mod_key, key, reverse_key, close)?;
-        }
-        SubmapConfig::Name { name, .. } => {
-            activate_submap(&name)?;
-        }
     }
 
     *(global::OPEN
@@ -115,15 +115,25 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
 
     if !kill {
         let lock = latest.lock().expect("Failed to lock");
-        if let Some(selected) = lock.launcher_config.selected {
-            if let Some(exec) = lock.launcher_config.execs.get(selected) {
+        if let Some(selected) = lock.launcher_data.selected {
+            if let Some(exec) = lock.launcher_data.execs.get(selected) {
                 show_launch_spawn(share.clone(), Some(client_id));
                 run_program(&exec.exec, &exec.path, exec.terminal);
-                cache_run(&exec.exec).warn("Failed to cache run");
+                cache_run(&exec.desktop_file).warn("Failed to cache run");
+
+                drop(lock);
             } else {
+                drop(lock); // drop lock after both ifs
                 warn!("Selected program (nr. {}) not found, killing", selected);
+
+                trace!("Sending hide to GUI");
+                send.send_blocking((GUISend::Hide, UpdateCause::Client(client_id)))
+                    .context("Unable to hide the GUI")?;
+                let rec = receive
+                    .recv_blocking()
+                    .context("Unable to receive GUI update")?;
+                trace!("Received hide finish from GUI: {rec:?}");
             }
-            drop(lock); // drop lock after both ifs
         } else {
             drop(lock); // drop lock before sending hide
 
@@ -138,7 +148,15 @@ pub(crate) fn close(share: &Share, kill: bool, client_id: u8) -> anyhow::Result<
             // switch after closing gui
             // (KeyboardMode::Exclusive on launcher doesn't allow switching windows if it is still active)
             let lock = latest.lock().expect("Failed to lock");
-            switch_to_active(lock.active.as_ref(), &lock.hypr_data)?;
+            switch_to_active(
+                &lock.active,
+                &lock.hypr_data,
+                global::OPTS
+                    .get()
+                    .map(|o| o.dry)
+                    .warn("Failed to access global dry")
+                    .unwrap_or(false),
+            )?;
             drop(lock);
         }
     } else {

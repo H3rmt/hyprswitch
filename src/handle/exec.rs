@@ -7,18 +7,21 @@ use hyprland::prelude::HyprDataActive;
 use hyprland::shared::{Address, MonitorId, WorkspaceId};
 use tracing::{debug, span, warn, Level};
 
-use crate::{global, Active, FindByFirst, HyprlandData};
+use crate::{to_client_address, Active, FindByFirst, HyprlandData};
 
 pub fn switch_to_active(
-    active: Option<&Active>,
+    active: &Active,
     clients_data: &HyprlandData,
+    dry: bool,
 ) -> anyhow::Result<()> {
     let _span = span!(Level::TRACE, "exec", active = ?active).entered();
-    match active {
-        Some(Active::Client(addr)) => {
+
+    // select the most specific switch type
+    match (active.client, active.workspace, active.monitor) {
+        (Some(cid), _, _) => {
             let data = clients_data
                 .clients
-                .find_by_first(addr)
+                .find_by_first(&cid)
                 .context("Client data not found")?;
             debug!("Switching to client {}", data.title);
             let workspace_data = clients_data
@@ -30,36 +33,36 @@ pub fn switch_to_active(
                     id: data.workspace,
                     name: workspace_data.name.clone(),
                 },
-                *global::DRY.get().expect("DRY not set"),
+                dry,
             )
             .with_context(|| {
                 format!("Failed to execute switch workspace with workspace_data {workspace_data:?}")
             })?;
-            switch_client(addr, *global::DRY.get().expect("DRY not set"))
-                .with_context(|| format!("Failed to execute with addr {addr:?}"))?;
+            switch_client(&to_client_address(cid), dry)
+                .with_context(|| format!("Failed to execute with addr {cid:?}"))?;
         }
-        Some(Active::Workspace(wid)) => {
+        (_, Some(wid), _) => {
             let workspace_data = clients_data
                 .workspaces
-                .find_by_first(wid)
+                .find_by_first(&wid)
                 .context("Workspace data not found")?;
             switch_workspace(
                 &WorkspaceBasic {
-                    id: *wid,
+                    id: wid,
                     name: workspace_data.name.clone(),
                 },
-                *global::DRY.get().expect("DRY not set"),
+                dry,
             )
             .with_context(|| {
                 format!("Failed to execute switch workspace with workspace_data {workspace_data:?}")
             })?;
         }
-        Some(Active::Monitor(mid)) => {
-            switch_monitor(mid, *global::DRY.get().expect("DRY not set")).with_context(|| {
+        (_, _, Some(mid)) => {
+            switch_monitor(&mid, dry).with_context(|| {
                 format!("Failed to execute switch monitor with monitor_id {mid:?}")
             })?;
         }
-        None => {
+        _ => {
             warn!("Not executing switch (active = Unknown)");
         }
     };

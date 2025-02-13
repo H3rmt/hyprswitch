@@ -8,7 +8,7 @@ arch=('any')
 url="https://github.com/h3rmt/hyprswitch/"
 license=("MIT")
 makedepends=('cargo')
-depends=('hyprland' 'gtk4-layer-shell' 'gtk4')
+depends=('hyprland' 'gtk4-layer-shell' 'gtk4' 'socat')
 source=("$pkgname-$pkgver.tar.gz::https://static.crates.io/crates/$pkgname/$pkgname-$pkgver.crate")
 
 prepare() {
@@ -26,8 +26,5 @@ build() {
 
 package() {
     install -Dm0755 -t "$pkgdir/usr/bin/" "$pkgname-$pkgver/target/release/$pkgname"
-}
-
-post_install() {
-    echo "Please restart the hyprswitch daemon"
+    install -Dm0644 -t "$pkgdir/usr/lib/systemd/user/" "$pkgname-$pkgver/systemd/hyprswitch.service"
 }

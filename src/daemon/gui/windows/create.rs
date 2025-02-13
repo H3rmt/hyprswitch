@@ -1,7 +1,8 @@
 use crate::daemon::gui::windows::click::click_monitor;
 use crate::daemon::gui::MonitorData;
+use crate::daemon::Share;
 use crate::handle::get_monitors;
-use crate::{Share, Warn};
+use crate::Warn;
 use anyhow::Context;
 use async_channel::Sender;
 use gtk4::gdk::{Display, Monitor};
@@ -40,12 +41,15 @@ pub fn create_windows(
             .max_children_per_line(workspaces_per_row)
             .min_children_per_line(workspaces_per_row)
             .build();
-        let workspaces_flow_overlay = Overlay::builder().child(&workspaces_flow).build();
+        let workspaces_flow_overlay = Overlay::builder()
+            .child(&workspaces_flow)
+            .css_classes(vec!["monitor"])
+            .build();
 
         workspaces_flow_overlay.add_controller(click_monitor(share, monitor_id));
 
         let window = ApplicationWindow::builder()
-            .css_classes(vec!["window", "monitor", "background"])
+            .css_classes(vec!["window"])
             .application(app)
             .child(&workspaces_flow_overlay)
             .default_height(10)

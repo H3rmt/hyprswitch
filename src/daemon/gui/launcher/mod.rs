@@ -3,19 +3,22 @@ use crate::daemon::gui::gui_handle::{
 };
 use crate::daemon::gui::maps::get_all_desktop_files;
 use crate::daemon::gui::LauncherRefs;
-use crate::envs::{LAUNCHER_ANIMATE_LAUNCH_TIME, LAUNCHER_MAX_ITEMS, SHOW_LAUNCHER_EXECS};
-use crate::{Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause, Warn};
+use crate::daemon::{
+    get_cached_runs, global, Exec, GUISend, LaunchState, ReverseKey, Share, UpdateCause,
+};
+use crate::Warn;
 use async_channel::Sender;
 use gtk4::gdk::{Key, Texture};
 use gtk4::glib::{clone, ControlFlow, Propagation};
 use gtk4::pango::EllipsizeMode;
 use gtk4::prelude::{BoxExt, EditableExt, GestureExt, WidgetExt};
 use gtk4::{
-    glib, Align, Application, ApplicationWindow, Entry, EventControllerKey,
-    EventSequenceState, GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation,
-    SelectionMode,
+    glib, Align, Application, ApplicationWindow, Entry, EventControllerKey, EventSequenceState,
+    GestureClick, IconSize, Image, Label, ListBox, ListBoxRow, Orientation, SelectionMode,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use std::cmp::Ordering::{Greater, Less};
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::Path;
 use std::thread;
@@ -71,7 +74,7 @@ pub(super) fn create_launcher(
     main_vbox.append(&entries);
 
     let window = ApplicationWindow::builder()
-        .css_classes(vec!["window", "background"])
+        .css_classes(vec!["window"])
         .application(app)
         .child(&main_vbox)
         .default_height(10)
@@ -100,13 +103,16 @@ pub(super) fn create_launcher(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn update_launcher(
     share: Share,
     text: &str,
     list: &ListBox,
     selected: Option<usize>,
-    launch_state: LaunchState,
+    launch_state: &LaunchState,
     reverse_key: &ReverseKey,
+    launcher_max_items: u8,
+    show_launcher_execs: bool,
 ) -> Vec<Exec> {
     while let Some(child) = list.first_child() {
         list.remove(&child);
@@ -119,34 +125,72 @@ pub(super) fn update_launcher(
     let mut execs = Vec::new();
 
     let entries = get_all_desktop_files();
-    let mut matches = Vec::new();
-    for (name, icon, _, exec, path, terminal, _) in entries.deref() {
-        if name
+    // 2 = keyword, 1 = name, 0 = exact Match
+    let mut matches = HashMap::new();
+    for entry in entries.deref() {
+        if entry.keywords.iter().any(|k| {
+            k.to_ascii_lowercase()
+                .starts_with(&text.to_ascii_lowercase())
+        }) {
+            matches.insert(entry.desktop_file.clone(), (2, entry));
+        }
+    }
+    // do name last to let them appear first
+    for entry in entries.deref() {
+        if entry
+            .name
             .to_ascii_lowercase()
             .contains(&text.to_ascii_lowercase())
         {
-            matches.push((name, icon, exec, path, terminal));
+            if entry
+                .name
+                .to_ascii_lowercase()
+                .starts_with(&text.to_ascii_lowercase())
+            {
+                matches.insert(entry.desktop_file.clone(), (0, entry));
+            } else {
+                matches.insert(entry.desktop_file.clone(), (1, entry));
+            }
         }
     }
-    for (name, icon, keywords, exec, path, terminal, _) in entries.deref() {
-        if keywords
-            .iter()
-            .any(|k| k.to_ascii_lowercase().contains(&text.to_ascii_lowercase()))
-            && !matches.iter().any(|(n, _, _, _, _)| name.eq(n))
-        {
-            matches.push((name, icon, exec, path, terminal));
-        }
-    }
+    let runs = get_cached_runs().unwrap_or_default();
 
-    for (index, (name, icon, exec, path, terminal)) in
-        matches.into_iter().take(*LAUNCHER_MAX_ITEMS).enumerate()
+    // sort each of the sections by times run in the past
+    let mut matches: Vec<_> = matches.into_values().collect();
+    matches.sort_by(|(a_t, a), (b_t, b)| {
+        if a_t != b_t {
+            a_t.cmp(b_t)
+        } else {
+            let a_e = runs.get(&a.desktop_file);
+            let b_e = runs.get(&b.desktop_file);
+            match (a_e, b_e) {
+                (Some(_), None) => Less,
+                (None, Some(_)) => Greater,
+                (Some(a_e), Some(b_e)) if a_e != b_e => b_e.cmp(a_e), // higher means lower in sort
+                _ => a.name.cmp(&b.name),
+            }
+        }
+    });
+    trace!(
+        "Matches: {:?}",
+        matches
+            .iter()
+            .take(launcher_max_items as usize)
+            .map(|(v, e)| format!("{}: {}|{:?}", v, e.name, runs.get(&e.desktop_file)))
+            .collect::<Vec<_>>()
+    );
+
+    for (index, (_, entry)) in matches
+        .into_iter()
+        .take(launcher_max_items as usize)
+        .enumerate()
     {
         let i = index as i32 - selected.unwrap_or(0) as i32;
         let widget = create_launch_widget(
             share.clone(),
-            name,
-            icon,
-            exec,
+            &entry.name,
+            &entry.icon,
+            &entry.exec,
             index,
             &match reverse_key {
                 ReverseKey::Mod(m) => match i {
@@ -158,8 +202,8 @@ pub(super) fn update_launcher(
                     if i == 0 {
                         "Return".to_string()
                     } else if i == -1 {
-                        // k.to_string() // TODO fix this
-                        "".to_string()
+                        _k.to_string() // TODO fix this
+                        // "".to_string()
                     } else if i > 0 {
                         i.to_string()
                     } else {
@@ -172,18 +216,21 @@ pub(super) fn update_launcher(
             } else {
                 None
             },
+            show_launcher_execs,
         );
         list.append(&widget);
         execs.push(Exec {
-            exec: exec.clone(),
-            path: path.clone(),
-            terminal: *terminal,
+            exec: entry.exec.clone(),
+            path: entry.exec_path.clone(),
+            terminal: entry.terminal,
+            desktop_file: entry.desktop_file.clone(),
         });
     }
 
     execs
 }
 
+#[allow(clippy::too_many_arguments)]
 fn create_launch_widget(
     share: Share,
     name: &str,
@@ -191,7 +238,8 @@ fn create_launch_widget(
     exec: &str,
     raw_index: usize,
     index: &str,
-    selected: Option<LaunchState>,
+    selected: Option<&LaunchState>,
+    show_launcher_execs: bool,
 ) -> ListBoxRow {
     let hbox = gtk4::Box::builder()
         .orientation(Orientation::Horizontal)
@@ -229,7 +277,7 @@ fn create_launch_widget(
         .build();
     hbox.append(&title);
 
-    if *SHOW_LAUNCHER_EXECS {
+    if show_launcher_execs {
         let exec = Label::builder()
             .halign(Align::Start)
             .valign(Align::Center)
@@ -237,10 +285,36 @@ fn create_launch_widget(
             .css_classes(vec!["launcher-exec"])
             .ellipsize(EllipsizeMode::End) // "flatpak 'run'" = pwa from browser inside flatpak
             .label(
-                if exec.contains("flatpak run") || exec.contains("flatpak 'run'") {
-                    "(flatpak)".to_string()
+                if exec.contains("--app-id=") && exec.contains("--profile-directory=") {
+                    if exec.contains("flatpak run") || exec.contains("flatpak 'run'") {
+                        format!(
+                            "(flatpak {} pwa)",
+                            exec.replace("'", "")
+                                .split(' ')
+                                .find(|s| s.contains("--command="))
+                                .and_then(|s| s.split('=').last().and_then(|s| s.split('/').last()))
+                                .unwrap_or_default()
+                        )
+                    } else {
+                        format!(
+                            "({} pwa)",
+                            exec.split(' ')
+                                .next()
+                                .and_then(|s| s.split('/').last())
+                                .unwrap_or_default()
+                        )
+                    }
+                } else if exec.contains("flatpak run") || exec.contains("flatpak 'run'") {
+                    format!(
+                        "(flatpak {})",
+                        exec.replace("'", "")
+                            .split(' ')
+                            .find(|s| s.contains("--command="))
+                            .and_then(|s| s.split('=').last().and_then(|s| s.split('/').last()))
+                            .unwrap_or_default()
+                    )
                 } else {
-                    format!("({})", exec)
+                    exec.to_string() // show full exec instead of only last part of /path/to/exec
                 },
             )
             .build();
@@ -290,7 +364,7 @@ pub fn show_launch_spawn(share: Share, cause: Option<u8>) {
         let (latest, send, receive) = share.deref();
         {
             let mut lat = latest.lock().expect("Failed to lock");
-            lat.launcher_config.launch_state = LaunchState::Launching;
+            lat.launcher_data.launch_state = LaunchState::Launching;
             drop(lat);
         }
 
@@ -301,11 +375,17 @@ pub fn show_launch_spawn(share: Share, cause: Option<u8>) {
         trace!("Received refresh finish from GUI: {rec:?}");
 
         // wait for the GUI to update
-        thread::sleep(Duration::from_millis(*LAUNCHER_ANIMATE_LAUNCH_TIME));
+        thread::sleep(Duration::from_millis(
+            global::OPTS
+                .get()
+                .map(|o| o.animate_launch_time)
+                .warn("Failed to access global animate_launch_time")
+                .unwrap_or(300),
+        ));
 
         {
             let mut lat = latest.lock().expect("Failed to lock");
-            lat.launcher_config.launch_state = LaunchState::Default;
+            lat.launcher_data.launch_state = LaunchState::Default;
             drop(lat);
         }
 

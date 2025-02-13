@@ -2,16 +2,17 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use anyhow::Context;
+use hyprland::ctl;
+use hyprland::ctl::notify;
 use hyprland::data::{Client, Monitor, Monitors};
-use hyprland::prelude::{HyprData, HyprDataActiveOptional, HyprDataVec};
-use hyprland::shared::Address;
-use tracing::info;
+use hyprland::prelude::*;
+use semver::Version;
+use tracing::{debug, info, trace};
 
 pub use data::collect_data;
 pub use exec::switch_to_active;
 
-use crate::handle::next::{find_next_client, find_next_monitor, find_next_workspace};
-use crate::{Active, DispatchConfig, HyprlandData, SwitchType};
+use crate::{toast, ClientId, Warn, MIN_VERSION};
 
 mod data;
 mod exec;
@@ -19,62 +20,11 @@ mod next;
 mod run;
 mod sort;
 
+pub use next::find_next;
 pub use run::run_program;
 
-pub fn find_next(
-    switch_type: &SwitchType,
-    dispatch_config: &DispatchConfig,
-    clients_data: &HyprlandData,
-    active: Option<&Active>,
-) -> anyhow::Result<Active> {
-    match switch_type {
-        SwitchType::Client => {
-            let (addr, _) = find_next_client(
-                dispatch_config,
-                &clients_data.clients,
-                if let Some(Active::Client(addr)) = &active {
-                    Some(addr)
-                } else {
-                    None
-                },
-            )
-            .with_context(|| format!("Failed to find next client with dispatch_config {dispatch_config:?}"))?;
-            info!("Next client: {:?}", addr);
-            Ok(Active::Client(addr.clone()))
-        }
-        SwitchType::Workspace => {
-            let (workspace_id, _) = find_next_workspace(
-                dispatch_config,
-                &clients_data.workspaces,
-                if let Some(Active::Workspace(ws)) = &active {
-                    Some(ws)
-                } else {
-                    None
-                },
-            )
-            .with_context(|| format!("Failed to find next workspace with dispatch_config {dispatch_config:?}"))?;
-            info!("Next workspace: {:?}", workspace_id);
-            Ok(Active::Workspace(*workspace_id))
-        }
-        SwitchType::Monitor => {
-            let (monitor_id, _) = find_next_monitor(
-                dispatch_config,
-                &clients_data.monitors,
-                if let Some(Active::Monitor(monitor)) = &active {
-                    Some(monitor)
-                } else {
-                    None
-                },
-            )
-            .with_context(|| format!("Failed to find next monitor with dispatch_config {dispatch_config:?}"))?;
-            info!("Next monitor: {:?}", monitor_id);
-            Ok(Active::Monitor(*monitor_id))
-        }
-    }
-}
-
-fn get_recent_clients_map() -> &'static Mutex<HashMap<Address, i8>> {
-    static MAP_LOCK: OnceLock<Mutex<HashMap<Address, i8>>> = OnceLock::new();
+fn get_recent_clients_map() -> &'static Mutex<HashMap<ClientId, i8>> {
+    static MAP_LOCK: OnceLock<Mutex<HashMap<ClientId, i8>>> = OnceLock::new();
     MAP_LOCK.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
@@ -103,4 +53,38 @@ pub fn get_active_monitor() -> Option<String> {
         Ok(Some(Ok(Some(monitor)))) => Some(monitor),
         _ => None,
     }
+}
+
+pub fn check_version() -> anyhow::Result<()> {
+    use hyprland::prelude::HyprData;
+    let version = hyprland::data::Version::get()
+        .context("Failed to get version! (Hyprland is probably outdated or too new??)")?;
+
+    trace!("Hyprland {version:?}");
+    info!(
+        "Starting Hyprswitch {} on Hyprland {}",
+        env!("CARGO_PKG_VERSION"),
+        version.version.clone().unwrap_or(version.tag.clone()),
+    );
+
+    let parsed_version = Version::parse(
+        &version
+            .version
+            .unwrap_or(version.tag.trim_start_matches('v').to_string()),
+    )
+    .context("Unable to parse Hyprland Version")?;
+
+    if parsed_version.lt(&MIN_VERSION) {
+        toast(
+            &format!("Hyprland version too old or unknown: {parsed_version:?} < {MIN_VERSION:?}"),
+            notify::Icon::Warning,
+        );
+    }
+
+    Ok(())
+}
+
+pub fn reload_config() {
+    debug!("Reloading Hyprland config");
+    ctl::reload::call().warn("Failed to reload Hyprland config");
 }
