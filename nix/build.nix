@@ -21,11 +21,13 @@ rec {
     cargoBuildCommand = "cargo build --release --locked";
 
     nativeBuildInputs = [
+      pkgs.desktop-file-utils
       pkgs.pkg-config
       pkgs.wrapGAppsHook4
     ];
 
     buildInputs = [
+      pkgs.gkt
       pkgs.libadwaita
       pkgs.gtk4-layer-shell
       pkgs.libnotify
