@@ -75,7 +75,6 @@ fn main() -> anyhow::Result<()> {
         .global_opts
         .config_file
         .unwrap_or_else(get_default_config_file);
-    #[cfg(feature = "gui_settings_editor")]
     let system_data_dir = cli
         .global_opts
         .system_data_dir
@@ -232,9 +231,8 @@ fn main() -> anyhow::Result<()> {
 
 fn check_features() {
     tracing::debug!(
-        // "FEATURES: json5_config: {}, gui_settings_editor: {}, launcher_calc: {}, clipboard_compress_lz4: {}, clipboard_compress_zstd: {}, clipboard_compress_brotli: {}, clipboard_encrypt_chacha20poly1305: {}, clipboard_encrypt_aes_gcm: {}",
-        "FEATURES: json5_config: {}, gui_settings_editor: {}, launcher_calc: {}",
-        cfg!(feature = "json5_config"),
+        // "FEATURES: gui_settings_editor: {}, launcher_calc: {}, clipboard_compress_lz4: {}, clipboard_compress_zstd: {}, clipboard_compress_brotli: {}, clipboard_encrypt_chacha20poly1305: {}, clipboard_encrypt_aes_gcm: {}",
+        "FEATURES: gui_settings_editor: {}, launcher_calc: {}",
         cfg!(feature = "gui_settings_editor"),
         cfg!(feature = "launcher_calc"),
         // cfg!(feature = "clipboard_compress_lz4"),

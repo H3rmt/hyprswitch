@@ -109,6 +109,10 @@ pub fn info(
     system_data_dir: &Path,
 ) {
     println!("config version: {}", config_lib::CURRENT_CONFIG_VERSION);
+    println!(
+        "workarround version: {}",
+        config_lib::CURRENT_WORKARROUND_VERSION
+    );
     println!("css_file: {}", css_file.display());
     println!("config_file: {}", config_file.display());
     println!("data_dir: {}", data_dir.display());

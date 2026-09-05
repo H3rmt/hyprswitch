@@ -58,17 +58,24 @@
   console.keyMap = "us-acentos";
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.enrico = {
+  users.users.user1 = {
     isNormalUser = true;
-    description = "Enrico";
+    description = "Hyprshell Flake Config User";
     extraGroups = [
       "networkmanager"
       "wheel"
     ];
   };
-
+  users.users.user2 = {
+    isNormalUser = true;
+    description = "Hyprshell Home Assistant Config User";
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+    ];
+  };
   # Enable automatic login for the user.
-  services.getty.autologinUser = "enrico";
+  services.getty.autologinUser = "user1";
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;

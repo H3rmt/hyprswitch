@@ -6,7 +6,7 @@ rec {
   commonArgs = {
     pname = "hyprshell";
     src = ../.;
-    version = (pkgs.lib.trivial.importTOML ../Cargo.toml).workspace.package.version;
+    version = (pkgs.lib.trivial.importTOML ../Cargo.toml).package.version;
 
     meta = {
       mainProgram = "hyprshell";
@@ -21,13 +21,16 @@ rec {
     cargoBuildCommand = "cargo build --release --locked";
 
     nativeBuildInputs = [
+      pkgs.desktop-file-utils
       pkgs.pkg-config
       pkgs.wrapGAppsHook4
     ];
 
     buildInputs = [
+      pkgs.gkt
       pkgs.libadwaita
       pkgs.gtk4-layer-shell
+      pkgs.libnotify
     ];
   };
 
