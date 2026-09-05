@@ -8,13 +8,8 @@ pub fn get_default_config_file() -> PathBuf {
     path.push("hyprshell.debug/");
     #[cfg(not(debug_assertions))]
     path.push("hyprshell/");
-    path.push("config.ron");
-    if path.exists() {
-        trace!("Found config file at {path:?}");
-        return path;
-    }
 
-    path.set_extension("toml");
+    path.push("config.toml");
     if path.exists() {
         trace!("Found config file at {path:?}");
         return path;
@@ -26,16 +21,19 @@ pub fn get_default_config_file() -> PathBuf {
         return path;
     }
 
-    #[cfg(feature = "json5_config")]
-    {
-        path.set_extension("json5");
-        if path.exists() {
-            trace!("Found config file at {path:?}");
-            return path;
-        }
+    path.set_extension("ron");
+    if path.exists() {
+        trace!("Found config file at {path:?}");
+        return path;
     }
 
-    path.set_extension("ron");
+    path.set_extension("json5");
+    if path.exists() {
+        trace!("Found config file at {path:?}");
+        return path;
+    }
+
+    path.set_extension("toml");
     path
 }
 

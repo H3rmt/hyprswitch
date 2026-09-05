@@ -15,7 +15,7 @@
     chromium
     baobab
   ];
-  
+
   wayland.windowManager.hyprland = {
     enable = true;
     package = inputs.hyprland.packages.x86_64-linux.hyprland;
@@ -36,17 +36,17 @@
       size = 14;
     };
   };
-  
+
   programs.hyprshell = {
     enable = true;
     systemd = {
       args = "-vv";
     };
     settings = {
-        windows.enable = true;
-        windows.overview.enable = true;
-        windows.switch.enable = true;
-        windows.switch.modifier = "ctrl";
+      windows.enable = true;
+      windows.overview.enable = true;
+      windows.switch.enable = true;
+      windows.switch.modifier = "ctrl";
     };
   };
 }
