@@ -6,7 +6,7 @@ rec {
   commonArgs = {
     pname = "hyprshell";
     src = ../.;
-    version = (pkgs.lib.trivial.importTOML ../Cargo.toml).workspace.package.version;
+    version = (pkgs.lib.trivial.importTOML ../Cargo.toml).workspace.version;
 
     meta = {
       mainProgram = "hyprshell";
