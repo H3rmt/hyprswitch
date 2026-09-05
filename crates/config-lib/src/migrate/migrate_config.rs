@@ -68,18 +68,18 @@ pub fn migrate(config_file: &Path) -> anyhow::Result<ConfigFile> {
     // migrate all configs to toml
     let config_file_new = &config_file.with_extension("toml");
 
+    let config_file_back = config_file.with_added_extension("bak");
+    fs::copy(config_file, &config_file_back).with_context(|| {
+        format!(
+            "Failed to copy old config from {} to {}",
+            config_file.display(),
+            config_file_back.display()
+        )
+    })?;
     match write_io_config(config_file_new, &mut new_config, true) {
         Ok(()) => {
             debug!("New config written successfully");
             if file_moved {
-                let config_file_back = config_file.with_added_extension("bak");
-                fs::copy(config_file, &config_file_back).with_context(|| {
-                    format!(
-                        "Failed to copy old config from {} to {}",
-                        config_file.display(),
-                        config_file_back.display()
-                    )
-                })?;
                 info!(
                     "Config was moved to {} from {}, old config is at {}",
                     config_file_new.display(),
