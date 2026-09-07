@@ -6,7 +6,7 @@ rec {
   commonArgs = {
     pname = "hyprshell";
     src = ../.;
-    version = (pkgs.lib.trivial.importTOML ../Cargo.toml).workspace.package.version;
+    version = (pkgs.lib.trivial.importTOML ../Cargo.toml).package.version;
 
     meta = {
       mainProgram = "hyprshell";
@@ -50,5 +50,7 @@ rec {
     }
   );
 
-  commonArgsFull = (commonArgs // { inherit postInstall cargoArtifacts; });
+  commonArgsFull = commonArgs // {
+    inherit postInstall cargoArtifacts;
+  };
 }
